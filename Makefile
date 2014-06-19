@@ -1,5 +1,3 @@
-.include <bsd.own.mk>
-
 SUBDIR	=	filters
 SUBDIR	+=	queues
 SUBDIR	+=	tables
