@@ -143,7 +143,7 @@ static time_t		currtime;
 int verbose;
 
 /* XXX from to.c */
-const char *
+static const char *
 duration_to_text(time_t t)
 {
 	static char	dst[64];
@@ -190,7 +190,7 @@ duration_to_text(time_t t)
 }
 
 /* XXX from scheduler_backend.c */
-time_t
+static time_t
 scheduler_compute_schedule(struct scheduler_info *sched)
 {
 	time_t		delay;
