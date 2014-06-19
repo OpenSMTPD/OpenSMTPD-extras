@@ -372,6 +372,8 @@ const char *esc_description(enum enhanced_status_code);
 void filter_api_setugid(uid_t, gid_t);
 void filter_api_set_chroot(const char *);
 void filter_api_no_chroot(void);
+void filter_api_set_udata(uint64_t, void *);
+void *filter_api_get_udata(uint64_t);
 
 void filter_api_loop(void);
 int filter_api_accept(uint64_t);

@@ -66,6 +66,8 @@ struct filter_session {
 		int		 code;
 		char		*line;
 	} response;
+
+	void			*udata;
 };
 
 static int		 register_done;
@@ -904,6 +906,20 @@ filter_api_loop(void)
 		log_warn("warn: filter-api:%s event_dispatch", filter_name);
 		fatalx("filter-api: exiting");
 	}
+}
+
+void
+filter_api_set_udata(uint64_t id, void *data)
+{
+	s = tree_xget(&sessions, id);
+	s->udata = data;
+}
+
+void *
+filter_api_get_udata(uint64_t id)
+{
+	s = tree_xget(&sessions, id);
+	return s->udata;
 }
 
 int
