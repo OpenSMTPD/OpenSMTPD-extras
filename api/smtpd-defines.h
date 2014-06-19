@@ -20,6 +20,41 @@
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
 #endif
 
+enum smtp_proc_type {
+	PROC_PARENT = 0,
+	PROC_LKA,
+	PROC_QUEUE,
+	PROC_CONTROL,
+	PROC_SCHEDULER,
+	PROC_PONY,
+	PROC_CA,
+
+	PROC_FILTER,
+	PROC_CLIENT,
+};
+
+#define	TRACE_DEBUG	0x0001
+#define	TRACE_IMSG	0x0002
+#define	TRACE_IO	0x0004
+#define	TRACE_SMTP	0x0008
+#define	TRACE_FILTERS	0x0010
+#define	TRACE_MTA	0x0020
+#define	TRACE_BOUNCE	0x0040
+#define	TRACE_SCHEDULER	0x0080
+#define	TRACE_LOOKUP	0x0100
+#define	TRACE_STAT	0x0200
+#define	TRACE_RULES	0x0400
+#define	TRACE_MPROC	0x0800
+#define	TRACE_EXPAND	0x1000
+#define	TRACE_TABLES	0x2000
+#define	TRACE_QUEUE	0x4000
+
+#define PROFILE_TOSTAT	0x0001
+#define PROFILE_IMSG	0x0002
+#define PROFILE_QUEUE	0x0004
+#define PROFILE_BUFFERS	0x0008
+
+
 #define SMTPD_MAXLOCALPARTSIZE	 (255 + 1)
 #define SMTPD_MAXDOMAINPARTSIZE	 (255 + 1)
 
