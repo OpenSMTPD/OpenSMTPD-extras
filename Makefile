@@ -1,7 +1,8 @@
 .include <bsd.own.mk>
 
-SUBDIR	=	queues
+SUBDIR	=	filters
+SUBDIR	+=	queues
 SUBDIR	+=	tables
-SUBDIR	+=	filters
+SUBDIR	+=	schedulers
 
 .include <bsd.subdir.mk>
