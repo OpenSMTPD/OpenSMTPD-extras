@@ -27,6 +27,8 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
+#include "smtpd-api.h"
+
 #define	FILTER_API_VERSION	 50
 
 struct mailaddr {
