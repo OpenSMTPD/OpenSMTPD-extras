@@ -2847,20 +2847,26 @@ AC_CONFIG_FILES([Makefile
 		openbsd-compat/Makefile
 		mk/Makefile
 		mk/filters/Makefile
-		mk/filters/dnsbl/Makefile
-		mk/filters/monkey/Makefile
-		mk/filters/trace/Makefile
+		mk/filters/filter-dnsbl/Makefile
+		mk/filters/filter-monkey/Makefile
+		mk/filters/filter-perl/Makefile
+		mk/filters/filter-python/Makefile
+		mk/filters/filter-trace/Makefile
+		mk/filters/filter-stub/Makefile
+		mk/filters/filter-void/Makefile
 		mk/queues/Makefile
 		mk/queues/queue-null/Makefile
+		mk/queues/queue-python/Makefile
 		mk/queues/queue-ram/Makefile
 		mk/queues/queue-stub/Makefile
 		mk/schedulers/Makefile
+		mk/schedulers/scheduler-python/Makefile
 		mk/schedulers/scheduler-ram/Makefile
 		mk/schedulers/scheduler-stub/Makefile
 		mk/tables/Makefile
+		mk/tables/table-ldap/Makefile
 		mk/tables/table-mysql/Makefile
 		mk/tables/table-postgres/Makefile
-		mk/tables/table-ldap/Makefile
 		mk/tables/table-redis/Makefile
 		mk/tables/table-socketmap/Makefile
 		])

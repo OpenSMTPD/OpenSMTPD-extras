@@ -15,6 +15,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+
+#include "includes.h"
  
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -32,6 +34,7 @@
 #include "smtpd-api.h"
 #include "log.h"
 
+static PerlInterpreter	*my_perl; /* fix build */
 static PerlInterpreter	*pi;
 static CV		*pl_on_connect;
 static CV		*pl_on_helo;
