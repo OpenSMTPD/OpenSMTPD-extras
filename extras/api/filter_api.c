@@ -911,6 +911,8 @@ filter_api_loop(void)
 void
 filter_api_set_udata(uint64_t id, void *data)
 {
+	struct filter_session	*s;
+
 	s = tree_xget(&sessions, id);
 	s->udata = data;
 }
@@ -918,6 +920,8 @@ filter_api_set_udata(uint64_t id, void *data)
 void *
 filter_api_get_udata(uint64_t id)
 {
+	struct filter_session	*s;
+
 	s = tree_xget(&sessions, id);
 	return s->udata;
 }
