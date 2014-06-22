@@ -149,6 +149,7 @@ enum {
 	PROC_QUEUE_OK,
 	PROC_QUEUE_FAIL,
 	PROC_QUEUE_INIT,
+	PROC_QUEUE_CLOSE,
 	PROC_QUEUE_MESSAGE_CREATE,
 	PROC_QUEUE_MESSAGE_DELETE,
 	PROC_QUEUE_MESSAGE_COMMIT,
@@ -446,6 +447,7 @@ void m_get_envelope(struct msg *, struct envelope *);
 
 
 /* queue */
+void queue_api_on_close(int(*)(void));
 void queue_api_on_message_create(int(*)(uint32_t *));
 void queue_api_on_message_commit(int(*)(uint32_t, const char*));
 void queue_api_on_message_delete(int(*)(uint32_t));
