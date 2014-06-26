@@ -59,9 +59,9 @@ struct config {
 };
 
 static int table_postgres_update(void);
-static int table_postgres_lookup(int, const char *, char *, size_t);
-static int table_postgres_check(int, const char *);
-static int table_postgres_fetch(int, char *, size_t);
+static int table_postgres_lookup(int, struct dict *params, const char *, char *, size_t);
+static int table_postgres_check(int, struct dict *params, const char *);
+static int table_postgres_fetch(int, struct dict *params, char *, size_t);
 
 static PGresult *table_postgres_query(const char *, int);
 
@@ -418,7 +418,7 @@ table_postgres_query(const char *key, int service)
 }
 
 static int
-table_postgres_check(int service, const char *key)
+table_postgres_check(int service, struct dict *params, const char *key)
 {
 	PGresult	*res;
 	int		 r;
@@ -438,7 +438,7 @@ table_postgres_check(int service, const char *key)
 }
 
 static int
-table_postgres_lookup(int service, const char *key, char *dst, size_t sz)
+table_postgres_lookup(int service, struct dict *params, const char *key, char *dst, size_t sz)
 {
 	PGresult	*res;
 	int		 r, i;
@@ -512,7 +512,7 @@ table_postgres_lookup(int service, const char *key, char *dst, size_t sz)
 }
 
 static int
-table_postgres_fetch(int service, char *dst, size_t sz)
+table_postgres_fetch(int service, struct dict *params, char *dst, size_t sz)
 {
 	char		*stmt;
 	PGresult	*res;
