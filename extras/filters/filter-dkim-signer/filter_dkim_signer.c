@@ -34,31 +34,40 @@
 #define CRLF_LEN	2
 #define PRIVATE_KEY	"/etc/ssl/private/rsa.private"
 #define DEF_SELECTOR	"default"
-#define TEMPLATE	"DKIM-Signature: v=1; a=rsa-sha256; "\
-			"c=simple/simple; d=%s; "\
-			"h=%s; "\
-			"s=%s; "\
-			"bh=%s; "\
+#define TEMPLATE	"DKIM-Signature: v=1; a=rsa-sha256; "	\
+			"c=simple/simple; d=%s; "		\
+			"h=%s; "				\
+			"s=%s; "				\
+			"bh=%s; "				\
 			"b="
 
 struct entry {
-	SIMPLEQ_ENTRY(entry)	entries;
+	SIMPLEQ_ENTRY(entry)	 entries;
 	const char		*line;
 };
 
 struct signer {
-	SIMPLEQ_HEAD(, entry)	lines;
-	SHA2_CTX		hdr_ctx;
-	SHA2_CTX		body_ctx;
-	char			b64_rsa_sig[BUFSIZ];
-	char			b64_body_hash[BUFSIZ];
-	char			hdrs_list[BUFSIZ];
-	char			hdr_hash[SHA256_DIGEST_LENGTH];
-	char			body_hash[SHA256_DIGEST_LENGTH];
+	SIMPLEQ_HEAD(, entry)	 lines;
+	SHA2_CTX		 hdr_ctx;
+	SHA2_CTX		 body_ctx;
+	char			 b64_rsa_sig[BUFSIZ];
+	char			 b64_body_hash[BUFSIZ];
+	char			 hdrs_list[BUFSIZ];
+	char			 hdr_hash[SHA256_DIGEST_LENGTH];
+	char			 body_hash[SHA256_DIGEST_LENGTH];
 	SHA2_CTX		*ctx;
-	size_t			nlines;
-	size_t			emptylines;
+	size_t			 nlines;
+	size_t			 emptylines;
 };
+
+static void	*xmalloc(size_t, const char *);
+static void	 cleanup(struct signer *);
+static int	 add_hdr_line(struct signer *, const char *);
+static int	 on_data(uint64_t);
+static void	 on_dataline(uint64_t, const char *);
+static int	 on_eom(uint64_t, size_t);
+static void	 on_reset(uint64_t);
+static void	 on_rollback(uint64_t);
 
 static RSA		*rsa;
 static const char	*domain;
@@ -113,14 +122,14 @@ on_data(uint64_t id)
 static int
 add_hdr_line(struct signer *s, const char *line)
 {
-	const char	*want_hdrs[] = {
-				"from:",
-				"to:",
-				"subject:",
-				"date:",
-				"message-id:"
-			};
 	size_t		i;
+	const char	*want_hdrs[] = {
+	    "from:",
+	    "to:",
+	    "subject:",
+	    "date:",
+	    "message-id:"
+	    };
 
 	for (i = 0; i < nitems(want_hdrs); i++) {
 		if (strncasecmp(want_hdrs[i], line, strlen(want_hdrs[i])))
@@ -141,7 +150,6 @@ on_dataline(uint64_t id, const char *line)
 {
 	struct signer	*s;
 	struct entry	*n;
-
 	
 	s = filter_api_get_udata(id);
 	n = xmalloc(sizeof *n, "dkim_signer: on_dataline");
@@ -187,7 +195,7 @@ on_eom(uint64_t id, size_t size)
 	struct signer	*s;
 	struct entry	*n;
 	char		*dkim_header, *dkim_sig, *rsa_sig;
-	int		dkim_sig_len, rsa_sig_len;
+	int		 dkim_sig_len, rsa_sig_len;
 	
 	s = filter_api_get_udata(id);
 	/* empty body should be treated as a single CRLF */
@@ -264,10 +272,10 @@ on_rollback(uint64_t id)
 int
 main(int argc, char **argv)
 {
-	int		ch;
+	int		 ch;
 	const char	*p = NULL;
 	FILE		*fp;
-	static char	hostname[SMTPD_MAXHOSTNAMELEN];
+	static char	 hostname[SMTPD_MAXHOSTNAMELEN];
 
 	log_init(-1);
 
