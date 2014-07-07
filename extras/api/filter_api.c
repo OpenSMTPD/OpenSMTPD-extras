@@ -142,8 +142,17 @@ filter_response(struct filter_session *s, int status, int code, const char *line
 		s->response.line = NULL;
 
 	/* eom is special, as the reponse has to be deferred until the pipe is all flushed */
-	if (s->qtype == QUERY_EOM)
+	if (s->qtype == QUERY_EOM) {
+		/* wait for the obuf to drain */
+		if (iobuf_queued(&s->pipe.obuf))
+			return;
+
+		if (s->pipe.oev.sock != -1) {
+			io_clear(&s->pipe.oev);
+			iobuf_clear(&s->pipe.obuf);
+		}
 		filter_trigger_eom(s);
+	}
 	else
 		filter_send_response(s);
 }

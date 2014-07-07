@@ -2,6 +2,7 @@
 
 SUBDIR	 =	table-ldap
 SUBDIR	+=	table-postgres
+SUBDIR	+=	table-python
 SUBDIR	+=	table-mysql
 SUBDIR	+=	table-socketmap
 

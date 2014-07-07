@@ -62,9 +62,9 @@ struct config {
 };
 
 static int table_mysql_update(void);
-static int table_mysql_lookup(int, const char *, char *, size_t);
-static int table_mysql_check(int, const char *);
-static int table_mysql_fetch(int, char *, size_t);
+static int table_mysql_lookup(int, struct dict *, const char *, char *, size_t);
+static int table_mysql_check(int, struct dict *, const char *);
+static int table_mysql_fetch(int, struct dict *, char *, size_t);
 
 static MYSQL_STMT *table_mysql_query(const char *, int);
 
@@ -470,7 +470,7 @@ table_mysql_query(const char *key, int service)
 }
 
 static int
-table_mysql_check(int service, const char *key)
+table_mysql_check(int service, struct dict *params, const char *key)
 {
 	MYSQL_STMT	*stmt;
 	int		 r, s;
@@ -501,7 +501,7 @@ table_mysql_check(int service, const char *key)
 }
 
 static int
-table_mysql_lookup(int service, const char *key, char *dst, size_t sz)
+table_mysql_lookup(int service, struct dict *params, const char *key, char *dst, size_t sz)
 {
 	MYSQL_STMT	*stmt;
 	int		 r, s;
@@ -593,7 +593,7 @@ table_mysql_lookup(int service, const char *key, char *dst, size_t sz)
 }
 
 static int
-table_mysql_fetch(int service, char *dst, size_t sz)
+table_mysql_fetch(int service, struct dict *params, char *dst, size_t sz)
 {
 	MYSQL_STMT	*stmt;
 	const char	*k;
