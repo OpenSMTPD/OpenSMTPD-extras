@@ -2867,6 +2867,7 @@ AC_CONFIG_FILES([Makefile
 		mk/tables/table-ldap/Makefile
 		mk/tables/table-mysql/Makefile
 		mk/tables/table-postgres/Makefile
+		mk/tables/table-python/Makefile
 		mk/tables/table-redis/Makefile
 		mk/tables/table-socketmap/Makefile
 		])
