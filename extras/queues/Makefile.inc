@@ -1,5 +1,7 @@
 .PATH: ${.CURDIR}/../../api
 
+BINDIR=/usr/libexec/smtpd
+
 SRCS+=	log.c
 SRCS+=	tree.c
 SRCS+=	dict.c
