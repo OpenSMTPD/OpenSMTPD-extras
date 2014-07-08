@@ -235,21 +235,57 @@ queue_python_envelope_load(uint64_t evpid, char *buf, size_t len)
 	py_ret = dispatch(py_envelope_load, Py_BuildValue("K", (unsigned long long)evpid));
 	ret = PyObject_GetBuffer(py_ret, &view, PyBUF_SIMPLE);
 	Py_DECREF(py_ret);
-	if (ret == 0)
+	if (ret == -1)
 		return 0;
-	if ((size_t)view.len >= len)
+	if ((size_t)view.len >= len) {
+		PyBuffer_Release(&view);
 		return 0;
+	}
+
 	memset(buf, 0, len);
 	memcpy(buf, view.buf, view.len);
+	ret = view.len;
 	PyBuffer_Release(&view);
 	check_err("envelope_load");
-	return 1;
+	return ret;
 }
 
 static int
 queue_python_envelope_walk(uint64_t *evpid, char *buf, size_t len)
 {
-	return (-1);
+	static uint64_t	curevpid = 0;
+	PyObject       *py_ret;
+	PyObject       *py_evpid;
+	Py_buffer	py_view;
+	int		ret;
+
+	py_ret = dispatch(py_envelope_walk, Py_BuildValue("(K)",
+		(unsigned long)curevpid));
+	if (py_ret == Py_None)
+		return -1;
+
+	if (! PyTuple_Check(py_ret) || PyTuple_Size(py_ret) != 2) {
+		PyErr_SetString(PyExc_TypeError, "2-elements tuple expected");
+	}
+	else {
+		curevpid = *evpid = get_uint64_t(PyTuple_GetItem(py_ret, 0));
+		ret = PyObject_GetBuffer(PyTuple_GetItem(py_ret, 1), &py_view, PyBUF_SIMPLE);
+	}
+	Py_DECREF(py_ret);
+
+	if (ret == -1)
+		return 0;
+	if ((size_t)py_view.len >= len) {
+		PyBuffer_Release(&view);
+		return 0;
+	}
+
+	memset(buf, 0, len);
+	memcpy(buf, py_view.buf, py_view.len);
+	ret = py_view.len;
+	PyBuffer_Release(&py_view);
+	check_err("envelope_walk");
+	return ret;
 }
 
 static int
