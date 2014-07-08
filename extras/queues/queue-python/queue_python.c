@@ -276,7 +276,7 @@ queue_python_envelope_walk(uint64_t *evpid, char *buf, size_t len)
 	if (ret == -1)
 		return 0;
 	if ((size_t)py_view.len >= len) {
-		PyBuffer_Release(&view);
+		PyBuffer_Release(&py_view);
 		return 0;
 	}
 
