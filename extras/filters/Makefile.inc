@@ -7,6 +7,7 @@ SRCS+=	dict.c
 SRCS+=	ioev.c
 SRCS+=	iobuf.c
 SRCS+=	mproc.c
+SRCS+=	util.c
 
 CFLAGS+=	-I${.CURDIR}/../../api
 DPADD+=		${LIBUTIL} ${LIBEVENT}

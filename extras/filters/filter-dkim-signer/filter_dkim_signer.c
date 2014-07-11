@@ -60,7 +60,6 @@ struct signer {
 	size_t			 emptylines;
 };
 
-static void	*xmalloc(size_t, const char *);
 static void	 cleanup(struct signer *);
 static int	 add_hdr_line(struct signer *, const char *);
 static int	 on_data(uint64_t);
@@ -72,19 +71,6 @@ static void	 on_rollback(uint64_t);
 static RSA		*rsa;
 static const char	*domain;
 static const char	*selector;
-
-static void *
-xmalloc(size_t size, const char *where)
-{
-	void	*r;
-
-	if ((r = malloc(size)) == NULL) {
-		log_warnx("%s: malloc(%zu)", where, size);
-		fatalx("exiting");
-	}
-
-	return (r);
-}
 
 static void
 cleanup(struct signer *s)
@@ -153,9 +139,7 @@ on_dataline(uint64_t id, const char *line)
 	
 	s = filter_api_get_udata(id);
 	n = xmalloc(sizeof *n, "dkim_signer: on_dataline");
-	if ((n->line = strdup(line)) == NULL)
-		fatal("filter: dkim-signer: strdup");
-
+	n->line = xstrdup(line, "dkim_signer: on_dataline");
 	SIMPLEQ_INSERT_TAIL(&s->lines, n, entries);
 
 	/* first emptyline seperates headers and body */
@@ -203,7 +187,7 @@ on_eom(uint64_t id, size_t size)
 		SHA256Update(&s->body_ctx, CRLF, CRLF_LEN);
 
 	SHA256Final(s->body_hash, &s->body_ctx);
-	if (__b64_ntop(s->body_hash, sizeof(s->body_hash),
+	if (base64_encode(s->body_hash, sizeof(s->body_hash),
 	    s->b64_body_hash, sizeof(s->b64_body_hash)) == -1) {
 		log_warnx("warn: dkim_signer: on_eom: __b64_ntop failed");
 		return filter_api_reject(id, FILTER_FAIL);	
@@ -226,7 +210,7 @@ on_eom(uint64_t id, size_t size)
 	    rsa_sig, &rsa_sig_len, rsa) == 0)
 		fatalx("dkim_signer: on_eom: RSA_sign");
 
-	if (__b64_ntop(rsa_sig, rsa_sig_len, s->b64_rsa_sig,
+	if (base64_encode(rsa_sig, rsa_sig_len, s->b64_rsa_sig,
 	    sizeof(s->b64_rsa_sig)) == -1) {
 		log_warnx("warn: dkim_signer: on_eom: __b64_ntop failed");
 		return filter_api_reject(id, FILTER_FAIL);

@@ -506,4 +506,11 @@ int tree_iter(struct tree *, void **, uint64_t *, void **);
 int tree_iterfrom(struct tree *, void **, uint64_t, uint64_t *, void **);
 void tree_merge(struct tree *, struct tree *);
 
+/* util.c */
+void	*xmalloc(size_t, const char *);
+void	*xcalloc(size_t, size_t, const char *);
+char	*xstrdup(const char *, const char *);
+int	 base64_encode(unsigned char const *, size_t, char *, size_t);
+int	 base64_decode(char const *, unsigned char *, size_t);
+
 #endif
