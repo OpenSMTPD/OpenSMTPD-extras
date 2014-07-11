@@ -125,7 +125,7 @@ table_socketmap_connect(const char *s)
 	return 1;
 
 err:
-	if (sock) {
+	if (sock == -1) {
 		close(sock);
 		sock = -1;
 	}
