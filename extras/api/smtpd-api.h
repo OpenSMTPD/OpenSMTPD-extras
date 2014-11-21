@@ -394,6 +394,9 @@ void filter_api_on_data(int(*)(uint64_t));
 void filter_api_on_dataline(void(*)(uint64_t, const char *));
 void filter_api_on_eom(int(*)(uint64_t, size_t));
 
+const char *proc_name(enum smtp_proc_type);
+const char *imsg_to_str(int);
+
 
 /* mproc.c */
 int mproc_fork(struct mproc *, const char*, char **);
