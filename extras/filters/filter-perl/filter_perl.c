@@ -133,6 +133,7 @@ on_connect(uint64_t id, struct filter_connect *conn)
 	remote = filter_api_sockaddr_to_text((struct sockaddr *)&conn->remote);
 	
 	call_sub_sv((SV *)pl_on_connect, "%i%s%s%s", id, local, remote, conn->hostname);
+	return filter_api_accept(id);
 }
 
 static int
