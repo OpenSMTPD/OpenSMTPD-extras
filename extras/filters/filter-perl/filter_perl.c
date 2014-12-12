@@ -44,6 +44,20 @@ static CV		*pl_on_rollback;
 static CV		*pl_on_dataline;
 static CV		*pl_on_disconnect;
 
+EXTERN_C void xs_init(pTHX);
+EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
+
+EXTERN_C void
+xs_init(pTHX)
+{
+	static const char file[] = __FILE__;
+	dXSUB_SYS;
+	PERL_UNUSED_CONTEXT;
+
+	/* DynaLoader is a special case */
+	newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
+}
+
 XS(XS_filter_accept);
 XS(XS_filter_reject);
 XS(XS_filter_reject_code);
@@ -133,6 +147,7 @@ on_connect(uint64_t id, struct filter_connect *conn)
 	remote = filter_api_sockaddr_to_text((struct sockaddr *)&conn->remote);
 	
 	call_sub_sv((SV *)pl_on_connect, "%i%s%s%s", id, local, remote, conn->hostname);
+	return filter_api_accept(id);
 }
 
 static int
@@ -223,7 +238,7 @@ main(int argc, char **argv)
 
 	pi = perl_alloc();
 	perl_construct(pi);
-	perl_parse(pi, NULL, argc, fake_argv, NULL);
+	perl_parse(pi, xs_init, argc, fake_argv, NULL);
 
 
 	newXS("smtpd::filter_api_accept", XS_filter_accept, __FILE__);
