@@ -755,14 +755,14 @@ filter_api_init(void)
 	log_init(-1);
 	log_verbose(1);
 
+	smtpd_process = PROC_FILTER;
+	filter_name = __progname;
+
 	pw = getpwnam(SMTPD_USER);
 	if (pw == NULL) {
 		log_warn("warn: filter-api:%s getpwnam", filter_name);
 		fatalx("filter-api: exiting");
 	}
-
-	smtpd_process = PROC_FILTER;
-	filter_name = __progname;
 
 	tree_init(&queries);
 	tree_init(&sessions);
