@@ -272,6 +272,7 @@ main(int argc, char **argv)
 	if ((pl_on_disconnect = perl_get_cv("on_disconnect", FALSE)))
 		filter_api_on_disconnect(on_disconnect);
 
+	filter_api_no_chroot();
 	filter_api_loop();
 
 	log_debug("debug: filter-perl: exiting");
