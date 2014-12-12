@@ -43,7 +43,7 @@
 
 struct entry {
 	SIMPLEQ_ENTRY(entry)	 entries;
-	const char		*line;
+	char			*line;
 };
 
 struct signer {
