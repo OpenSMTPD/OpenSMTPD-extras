@@ -147,14 +147,12 @@ on_connect(uint64_t id, struct filter_connect *conn)
 	remote = filter_api_sockaddr_to_text((struct sockaddr *)&conn->remote);
 	
 	call_sub_sv((SV *)pl_on_connect, "%i%s%s%s", id, local, remote, conn->hostname);
-	return filter_api_accept(id);
 }
 
 static int
 on_helo(uint64_t id, const char *helo)
 {
 	call_sub_sv((SV *)pl_on_helo, "%i%s", id, helo);
-	return filter_api_accept(id);
 }
 
 static int
@@ -164,7 +162,6 @@ on_mail(uint64_t id, struct mailaddr *mail)
 
 	mailaddr = filter_api_mailaddr_to_text(mail);
 	call_sub_sv((SV *)pl_on_mail, "%i%s", id, mailaddr);
-	return filter_api_accept(id);
 }
 
 static int
@@ -174,21 +171,18 @@ on_rcpt(uint64_t id, struct mailaddr *rcpt)
 
 	mailaddr = filter_api_mailaddr_to_text(rcpt);
 	call_sub_sv((SV *)pl_on_rcpt, "%i%s", id, mailaddr);
-	return filter_api_accept(id);
 }
 
 static int
 on_data(uint64_t id)
 {
 	call_sub_sv((SV *)pl_on_data, "%i", id);
-	return filter_api_accept(id);
 }
 
 static int
 on_eom(uint64_t id, size_t size)
 {
 	call_sub_sv((SV *)pl_on_eom, "%i", id);
-	return filter_api_accept(id);
 }
 
 static void
