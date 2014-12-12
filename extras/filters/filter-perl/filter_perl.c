@@ -222,7 +222,8 @@ int
 main(int argc, char **argv)
 {
 	int	ch;
-	char	*fake_argv[] = { "-e", "/tmp/test.pl", NULL };
+	char  *fake_argv[3] = { "-e", NULL, NULL };
+
 	log_init(-1);
 
 	while ((ch = getopt(argc, argv, "")) != -1) {
@@ -236,10 +237,13 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	if (argc == 0)
+		errx(1, "missing path");
+	fake_argv[1] = argv[0];
+
 	pi = perl_alloc();
 	perl_construct(pi);
-	perl_parse(pi, xs_init, argc, fake_argv, NULL);
-
+	perl_parse(pi, xs_init, 2, fake_argv, NULL);
 
 	newXS("smtpd::filter_api_accept", XS_filter_accept, __FILE__);
 	newXS("smtpd::filter_api_reject", XS_filter_reject, __FILE__);
