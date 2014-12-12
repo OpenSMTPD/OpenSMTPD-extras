@@ -490,6 +490,7 @@ main(int argc, char **argv)
 	if (py_on_disconnect && PyCallable_Check(py_on_disconnect))
 		filter_api_on_disconnect(on_disconnect);
 
+	filter_api_no_chroot();
 	filter_api_loop();
 
 	log_debug("debug: filter-python: exiting");
