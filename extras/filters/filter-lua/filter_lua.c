@@ -419,7 +419,13 @@ main(int argc, char **argv)
 	lua_getglobal(L, "on_rollback");
 	if (lua_isfunction(L, 1)) {
 		log_debug("debug: filter-lua: on_rollback is present");
-		filter_api_on_commit(on_rollback);
+		filter_api_on_rollback(on_rollback);
+	}
+
+	lua_getglobal(L, "on_disconnect");
+	if (lua_isfunction(L, 1)) {
+		log_debug("debug: filter-lua: on_disconnect is present");
+		filter_api_on_disconnect(on_disconnect);
 	}
 
 	filter_api_no_chroot();
