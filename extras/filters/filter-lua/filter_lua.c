@@ -360,6 +360,7 @@ main(int argc, char **argv)
 		filter_api_on_eom(on_eom);
 	}
 
+	filter_api_no_chroot();
 	filter_api_loop();
 
 	log_debug("debug: filter-lua: exiting");
