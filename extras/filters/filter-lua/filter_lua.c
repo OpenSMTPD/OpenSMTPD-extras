@@ -265,7 +265,7 @@ on_eom(uint64_t id, size_t size)
 }
 
 static int
-on_commit(uint64_t id, size_t size)
+on_commit(uint64_t id)
 {
 	char	s_id[ID_STR_SZ];
 
@@ -275,6 +275,24 @@ on_commit(uint64_t id, size_t size)
 
 	if (lua_pcall(L, 1, 0, 0)) {
 		log_warnx("warn: filter-lua: on_commit() failed: %s",
+		    lua_tostring(L, -1));
+		exit(1);
+	}
+
+	return (1);
+}
+
+static int
+on_rollback(uint64_t id)
+{
+	char	s_id[ID_STR_SZ];
+
+	(void)snprintf(s_id, sizeof(s_id), "%016"PRIx64"", id);
+	lua_getglobal(L, "on_rollback");
+	lua_pushstring(L, s_id);
+
+	if (lua_pcall(L, 1, 0, 0)) {
+		log_warnx("warn: filter-lua: on_rollback() failed: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -292,7 +310,7 @@ on_disconnect(uint64_t id)
 	lua_pushstring(L, s_id);
 
 	if (lua_pcall(L, 1, 0, 0)) {
-		log_warnx("warn: filter-lua: on_eom() failed: %s",
+		log_warnx("warn: filter-lua: on_disconnect() failed: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -396,6 +414,12 @@ main(int argc, char **argv)
 	if (lua_isfunction(L, 1)) {
 		log_debug("debug: filter-lua: on_commit is present");
 		filter_api_on_commit(on_commit);
+	}
+
+	lua_getglobal(L, "on_rollback");
+	if (lua_isfunction(L, 1)) {
+		log_debug("debug: filter-lua: on_rollback is present");
+		filter_api_on_commit(on_rollback);
 	}
 
 	filter_api_no_chroot();
