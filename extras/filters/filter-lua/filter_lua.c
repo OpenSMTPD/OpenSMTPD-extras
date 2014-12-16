@@ -229,7 +229,7 @@ on_data(uint64_t id)
 	return (1);
 }
 
-static int
+static void
 on_dataline(uint64_t id, const char *line)
 {
 	char	s_id[ID_STR_SZ];
@@ -244,8 +244,6 @@ on_dataline(uint64_t id, const char *line)
 		    lua_tostring(L, -1));
 		exit(1);
 	}
-
-	return (1);
 }
 
 static int
