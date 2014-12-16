@@ -88,7 +88,7 @@ l_filter_reject_code(lua_State *L)
 		return (0);
 
 	s_hex_id = luaL_checklstring(L, 1, NULL);
-	id = strtoimax(s_hex_id, (char **)NULL, 16);
+	id = strtoumax(s_hex_id, (char **)NULL, 16);
 	action = luaL_checkinteger(L, 2);
 	code = luaL_checkinteger(L, 3);
 	line = luaL_checklstring(L, 4, NULL);
@@ -114,7 +114,7 @@ l_filter_writeln(lua_State *L)
 		return (0);
 
 	s_hex_id = luaL_checklstring(L, 1, NULL);
-	id = strtoimax(s_hex_id, (char **)NULL, 16);
+	id = strtoumax(s_hex_id, (char **)NULL, 16);
 	line = luaL_checklstring(L, 2, NULL);
 
 	filter_api_writeln(id, line);
@@ -222,6 +222,25 @@ on_data(uint64_t id)
 
 	if (lua_pcall(L, 1, 0, 0)) {
 		log_warnx("warn: filter-lua: on_data() failed: %s",
+		    lua_tostring(L, -1));
+		exit(1);
+	}
+
+	return (1);
+}
+
+static int
+on_dataline(uint64_t id, const char *line)
+{
+	char	s_id[ID_STR_SZ];
+
+	(void)snprintf(s_id, sizeof(s_id), "%016"PRIx64"", id);
+	lua_getglobal(L, "on_dataline");
+	lua_pushstring(L, s_id);
+	lua_pushstring(L, line);
+
+	if (lua_pcall(L, 2, 0, 0)) {
+		log_warnx("warn: filter-lua: on_dataline() failed: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -343,6 +362,12 @@ main(int argc, char **argv)
 	if (lua_isfunction(L, 1)) {
 		log_debug("debug: filter-lua: on_data is present");
 		filter_api_on_data(on_data);
+	}
+
+	lua_getglobal(L, "on_dataline");
+	if (lua_isfunction(L, 1)) {
+		log_debug("debug: filter-lua: on_dataline is present");
+		filter_api_on_dataline(on_dataline);
 	}
 
 	lua_getglobal(L, "on_eom");
