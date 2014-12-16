@@ -264,6 +264,24 @@ on_eom(uint64_t id, size_t size)
 	return (1);
 }
 
+static int
+on_commit(uint64_t id, size_t size)
+{
+	char	s_id[ID_STR_SZ];
+
+	(void)snprintf(s_id, sizeof(s_id), "%016"PRIx64"", id);
+	lua_getglobal(L, "on_commit");
+	lua_pushstring(L, s_id);
+
+	if (lua_pcall(L, 1, 0, 0)) {
+		log_warnx("warn: filter-lua: on_commit() failed: %s",
+		    lua_tostring(L, -1));
+		exit(1);
+	}
+
+	return (1);
+}
+
 static void
 on_disconnect(uint64_t id)
 {
@@ -372,6 +390,12 @@ main(int argc, char **argv)
 	if (lua_isfunction(L, 1)) {
 		log_debug("debug: filter-lua: on_eom is present");
 		filter_api_on_eom(on_eom);
+	}
+
+	lua_getglobal(L, "on_commit");
+	if (lua_isfunction(L, 1)) {
+		log_debug("debug: filter-lua: on_commit is present");
+		filter_api_on_commit(on_commit);
 	}
 
 	filter_api_no_chroot();
