@@ -280,8 +280,8 @@ on_disconnect(uint64_t id)
 int
 main(int argc, char **argv)
 {
-	int	ch;
-	const char	*scriptpath = "/tmp/test.lua";
+	int	 ch;
+	char	*path;
 
 	log_init(-1);
 
@@ -297,6 +297,11 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	if (argc == 0)
+		errx(1, "missing path");
+
+	path = argv[0];
+
 	log_debug("debug: filter-lua: starting...");
 
 	if ((L = luaL_newstate()) == NULL) {
@@ -304,7 +309,9 @@ main(int argc, char **argv)
 		return (1);
 	}
 	luaL_openlibs(L);
+#if 0
 	luaL_newlib(L, l_filter);
+#endif 
 	luaL_newmetatable(L, "filter");
 	lua_setmetatable(L, -2);
 
@@ -317,15 +324,15 @@ main(int argc, char **argv)
 
 	lua_setglobal(L, "filter");
 
-	if (luaL_loadfile(L, scriptpath) != 0) {
+	if (luaL_loadfile(L, path) != 0) {
 		log_warnx("warn: filter-lua: error loading script: %s",
-		    scriptpath);
+		    path);
 		return (1);
 	}
 
 	if (lua_pcall(L, 0, 0, 0)) {
 		log_warnx("warn: filter-lua: error running script: %s",
-		    scriptpath);
+		    path);
 		return (1);
 	}
 
