@@ -178,7 +178,7 @@ on_helo(uint64_t id, const char *helo)
 }
 
 static int
-on_mail(uint64_t id, const char *mail)
+on_mail(uint64_t id, struct mailaddr *mail)
 {
 	char	s_id[20];
 
@@ -187,7 +187,7 @@ on_mail(uint64_t id, const char *mail)
 
 	lua_getglobal(L, "on_mail");
 	lua_pushstring(L, s_id);
-	lua_pushstring(L, mail);
+	lua_pushstring(L, filter_api_mailaddr_to_text(mail));
 
 	if (lua_pcall(L, 2, 0, 0)) {
 		log_warnx("warn: filter-lua: on_mail() failed: %s",
@@ -199,7 +199,7 @@ on_mail(uint64_t id, const char *mail)
 }
 
 static int
-on_rcpt(uint64_t id, const char *rcpt)
+on_rcpt(uint64_t id, struct mailaddr *rcpt)
 {
 	char	s_id[20];
 
@@ -208,7 +208,7 @@ on_rcpt(uint64_t id, const char *rcpt)
 
 	lua_getglobal(L, "on_rcpt");
 	lua_pushstring(L, s_id);
-	lua_pushstring(L, rcpt);
+	lua_pushstring(L, filter_api_mailaddr_to_text(rcpt));
 
 	if (lua_pcall(L, 2, 0, 0)) {
 		log_warnx("warn: filter-lua: on_rcpt() failed: %s",
@@ -240,7 +240,7 @@ on_data(uint64_t id)
 }
 
 static int
-on_eom(uint64_t id)
+on_eom(uint64_t id, size_t size)
 {
 	char	s_id[20];
 
