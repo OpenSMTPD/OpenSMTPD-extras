@@ -311,7 +311,6 @@ main(int argc, char **argv)
 	luaL_openlibs(L);
 #if 0
 	luaL_newlib(L, l_filter);
-#endif 
 	luaL_newmetatable(L, "filter");
 	lua_setmetatable(L, -2);
 
@@ -323,17 +322,12 @@ main(int argc, char **argv)
 	lua_setfield(L, -2, "FILTER_CLOSE");
 
 	lua_setglobal(L, "filter");
+#endif
 
-	if (luaL_loadfile(L, path) != 0) {
+	if (luaL_dofile(L, path) != 0) {
 		log_warnx("warn: filter-lua: error loading script: %s",
 		    path);
-		return (1);
-	}
-
-	if (lua_pcall(L, 0, 0, 0)) {
-		log_warnx("warn: filter-lua: error running script: %s",
-		    path);
-		return (1);
+		    return (1);
 	}
 
 	lua_getglobal(L, "on_connect");
