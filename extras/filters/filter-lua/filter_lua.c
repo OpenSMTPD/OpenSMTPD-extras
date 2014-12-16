@@ -47,7 +47,7 @@ l_filter_accept(lua_State *L)
 		return (0);
 
 	s_hex_id = luaL_checklstring(L, 1, NULL);
-	id = strtoumax(s_hex_id, (char **)NULL, 16);
+	id = strtoumax(s_hex_id, NULL, 16);
 	filter_api_accept(id);
 	return (0);
 }
@@ -63,7 +63,7 @@ l_filter_reject(lua_State *L)
 		return (0);
 
 	s_hex_id = luaL_checklstring(L, 1, NULL);
-	id = strtoumax(s_hex_id, (char **)NULL, 16);
+	id = strtoumax(s_hex_id, NULL, 16);
 	action = luaL_checkinteger(L, 2);
 	switch (action) {
 	case FILTER_FAIL:
@@ -88,7 +88,7 @@ l_filter_reject_code(lua_State *L)
 		return (0);
 
 	s_hex_id = luaL_checklstring(L, 1, NULL);
-	id = strtoumax(s_hex_id, (char **)NULL, 16);
+	id = strtoumax(s_hex_id, NULL, 16);
 	action = luaL_checkinteger(L, 2);
 	code = luaL_checkinteger(L, 3);
 	line = luaL_checklstring(L, 4, NULL);
@@ -114,7 +114,7 @@ l_filter_writeln(lua_State *L)
 		return (0);
 
 	s_hex_id = luaL_checklstring(L, 1, NULL);
-	id = strtoumax(s_hex_id, (char **)NULL, 16);
+	id = strtoumax(s_hex_id, NULL, 16);
 	line = luaL_checklstring(L, 2, NULL);
 
 	filter_api_writeln(id, line);
