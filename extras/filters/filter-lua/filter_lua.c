@@ -40,17 +40,15 @@ lua_State *L;
 static int
 l_filter_accept(lua_State *L)
 {
-	uint64_t	id;
-	const char	*s_id;
+	uint64_t	 id;
+	const char	*s_hex_id;
 
 	if (lua_gettop(L) != 1)
 		return (0);
 
-	s_id = luaL_checklstring(L, 1, NULL);
-	id = strtoumax(s_id, (char **)NULL, 10);
-
+	s_hex_id = luaL_checklstring(L, 1, NULL);
+	id = strtoumax(s_hex_id, (char **)NULL, 16);
 	filter_api_accept(id);
-
 	return (0);
 }
 
@@ -58,16 +56,15 @@ static int
 l_filter_reject(lua_State *L)
 {
 	uint64_t	id;
-	const char	*s_id;
+	const char	*s_hex_id;
 	uint32_t	action;
 
 	if (lua_gettop(L) != 2)
 		return (0);
 
-	s_id = luaL_checklstring(L, 1, NULL);
-	id = strtoumax(s_id, (char **)NULL, 10);
+	s_hex_id = luaL_checklstring(L, 1, NULL);
+	id = strtoumax(s_hex_id, (char **)NULL, 16);
 	action = luaL_checkinteger(L, 2);
-
 	switch (action) {
 	case FILTER_FAIL:
 	case FILTER_CLOSE:
@@ -82,7 +79,7 @@ static int
 l_filter_reject_code(lua_State *L)
 {
 	uint64_t	id;
-	const char	*s_id;
+	const char	*s_hex_id;
 	uint32_t	action;
 	uint32_t	code;
 	const char	*line;
@@ -90,8 +87,8 @@ l_filter_reject_code(lua_State *L)
 	if (lua_gettop(L) != 4)
 		return (0);
 
-	s_id = luaL_checklstring(L, 1, NULL);
-	id = strtoimax(s_id, (char **)NULL, 10);
+	s_hex_id = luaL_checklstring(L, 1, NULL);
+	id = strtoimax(s_hex_id, (char **)NULL, 16);
 	action = luaL_checkinteger(L, 2);
 	code = luaL_checkinteger(L, 3);
 	line = luaL_checklstring(L, 4, NULL);
@@ -110,14 +107,14 @@ static int
 l_filter_writeln(lua_State *L)
 {
 	uint64_t	id;
-	const char	*s_id;
+	const char	*s_hex_id;
 	const char	*line;
 
 	if (lua_gettop(L) != 2)
 		return (0);
 
-	s_id = luaL_checklstring(L, 1, NULL);
-	id = strtoimax(s_id, (char **)NULL, 10);
+	s_hex_id = luaL_checklstring(L, 1, NULL);
+	id = strtoimax(s_hex_id, (char **)NULL, 16);
 	line = luaL_checklstring(L, 2, NULL);
 
 	filter_api_writeln(id, line);
@@ -298,8 +295,8 @@ main(int argc, char **argv)
 		return (1);
 	}
 	luaL_openlibs(L);
-#if 0
 	luaL_newlib(L, l_filter);
+#if 0
 	luaL_newmetatable(L, "filter");
 	lua_setmetatable(L, -2);
 
@@ -309,9 +306,8 @@ main(int argc, char **argv)
 	lua_setfield(L, -2, "FILTER_FAIL");
 	lua_pushnumber(L, FILTER_CLOSE);
 	lua_setfield(L, -2, "FILTER_CLOSE");
-
-	lua_setglobal(L, "filter");
 #endif
+	lua_setglobal(L, "filter");
 
 	if (luaL_dofile(L, path) != 0) {
 		log_warnx("warn: filter-lua: error loading script: %s",
@@ -330,21 +326,25 @@ main(int argc, char **argv)
 		log_debug("debug: filter-lua: on_helo is present");
 		filter_api_on_helo(on_helo);
 	}
+
 	lua_getglobal(L, "on_mail");
 	if (lua_isfunction(L, 1)) {
 		log_debug("debug: filter-lua: on_mail is present");
 		filter_api_on_mail(on_mail);
 	}
+
 	lua_getglobal(L, "on_rcpt");
 	if (lua_isfunction(L, 1)) {
 		log_debug("debug: filter-lua: on_rcpt is present");
 		filter_api_on_rcpt(on_rcpt);
 	}
+
 	lua_getglobal(L, "on_data");
 	if (lua_isfunction(L, 1)) {
 		log_debug("debug: filter-lua: on_data is present");
 		filter_api_on_data(on_data);
 	}
+
 	lua_getglobal(L, "on_eom");
 	if (lua_isfunction(L, 1)) {
 		log_debug("debug: filter-lua: on_eom is present");
