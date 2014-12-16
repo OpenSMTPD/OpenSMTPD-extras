@@ -141,12 +141,15 @@ on_connect(uint64_t id, struct filter_connect *conn)
 
 	lua_getglobal(L, "on_connect");
 	lua_pushstring(L, s_id);
-	lua_pushstring(L, filter_api_sockaddr_to_text((struct sockaddr *)&conn->local));
-	lua_pushstring(L, filter_api_sockaddr_to_text((struct sockaddr *)&conn->remote));
+	lua_pushstring(L,
+	    filter_api_sockaddr_to_text((struct sockaddr *)&conn->local));
+	lua_pushstring(L,
+	    filter_api_sockaddr_to_text((struct sockaddr *)&conn->remote));
 	lua_pushstring(L, conn->hostname);
 
 	if (lua_pcall(L, 4, 0, 0)) {
-		log_warnx("warn: filter-lua: on_connect() failed: %s", lua_tostring(L, -1));
+		log_warnx("warn: filter-lua: on_connect() failed: %s",
+		    lua_tostring(L, -1));
 		exit(1);
 	}
 
@@ -166,7 +169,8 @@ on_helo(uint64_t id, const char *helo)
 	lua_pushstring(L, helo);
 
 	if (lua_pcall(L, 2, 0, 0)) {
-		log_warnx("warn: filter-lua: on_helo() failed: %s", lua_tostring(L, -1));
+		log_warnx("warn: filter-lua: on_helo() failed: %s",
+		    lua_tostring(L, -1));
 		exit(1);
 	}
 
@@ -186,7 +190,8 @@ on_mail(uint64_t id, const char *mail)
 	lua_pushstring(L, mail);
 
 	if (lua_pcall(L, 2, 0, 0)) {
-		log_warnx("warn: filter-lua: on_mail() failed: %s", lua_tostring(L, -1));
+		log_warnx("warn: filter-lua: on_mail() failed: %s",
+		    lua_tostring(L, -1));
 		exit(1);
 	}
 
@@ -206,7 +211,8 @@ on_rcpt(uint64_t id, const char *rcpt)
 	lua_pushstring(L, rcpt);
 
 	if (lua_pcall(L, 2, 0, 0)) {
-		log_warnx("warn: filter-lua: on_rcpt() failed: %s", lua_tostring(L, -1));
+		log_warnx("warn: filter-lua: on_rcpt() failed: %s",
+		    lua_tostring(L, -1));
 		exit(1);
 	}
 
@@ -225,7 +231,8 @@ on_data(uint64_t id)
 	lua_pushstring(L, s_id);
 
 	if (lua_pcall(L, 1, 0, 0)) {
-		log_warnx("warn: filter-lua: on_data() failed: %s", lua_tostring(L, -1));
+		log_warnx("warn: filter-lua: on_data() failed: %s",
+		    lua_tostring(L, -1));
 		exit(1);
 	}
 
@@ -244,7 +251,8 @@ on_eom(uint64_t id)
 	lua_pushstring(L, s_id);
 
 	if (lua_pcall(L, 1, 0, 0)) {
-		log_warnx("warn: filter-lua: on_eom() failed: %s", lua_tostring(L, -1));
+		log_warnx("warn: filter-lua: on_eom() failed: %s",
+		    lua_tostring(L, -1));
 		exit(1);
 	}
 
@@ -263,7 +271,8 @@ on_disconnect(uint64_t id)
 	lua_pushstring(L, s_id);
 
 	if (lua_pcall(L, 1, 0, 0)) {
-		log_warnx("warn: filter-lua: on_eom() failed: %s", lua_tostring(L, -1));
+		log_warnx("warn: filter-lua: on_eom() failed: %s",
+		    lua_tostring(L, -1));
 		exit(1);
 	}
 }
@@ -309,12 +318,14 @@ main(int argc, char **argv)
 	lua_setglobal(L, "filter");
 
 	if (luaL_loadfile(L, scriptpath) != 0) {
-		log_warnx("warn: filter-lua: error loading script: %s", scriptpath);
+		log_warnx("warn: filter-lua: error loading script: %s",
+		    scriptpath);
 		return (1);
 	}
 
 	if (lua_pcall(L, 0, 0, 0)) {
-		log_warnx("warn: filter-lua: error running script: %s", scriptpath);
+		log_warnx("warn: filter-lua: error running script: %s",
+		    scriptpath);
 		return (1);
 	}
 
