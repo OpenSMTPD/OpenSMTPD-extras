@@ -33,6 +33,8 @@
 #include "smtpd-api.h"
 #include "log.h"
 
+#define ID_STR_SZ 20
+
 lua_State *L;
 
 static int
@@ -134,10 +136,9 @@ static const luaL_Reg l_filter [] = {
 static int
 on_connect(uint64_t id, struct filter_connect *conn)
 {
-	char	s_id[20];
+	char	s_id[ID_STR_SZ];
 
-	memset(s_id, 0, 20);
-	sprintf(s_id, "%lu", id);
+	(void)snprintf(s_id, sizeof(s_id), "%016"PRIx64"", id);
 
 	lua_getglobal(L, "on_connect");
 	lua_pushstring(L, s_id);
@@ -159,11 +160,9 @@ on_connect(uint64_t id, struct filter_connect *conn)
 static int
 on_helo(uint64_t id, const char *helo)
 {
-	char	s_id[20];
+	char	s_id[ID_STR_SZ];
 
-	memset(s_id, 0, 20);
-	sprintf(s_id, "%lu", id);
-
+	(void)snprintf(s_id, sizeof(s_id), "%016"PRIx64"", id);
 	lua_getglobal(L, "on_helo");
 	lua_pushstring(L, s_id);
 	lua_pushstring(L, helo);
@@ -180,11 +179,9 @@ on_helo(uint64_t id, const char *helo)
 static int
 on_mail(uint64_t id, struct mailaddr *mail)
 {
-	char	s_id[20];
+	char	s_id[ID_STR_SZ];
 
-	memset(s_id, 0, 20);
-	sprintf(s_id, "%lu", id);
-
+	(void)snprintf(s_id, sizeof(s_id), "%016"PRIx64"", id);
 	lua_getglobal(L, "on_mail");
 	lua_pushstring(L, s_id);
 	lua_pushstring(L, filter_api_mailaddr_to_text(mail));
@@ -201,11 +198,9 @@ on_mail(uint64_t id, struct mailaddr *mail)
 static int
 on_rcpt(uint64_t id, struct mailaddr *rcpt)
 {
-	char	s_id[20];
+	char	s_id[ID_STR_SZ];
 
-	memset(s_id, 0, 20);
-	sprintf(s_id, "%lu", id);
-
+	(void)snprintf(s_id, sizeof(s_id), "%016"PRIx64"", id);
 	lua_getglobal(L, "on_rcpt");
 	lua_pushstring(L, s_id);
 	lua_pushstring(L, filter_api_mailaddr_to_text(rcpt));
@@ -222,11 +217,9 @@ on_rcpt(uint64_t id, struct mailaddr *rcpt)
 static int
 on_data(uint64_t id)
 {
-	char	s_id[20];
+	char	s_id[ID_STR_SZ];
 
-	memset(s_id, 0, 20);
-	sprintf(s_id, "%lu", id);
-
+	(void)snprintf(s_id, sizeof(s_id), "%016"PRIx64"", id);
 	lua_getglobal(L, "on_data");
 	lua_pushstring(L, s_id);
 
@@ -242,11 +235,9 @@ on_data(uint64_t id)
 static int
 on_eom(uint64_t id, size_t size)
 {
-	char	s_id[20];
+	char	s_id[ID_STR_SZ];
 
-	memset(s_id, 0, 20);
-	sprintf(s_id, "%lu", id);
-
+	(void)snprintf(s_id, sizeof(s_id), "%016"PRIx64"", id);
 	lua_getglobal(L, "on_eom");
 	lua_pushstring(L, s_id);
 
@@ -262,11 +253,9 @@ on_eom(uint64_t id, size_t size)
 static void
 on_disconnect(uint64_t id)
 {
-	char	s_id[20];
+	char	s_id[ID_STR_SZ];
 
-	memset(s_id, 0, 20);
-	sprintf(s_id, "%lu", id);
-
+	(void)snprintf(s_id, sizeof(s_id), "%016"PRIx64"", id);
 	lua_getglobal(L, "on_disconnect");
 	lua_pushstring(L, s_id);
 
@@ -331,10 +320,11 @@ main(int argc, char **argv)
 	}
 
 	lua_getglobal(L, "on_connect");
-	if (lua_isfunction(L, 1)) {
+	if (lua_isfunction(L, -1)) {
 		log_debug("debug: filter-lua: on_connect is present");
 		filter_api_on_connect(on_connect);
 	}
+
 	lua_getglobal(L, "on_helo");
 	if (lua_isfunction(L, 1)) {
 		log_debug("debug: filter-lua: on_helo is present");
