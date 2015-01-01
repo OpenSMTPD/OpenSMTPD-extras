@@ -1024,6 +1024,8 @@ filter_api_mailaddr_to_text(const struct mailaddr *maddr)
 	static char  buffer[SMTPD_MAXLINESIZE];
 
 	strlcpy(buffer, maddr->user, sizeof buffer);
+	if (!maddr->domain)
+		return (buffer);
 	strlcat(buffer, "@", sizeof buffer);
 	if (strlcat(buffer, maddr->domain, sizeof buffer) >= sizeof buffer)
 		return (NULL);
