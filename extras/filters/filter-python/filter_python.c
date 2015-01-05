@@ -448,8 +448,6 @@ main(int argc, char **argv)
 
 	log_debug("debug: filter-python: starting...");
 
-	filter_api_on_connect(on_connect);
-
 	py_on_connect = PyObject_GetAttrString(module, "on_connect");
 	if (py_on_connect && PyCallable_Check(py_on_connect))
 		filter_api_on_connect(on_connect);
