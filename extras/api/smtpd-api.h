@@ -393,6 +393,10 @@ void filter_api_on_rcpt(int(*)(uint64_t, struct mailaddr *));
 void filter_api_on_data(int(*)(uint64_t));
 void filter_api_on_dataline(void(*)(uint64_t, const char *));
 void filter_api_on_eom(int(*)(uint64_t, size_t));
+void filter_api_on_reset(void(*)(uint64_t));
+void filter_api_on_disconnect(void(*)(uint64_t));
+void filter_api_on_commit(void(*)(uint64_t));
+void filter_api_on_rollback(void(*)(uint64_t));
 
 
 /* mproc.c */
