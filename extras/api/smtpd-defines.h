@@ -20,19 +20,6 @@
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
 #endif
 
-enum smtp_proc_type {
-	PROC_PARENT = 0,
-	PROC_LKA,
-	PROC_QUEUE,
-	PROC_CONTROL,
-	PROC_SCHEDULER,
-	PROC_PONY,
-	PROC_CA,
-
-	PROC_FILTER,
-	PROC_CLIENT,
-};
-
 #define	TRACE_DEBUG	0x0001
 #define	TRACE_IMSG	0x0002
 #define	TRACE_IO	0x0004
