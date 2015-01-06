@@ -194,7 +194,7 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 	const char		*line, *name;
 	uint32_t		 v, datalen;
 	uint64_t		 id, qid;
-	int			 status, type;
+	int			 type;
 	int			 fds[2], fdin, fdout;
 
 	log_trace(TRACE_FILTERS, "filter-api:%s imsg %s", filter_name,
