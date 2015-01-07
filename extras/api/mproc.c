@@ -40,10 +40,6 @@
 #include "smtpd-api.h"
 #include "log.h"
 
-/* from filter_api.c */
-extern const char *proc_name(enum smtp_proc_type);
-extern const char *imsg_to_str(int);
-
 enum smtp_proc_type	smtpd_process = PROC_PONY;
 
 static void mproc_dispatch(int, short, void *);
