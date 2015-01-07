@@ -334,19 +334,6 @@ enum enhanced_status_class {
 	ESC_STATUS_PERMFAIL	= 5,
 };
 
-enum smtp_proc_type {
-	PROC_PARENT = 0,
-	PROC_LKA,
-	PROC_QUEUE,
-	PROC_CONTROL,
-	PROC_SCHEDULER,
-	PROC_PONY,
-	PROC_CA,
-
-	PROC_FILTER,
-	PROC_CLIENT,
-};
-
 static inline uint32_t
 evpid_to_msgid(uint64_t evpid)
 {
@@ -410,9 +397,6 @@ void filter_api_on_reset(void(*)(uint64_t));
 void filter_api_on_disconnect(void(*)(uint64_t));
 void filter_api_on_commit(void(*)(uint64_t));
 void filter_api_on_rollback(void(*)(uint64_t));
-
-const char *proc_name(enum smtp_proc_type);
-const char *imsg_to_str(int);
 
 
 /* mproc.c */
