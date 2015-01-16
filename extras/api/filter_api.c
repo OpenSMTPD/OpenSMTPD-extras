@@ -194,7 +194,7 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 	const char		*line, *name;
 	uint32_t		 v, datalen;
 	uint64_t		 id, qid;
-	int			 status, type;
+	int			 type;
 	int			 fds[2], fdin, fdout;
 
 	log_trace(TRACE_FILTERS, "filter-api:%s imsg %s", filter_name,
@@ -1024,6 +1024,8 @@ filter_api_mailaddr_to_text(const struct mailaddr *maddr)
 	static char  buffer[SMTPD_MAXLINESIZE];
 
 	strlcpy(buffer, maddr->user, sizeof buffer);
+	if (maddr->domain[0] == '\0')
+		return (buffer);
 	strlcat(buffer, "@", sizeof buffer);
 	if (strlcat(buffer, maddr->domain, sizeof buffer) >= sizeof buffer)
 		return (NULL);
