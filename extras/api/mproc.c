@@ -30,6 +30,7 @@
 #include <errno.h>
 #include <event.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <imsg.h>
 #include <stdio.h>
 #include <stdlib.h>
