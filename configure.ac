@@ -2427,12 +2427,6 @@ AM_CONDITIONAL([HAVE_SCHEDULER_PYTHON], [test $HAVE_SCHEDULER_PYTHON = yes])
 dnl AC_DEFINE([_GNU_SOURCE], [], [Enable GNU Extensions])
 
 
-#l4742
-AC_SUBST([TEST_MALLOC_OPTIONS], [$TEST_MALLOC_OPTIONS])
-
-AC_EXEEXT
-#l4757
-
 ##chl (based on OpenSSL checks, see above)
 # Search for libevent
 saved_CPPFLAGS="$CPPFLAGS"
