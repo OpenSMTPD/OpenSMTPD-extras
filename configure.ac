@@ -1282,21 +1282,6 @@ AC_LINK_IFELSE(
 )
 #l2371
 
-##gilles
-AC_MSG_CHECKING([if SSL_OP_NO_TICKET is supported])
-AC_EGREP_CPP(HAVE_SSL_OP_NO_TICKET, [
-#include <openssl/ssl.h>
-#ifdef SSL_OP_NO_TICKET
-HAVE_SSL_OP_NO_TICKET
-#endif
-], [
-   AC_MSG_RESULT([yes])
-], [
-   AC_MSG_RESULT([no])
-   AC_DEFINE([SSL_OP_NO_TICKET], [0], [Defined to 0 if SSL_OP_NO_TICKET isn't supported by OpenSSL.])
-])
-##gilles
-
 #l2494
 # Some systems want crypt() from libcrypt, *not* the version in OpenSSL,
 # because the system crypt() is more featureful.
