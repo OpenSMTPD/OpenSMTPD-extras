@@ -2725,7 +2725,7 @@ AC_ARG_WITH([table-python],
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_TABLE_PYTHON], [1],
 				[Define if you want to enable table python])
-			TABLE_PASSWD=yes
+			HAVE_TABLE_PYTHON=yes
 		fi
 	]
 )
