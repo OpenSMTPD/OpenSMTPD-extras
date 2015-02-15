@@ -88,6 +88,7 @@ table_passwd_update(void)
 	char	       *line;
 	struct passwd	pw;
 	struct dict    *npasswd;
+	char	       *skip;
 
 	/* Parse configuration */
 	fp = fopen(config, "r");
@@ -112,10 +113,17 @@ table_passwd_update(void)
 			buf = lbuf;
 		}
 
+		/* skip comments */
+		for (skip = buf; *skip; ++skip)
+			if (*skip == '#') {
+				*skip = '\0';
+				break;
+			}
+
 		/* skip empty lines */
 		if (strlen(buf) == 0)
 			continue;
-		
+
 		if (strlcpy(tmp, buf, sizeof tmp) >= sizeof tmp) {
 			log_warnx("warn: table-passwd: line too long");
 			goto err;
