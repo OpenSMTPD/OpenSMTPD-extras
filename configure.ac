@@ -282,7 +282,6 @@ AC_CHECK_HEADERS([ \
 	shadow.h \
 	sys/dir.h \
 	sys/file.h \
-	sys/mount.h \
 	sys/ndir.h \
 	sys/pstat.h \
 	sys/statfs.h \
@@ -295,21 +294,9 @@ AC_CHECK_HEADERS([ \
 	vis.h
 ])
 
-#l411
-# login_cap.h requires sys/types.h on NetBSD
-AC_CHECK_HEADERS([login_cap.h], [], [], [
-#include <sys/types.h>
-])
-
-# older BSDs need sys/param.h before sys/mount.h
-AC_CHECK_HEADERS([sys/mount.h], [], [], [
-#include <sys/param.h>
-])
-#l419
-
 #l432 (customized)
 # Check for some target-specific stuff
-case "$host" in
+	case "$host" in
 *-*-aix*)
 	check_for_aix_broken_getaddrinfo=1
 	AC_DEFINE([BROKEN_REALPATH], [1], [Define if you have a broken realpath.])
@@ -1918,42 +1905,6 @@ if test "x$ac_cv_have_accrights_in_msghdr" = "xyes" ; then
 		[Define if your system uses access rights style
 		file descriptor passing])
 fi
-
-AC_MSG_CHECKING([if struct statvfs.f_fsid is integral type])
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-#include <sys/param.h>
-#include <sys/stat.h>
-#ifdef HAVE_SYS_TIME_H
-# include <sys/time.h>
-#endif
-#ifdef HAVE_SYS_MOUNT_H
-#include <sys/mount.h>
-#endif
-#ifdef HAVE_SYS_STATVFS_H
-#include <sys/statvfs.h>
-#endif
-	]], [[ struct statvfs s; s.f_fsid = 0; ]])],
-	[ AC_MSG_RESULT([yes]) ],
-	[ AC_MSG_RESULT([no])
-
-	AC_MSG_CHECKING([if fsid_t has member val])
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-#include <sys/types.h>
-#include <sys/statvfs.h>
-	]], [[ fsid_t t; t.val[0] = 0; ]])],
-	[ AC_MSG_RESULT([yes])
-	  AC_DEFINE([FSID_HAS_VAL], [1], [fsid_t has member val]) ],
-	[ AC_MSG_RESULT([no]) ])
-
-	AC_MSG_CHECKING([if f_fsid has member __val])
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-#include <sys/types.h>
-#include <sys/statvfs.h>
-	]], [[ fsid_t t; t.__val[0] = 0; ]])],
-	[ AC_MSG_RESULT([yes])
-	  AC_DEFINE([FSID_HAS___VAL], [1], [fsid_t has member __val]) ],
-	[ AC_MSG_RESULT([no]) ])
-])
 
 AC_CACHE_CHECK([for msg_control field in struct msghdr],
 		ac_cv_have_control_in_msghdr, [
