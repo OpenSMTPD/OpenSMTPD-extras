@@ -2472,76 +2472,264 @@ AC_SUBST([spooldir])
 
 
 
+#
+# individual modules
+#
+
+#
+# FILTERS
+#
+HAVE_FILTER_DNSBL=no
+AC_ARG_WITH([filter-dnsbl],
+	[  --with-filter-dnsbl	Enable filter dnsbl],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_FILTER_DNSBL], [1],
+				[Define if you have filter dnsbl])
+			HAVE_FILTER_DNSBL=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_FILTER_DNSBL], [test $HAVE_FILTER_DNSBL = yes])
+
+HAVE_FILTER_MONKEY=no
+AC_ARG_WITH([filter-monkey],
+	[  --with-filter-monkey	Enable filter monkey],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_FILTER_MONKEY], [1],
+				[Define if you have filter monkey])
+			HAVE_FILTER_MONKEY=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_FILTER_MONKEY], [test $HAVE_FILTER_MONKEY = yes])
+
+HAVE_FILTER_PERL=no
+AC_ARG_WITH([filter-perl],
+	[  --with-filter-perl	Enable filter perl],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_FILTER_PERL], [1],
+				[Define if you have filter perl])
+			HAVE_FILTER_PERL=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_FILTER_PERL], [test $HAVE_FILTER_PERL = yes])
+
+HAVE_FILTER_PYTHON=no
+AC_ARG_WITH([filter-python],
+	[  --with-filter-python	Enable filter python],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_FILTER_PYTHON], [1],
+				[Define if you have filter python])
+			HAVE_FILTER_PYTHON=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_FILTER_PYTHON], [test $HAVE_FILTER_PYTHON = yes])
+
+HAVE_FILTER_STUB=no
+AC_ARG_WITH([filter-stub],
+	[  --with-filter-stub	Enable filter stub],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_FILTER_STUB], [1],
+				[Define if you have filter stub])
+			HAVE_FILTER_STUB=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_FILTER_STUB], [test $HAVE_FILTER_STUB = yes])
+
+HAVE_FILTER_TRACE=no
+AC_ARG_WITH([filter-trace],
+	[  --with-filter-trace	Enable filter trace],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_FILTER_TRACE], [1],
+				[Define if you have filter trace])
+			HAVE_FILTER_TRACE=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_FILTER_TRACE], [test $HAVE_FILTER_TRACE = yes])
+
+HAVE_FILTER_VOID=no
+AC_ARG_WITH([filter-void],
+	[  --with-filter-void	Enable filter void],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_FILTER_VOID], [1],
+				[Define if you have filter void])
+			HAVE_FILTER_VOID=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_FILTER_VOID], [test $HAVE_FILTER_VOID = yes])
+
+
+#
+# QUEUES
+#
+HAVE_QUEUE_NULL=no
+AC_ARG_WITH([queue-null],
+	[  --with-queue-null	Enable queue null],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_QUEUE_NULL], [1],
+				[Define if you have queue null])
+			HAVE_QUEUE_NULL=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_QUEUE_NULL], [test $HAVE_QUEUE_NULL = yes])
+
+HAVE_QUEUE_PYTHON=no
+AC_ARG_WITH([queue-python],
+	[  --with-queue-python	Enable queue python],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_QUEUE_PYTHON], [1],
+				[Define if you have queue python])
+			HAVE_QUEUE_PYTHON=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_QUEUE_PYTHON], [test $HAVE_QUEUE_PYTHON = yes])
+
+HAVE_QUEUE_RAM=no
+AC_ARG_WITH([queue-ram],
+	[  --with-queue-ram	Enable queue ram],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_QUEUE_RAM], [1],
+				[Define if you have queue ram])
+			HAVE_QUEUE_RAM=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_QUEUE_RAM], [test $HAVE_QUEUE_RAM = yes])
+
+HAVE_QUEUE_STUB=no
+AC_ARG_WITH([queue-stub],
+	[  --with-queue-stub	Enable queue stub],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_QUEUE_STUB], [1],
+				[Define if you have queue stub])
+			HAVE_QUEUE_STUB=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_QUEUE_STUB], [test $HAVE_QUEUE_STUB = yes])
+
+
+
+#
+# TABLES
+#
 
 # Whether to enable *experimental* LDAP support
-EXPERIMENTAL_LDAP=no
-AC_ARG_WITH([experimental-ldap],
-	[  --with-experimental-ldap	Enable experimental LDAP support],
+HAVE_TABLE_LDAP=no
+AC_ARG_WITH([table-ldap],
+	[  --with-table-ldap	Enable table LDAP],
 	[
 		if test "x$withval" != "xno" ; then
-			AC_DEFINE([HAVE_LDAP], [1],
+			AC_DEFINE([HAVE_TABLE_LDAP], [1],
 				[Define if you have experimental LDAP support])
-			EXPERIMENTAL_LDAP=yes
+			HAVE_TABLE_LDAP=yes
 		fi
 	]
 )
-AM_CONDITIONAL([HAVE_LDAP], [test $EXPERIMENTAL_LDAP = yes])
+AM_CONDITIONAL([HAVE_TABLE_LDAP], [test $HAVE_TABLE_LDAP = yes])
 
 # Whether to enable *experimental* MySQL support
-EXPERIMENTAL_MYSQL=no
-AC_ARG_WITH([experimental-mysql],
-	[  --with-experimental-mysql	Enable experimental MySQL support],
+HAVE_TABLE_MYSQL=no
+AC_ARG_WITH([table-mysql],
+	[  --with-table-mysql	Enable table MySQL],
 	[
 		if test "x$withval" != "xno" ; then
-			AC_DEFINE([HAVE_MYSQL], [1],
+			AC_DEFINE([HAVE_TABLE_MYSQL], [1],
 				[Define if you have experimental MySQL support])
-			EXPERIMENTAL_MYSQL=yes
+			HAVE_TABLE_MYSQL=yes
 		fi
 	]
 )
-AM_CONDITIONAL([HAVE_MYSQL], [test $EXPERIMENTAL_MYSQL = yes])
+AM_CONDITIONAL([HAVE_TABLE_MYSQL], [test $HAVE_TABLE_MYSQL = yes])
 
 # Whether to enable *experimental* PostgreSQL support
-EXPERIMENTAL_POSTGRES=no
-AC_ARG_WITH([experimental-postgres],
-	[  --with-experimental-postgres	Enable experimental PostgreSQL support],
+HAVE_TABLE_POSTGRES=no
+AC_ARG_WITH([table-postgres],
+	[  --with-table-postgres	Enable table PostgreSQL],
 	[
 		if test "x$withval" != "xno" ; then
-			AC_DEFINE([HAVE_POSTGRES], [1],
+			AC_DEFINE([HAVE_TABLE_POSTGRES], [1],
 				[Define if you have experimental PostgreSQL support])
-			EXPERIMENTAL_POSTGRES=yes
+			HAVE_TABLE_POSTGRES=yes
 		fi
 	]
 )
-AM_CONDITIONAL([HAVE_POSTGRES], [test $EXPERIMENTAL_POSTGRES = yes])
+AM_CONDITIONAL([HAVE_TABLE_POSTGRES], [test $HAVE_TABLE_POSTGRES = yes])
+
 
 # Whether to enable *experimental* Redis support
-EXPERIMENTAL_REDIS=no
-AC_ARG_WITH([experimental-redis],
-	[  --with-experimental-redis	Enable experimental Redis support],
+HAVE_TABLE_REDIS=no
+AC_ARG_WITH([table-redis],
+	[  --with-table-redis	Enable table Redis],
 	[
 		if test "x$withval" != "xno" ; then
-			AC_DEFINE([HAVE_REDIS], [1],
+			AC_DEFINE([HAVE_TABLE_REDIS], [1],
 				[Define if you have experimental Redis support])
-			EXPERIMENTAL_REDIS=yes
+			HAVE_TABLE_REDIS=yes
 		fi
 	]
 )
-AM_CONDITIONAL([HAVE_REDIS], [test $EXPERIMENTAL_REDIS = yes])
+AM_CONDITIONAL([HAVE_TABLE_REDIS], [test $HAVE_TABLE_REDIS = yes])
 
 # Whether to enable *experimental* Redis support
-EXPERIMENTAL_SOCKETMAP=no
-AC_ARG_WITH([experimental-socketmap],
-	[  --with-experimental-socketmap	Enable experimental socketmap support],
+HAVE_TABLE_SOCKETMAP=no
+AC_ARG_WITH([table-socketmap],
+	[  --with-table-socketmap	Enable table socketmap],
 	[
 		if test "x$withval" != "xno" ; then
-			AC_DEFINE([HAVE_SOCKETMAP], [1],
+			AC_DEFINE([HAVE_TABLE_SOCKETMAP], [1],
 				[Define if you have experimental socketmap support])
-			EXPERIMENTAL_SOCKETMAP=yes
+		HAVE_TABLE_SOCKETMAP=yes
 		fi
 	]
 )
-AM_CONDITIONAL([HAVE_SOCKETMAP], [test $EXPERIMENTAL_SOCKETMAP = yes])
+AM_CONDITIONAL([HAVE_TABLE_SOCKETMAP], [test $HAVE_TABLE_SOCKETMAP = yes])
+
+# Whether to enable table_passwd
+HAVE_TABLE_PASSWD=no
+AC_ARG_WITH([table-passwd],
+	[  --with-table-passwd	Enable table passwd],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_TABLE_PASSWD], [1],
+				[Define if you want to enable table passwd])
+			HAVE_TABLE_PASSWD=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_TABLE_PASSWD], [test $HAVE_TABLE_PASSWD = yes])
+
+# Whether to enable table_python
+HAVE_TABLE_PYTHON=no
+AC_ARG_WITH([table-python],
+	[  --with-table-python	Enable table python],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_TABLE_PYTHON], [1],
+				[Define if you want to enable table python])
+			TABLE_PASSWD=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_TABLE_PYTHON], [test $HAVE_TABLE_PYTHON = yes])
 
 
 dnl AC_DEFINE([_GNU_SOURCE], [], [Enable GNU Extensions])
@@ -2864,6 +3052,7 @@ AC_CONFIG_FILES([Makefile
 		mk/schedulers/scheduler-ram/Makefile
 		mk/schedulers/scheduler-stub/Makefile
 		mk/tables/Makefile
+		mk/tables/table-passwd/Makefile
 		mk/tables/table-ldap/Makefile
 		mk/tables/table-mysql/Makefile
 		mk/tables/table-postgres/Makefile
