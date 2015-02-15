@@ -2167,26 +2167,6 @@ AC_SUBST([mansubdir])
 #l4207
 
 
-# Where to place spooler
-spooldir=/var/spool/smtpd
-AC_ARG_WITH([spooldir],
-	[  --with-spooldir=PATH		Specify location of spooler directory],
-	[
-		if test -n "$withval"  &&  test "x$withval" != "xno"  &&  \
-		    test "x${withval}" != "xyes"; then
-			spooldir=$withval
-			if test ! -d $spooldir ; then
-			AC_MSG_WARN([** no $spooldir directory on this system **])
-			fi
-		fi
-	]
-)
-
-AC_DEFINE_UNQUOTED([PATH_SPOOL], ["$spooldir"], 
-	[Specify location of spooler])
-AC_SUBST([spooldir])
-
-
 
 #
 # individual modules
