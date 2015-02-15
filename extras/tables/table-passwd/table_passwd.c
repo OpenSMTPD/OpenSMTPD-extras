@@ -112,6 +112,10 @@ table_passwd_update(void)
 			buf = lbuf;
 		}
 
+		/* skip empty lines */
+		if (strlen(buf) == 0)
+			continue;
+		
 		if (strlcpy(tmp, buf, sizeof tmp) >= sizeof tmp) {
 			log_warnx("warn: table-passwd: line too long");
 			goto err;
