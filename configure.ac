@@ -2745,7 +2745,6 @@ echo "                      Manual pages: $G"
 echo "                    smtpd.sock dir: $H"
 echo "  Privilege separation chroot path: $I"
 echo "                    Manpage format: $MANTYPE"
-echo "                  BSD Auth support: $BSD_AUTH_MSG"
 
 echo ""
 
