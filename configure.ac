@@ -1469,20 +1469,6 @@ AC_DEFINE_UNQUOTED([SMTPD_USER], ["$SMTPD_USER"],
 	[non-privileged user for privilege separation])
 AC_SUBST([SMTPD_USER])
 
-SMTPD_QUEUE_USER=_smtpq
-AC_ARG_WITH([queue-user],
-	[  --with-queue-user=user  Specify non-privileged user for queue process],
-	[
-		if test -n "$withval"  &&  test "x$withval" != "xno"  &&  \
-		    test "x${withval}" != "xyes"; then
-			SMTPD_QUEUE_USER=$withval
-		fi
-	]
-)
-AC_DEFINE_UNQUOTED([SMTPD_QUEUE_USER], ["$SMTPD_QUEUE_USER"],
-	[non-privileged user for queue process])
-AC_SUBST([SMTPD_QUEUE_USER])
-
 #l3037 (customized s/SSH/SMTPD/)
 # Check for  long long datatypes
 AC_CHECK_TYPES([long long, unsigned long long, long double])
