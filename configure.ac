@@ -2732,6 +2732,51 @@ AC_ARG_WITH([table-python],
 AM_CONDITIONAL([HAVE_TABLE_PYTHON], [test $HAVE_TABLE_PYTHON = yes])
 
 
+#
+# SCHEDULERS
+#
+HAVE_SCHEDULER_RAM=no
+AC_ARG_WITH([scheduler-ram],
+	[  --with-scheduler-ram	Enable scheduler ram],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_SCHEDULER_RAM], [1],
+				[Define if you have scheduler ram])
+			HAVE_SCHEDULER_RAM=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_SCHEDULER_RAM], [test $HAVE_SCHEDULER_RAM = yes])
+
+HAVE_SCHEDULER_STUB=no
+AC_ARG_WITH([scheduler-stub],
+	[  --with-scheduler-stub	Enable scheduler stub],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_SCHEDULER_STUB], [1],
+				[Define if you have scheduler stub])
+			HAVE_SCHEDULER_STUB=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_SCHEDULER_STUB], [test $HAVE_SCHEDULER_STUB = yes])
+
+HAVE_SCHEDULER_STUB=no
+AC_ARG_WITH([scheduler-python],
+	[  --with-scheduler-python	Enable scheduler python],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_SCHEDULER_PYTHON], [1],
+				[Define if you have scheduler python])
+			HAVE_SCHEDULER_PYTHON=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_SCHEDULER_PYTHON], [test $HAVE_SCHEDULER_PYTHON = yes])
+
+
+
+
 dnl AC_DEFINE([_GNU_SOURCE], [], [Enable GNU Extensions])
 
 
