@@ -2482,37 +2482,6 @@ AC_SUBST([TEST_MALLOC_OPTIONS], [$TEST_MALLOC_OPTIONS])
 AC_EXEEXT
 #l4757
 
-##chl (still based on portable OpenSSH's configure.ac)
-AC_MSG_CHECKING([if inet_net_pton will link])
-AC_LINK_IFELSE([AC_LANG_PROGRAM([[
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <arpa/nameser.h>
-#include <netdb.h>
-#include <resolv.h>
-				]], [[
-	inet_net_pton (0, 0, 0, 0, 0);
-				]])],
-		    AC_MSG_RESULT([yes]),
-		   [AC_MSG_RESULT([no])
-		    saved_LIBS="$LIBS"
-		    LIBS="$LIBS -lresolv"
-		    AC_MSG_CHECKING([for inet_net_pton in -lresolv])
-		    AC_LINK_IFELSE([AC_LANG_PROGRAM([[
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <arpa/nameser.h>
-#include <netdb.h>
-#include <resolv.h>
-				]], [[
-	inet_net_pton (0, 0, 0, 0, 0);
-				]])],
-			[AC_MSG_RESULT([yes])],
-			[LIBS="$saved_LIBS"
-			 AC_MSG_RESULT([no])])
-		    ])
-##end of chl
-
 ##chl (based on OpenSSL checks, see above)
 # Search for libevent
 saved_CPPFLAGS="$CPPFLAGS"
