@@ -284,7 +284,6 @@ AC_CHECK_HEADERS([ \
 	sys/file.h \
 	sys/ndir.h \
 	sys/pstat.h \
-	sys/statfs.h \
 	sys/time.h \
 	sys/un.h \
 	time.h \
@@ -1623,22 +1622,6 @@ AC_CHECK_TYPES([intmax_t, uintmax_t], , , [
 TYPE_SOCKLEN_T
 
 AC_CHECK_TYPES([sig_atomic_t], , , [#include <signal.h>])
-AC_CHECK_TYPES([fsblkcnt_t, fsfilcnt_t], , , [
-#include <sys/types.h>
-#ifdef HAVE_SYS_BITYPES_H
-#include <sys/bitypes.h>
-#endif
-#ifdef HAVE_SYS_STATFS_H
-#include <sys/statfs.h>
-#endif
-#ifdef HAVE_SYS_STATVFS_H
-#include <sys/statvfs.h>
-#endif
-])
-
-AC_CHECK_TYPES([in_addr_t, in_port_t], , ,
-[#include <sys/types.h>
-#include <netinet/in.h>])
 
 AC_CACHE_CHECK([for size_t], ac_cv_have_size_t, [
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <sys/types.h> ]],
@@ -2003,55 +1986,6 @@ if test "x$ac_cv_have_getopt_optreset" = "xyes" ; then
 		[Define if your getopt(3) defines and uses optreset])
 fi
 #l3765
-
-##chl part
-AC_CHECK_TYPES([struct ifgroupreq])
-
-AC_CHECK_MEMBERS([struct stat.st_flags], , ,
-	[ #include <sys/types.h>
-	  #include <sys/stat.h> ]
-)
-
-AC_CHECK_MEMBERS([struct stat.st_mtim], , ,
-	[ #include <sys/types.h>
-	  #include <sys/stat.h> ]
-)
-
-AC_CHECK_MEMBERS([struct stat.st_mtimespec], , ,
-	[ #include <sys/types.h>
-	  #include <sys/stat.h> ]
-)
-
-AC_CHECK_MEMBERS([struct sockaddr.sa_len], , ,
-	[ #include <netdb.h>
-	  #include <netinet/in.h>
-	  #include <sys/socket.h> ]
-)
-
-AC_CHECK_MEMBERS([struct sockaddr_storage.ss_len], , ,
-	[ #include <netdb.h>
-	  #include <netinet/in.h>
-	  #include <sys/socket.h> ]
-)
-
-AC_CHECK_MEMBERS([struct sockaddr_in.sin_len], , ,
-	[ #include <netdb.h>
-	  #include <netinet/in.h>
-	  #include <sys/socket.h> ]
-)
-
-AC_CHECK_MEMBERS([struct sockaddr_in6.sin6_len], , ,
-	[ #include <netdb.h>
-	  #include <netinet/in.h>
-	  #include <sys/socket.h> ]
-)
-
-AC_CHECK_MEMBERS([struct statfs.f_favail], , ,
-	[ #include <sys/vfs.h>
-	  #include <sys/statfs.h> ]
-)
-##chl part
-
 
 #l4010
 # Looking for programs, paths and files
@@ -2422,9 +2356,6 @@ AC_ARG_WITH([scheduler-python],
 AM_CONDITIONAL([HAVE_SCHEDULER_PYTHON], [test $HAVE_SCHEDULER_PYTHON = yes])
 
 
-
-
-dnl AC_DEFINE([_GNU_SOURCE], [], [Enable GNU Extensions])
 
 
 ##chl (based on OpenSSL checks, see above)
