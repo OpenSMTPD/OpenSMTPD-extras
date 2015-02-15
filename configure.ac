@@ -2167,20 +2167,6 @@ AC_SUBST([mansubdir])
 #l4207
 
 
-
-CA_FILE=/etc/ssl/cert.pem
-AC_ARG_WITH([ca-file],
-	[  --with-ca-file=FILE     Path for certificate file (default=/etc/ssl/cert.pem)],
-	[
-		if test -n "$withval"  &&  test "x$withval" != "xno"  &&  \
-		    test "x${withval}" != "xyes"; then
-			CA_FILE=$withval
-		fi
-	]
-)
-AC_SUBST([CA_FILE])
-
-
 # Where to place spooler
 spooldir=/var/spool/smtpd
 AC_ARG_WITH([spooldir],
