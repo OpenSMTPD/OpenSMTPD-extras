@@ -113,7 +113,7 @@ table_passwd_update(void)
 			buf = lbuf;
 		}
 
-		/* skip comments */
+		/* skip commented entries */
 		for (skip = buf; *skip; ++skip)
 			if (*skip == '#') {
 				*skip = '\0';
