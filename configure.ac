@@ -2394,20 +2394,6 @@ fi
 AC_SUBST([mansubdir])
 #l4207
 
-#l4432 (customized s/pid/sock/)
-# Whether to enable BSD auth support
-BSD_AUTH_MSG=no
-AC_ARG_WITH([bsd-auth],
-	[  --with-bsd-auth         Enable BSD auth support],
-	[
-		if test "x$withval" != "xno" ; then
-			AC_DEFINE([BSD_AUTH], [1],
-				[Define if you have BSD auth support])
-			BSD_AUTH_MSG=yes
-		fi
-	]
-)
-
 # Where to place smtpd.sock
 sockdir=/var/run
 # make sure the directory exists
