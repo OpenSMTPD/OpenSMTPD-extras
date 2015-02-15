@@ -391,15 +391,6 @@ AC_CHECK_FUNCS([fmt_scaled scan_scaled])
 #l1242
 
 
-AC_MSG_CHECKING([for /proc/pid/fd directory])
-if test -d "/proc/$$/fd" ; then
-	AC_DEFINE([HAVE_PROC_PID], [1], [Define if you have /proc/$pid/fd])
-	AC_MSG_RESULT([yes])
-else
-	AC_MSG_RESULT([no])
-fi
-#l1332
-
 #l1525
 AC_ARG_WITH([pie],
     [  --with-pie             Build Position Independent Executables if possible], [
