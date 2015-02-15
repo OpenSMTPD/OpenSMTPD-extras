@@ -383,45 +383,6 @@ dnl Checks for header files.
 # Checks for libraries.
 AC_CHECK_FUNC([setsockopt], , [AC_CHECK_LIB([socket], [setsockopt])])
 
-dnl IRIX and Solaris 2.5.1 have dirname() in libgen
-AC_CHECK_FUNCS([dirname], [AC_CHECK_HEADERS([libgen.h])] , [
-	AC_CHECK_LIB([gen], [dirname], [
-		AC_CACHE_CHECK([for broken dirname],
-			ac_cv_have_broken_dirname, [
-			save_LIBS="$LIBS"
-			LIBS="$LIBS -lgen"
-			AC_RUN_IFELSE(
-				[AC_LANG_SOURCE([[
-#include <libgen.h>
-#include <string.h>
-
-int main(int argc, char **argv) {
-    char *s, buf[32];
-
-    strncpy(buf,"/etc", 32);
-    s = dirname(buf);
-    if (!s || strncmp(s, "/", 32) != 0) {
-	exit(1);
-    } else {
-	exit(0);
-    }
-}
-				]])],
-				[ ac_cv_have_broken_dirname="no" ],
-				[ ac_cv_have_broken_dirname="yes" ],
-				[ ac_cv_have_broken_dirname="no" ],
-			)
-			LIBS="$save_LIBS"
-		])
-		if test "x$ac_cv_have_broken_dirname" = "xno" ; then
-			LIBS="$LIBS -lgen"
-			AC_DEFINE([HAVE_DIRNAME])
-			AC_CHECK_HEADERS([libgen.h])
-		fi
-	])
-])
-#l1120
-
 #l1124 (slightly customized around fmt_scaled scan_scaled checks)
 AC_SEARCH_LIBS([basename], [gen], [AC_DEFINE([HAVE_BASENAME], [1],
 	[Define if you have the basename function.])])
