@@ -383,10 +383,6 @@ dnl Checks for header files.
 # Checks for libraries.
 AC_CHECK_FUNC([setsockopt], , [AC_CHECK_LIB([socket], [setsockopt])])
 
-#l1124 (slightly customized around fmt_scaled scan_scaled checks)
-AC_SEARCH_LIBS([basename], [gen], [AC_DEFINE([HAVE_BASENAME], [1],
-	[Define if you have the basename function.])])
-
 dnl    Checks for libutil functions
 AC_CHECK_HEADERS([bsd/libutil.h libutil.h])
 AC_SEARCH_LIBS([fmt_scaled], [util bsd])
