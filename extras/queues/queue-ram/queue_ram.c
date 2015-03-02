@@ -317,6 +317,13 @@ queue_ram_envelope_walk(uint64_t *evpid, char *buf, size_t len)
 }
 
 static int
+queue_ram_message_walk(uint64_t *evpid, char *buf, size_t len,
+    uint32_t msgid, int *done, void **data)
+{
+	return (-1);
+}
+
+static int
 queue_ram_init(int server)
 {
 	tree_init(&messages);
@@ -332,6 +339,7 @@ queue_ram_init(int server)
 	queue_api_on_envelope_update(queue_ram_envelope_update);
 	queue_api_on_envelope_load(queue_ram_envelope_load);
 	queue_api_on_envelope_walk(queue_ram_envelope_walk);
+	queue_api_on_message_walk(queue_ram_message_walk);
 
 	return (1);
 }

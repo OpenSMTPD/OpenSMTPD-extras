@@ -161,6 +161,7 @@ enum {
 	PROC_QUEUE_ENVELOPE_LOAD,
 	PROC_QUEUE_ENVELOPE_UPDATE,
 	PROC_QUEUE_ENVELOPE_WALK,
+	PROC_QUEUE_MESSAGE_WALK,
 };
 
 #define PROC_SCHEDULER_API_VERSION	1
@@ -461,6 +462,8 @@ void queue_api_on_envelope_delete(int(*)(uint64_t));
 void queue_api_on_envelope_update(int(*)(uint64_t, const char *, size_t));
 void queue_api_on_envelope_load(int(*)(uint64_t, char *, size_t));
 void queue_api_on_envelope_walk(int(*)(uint64_t *, char *, size_t));
+void queue_api_on_message_walk(int(*)(uint64_t *, char *, size_t,
+    uint32_t, int *, void **));
 void queue_api_no_chroot(void);
 void queue_api_set_chroot(const char *);
 void queue_api_set_user(const char *);

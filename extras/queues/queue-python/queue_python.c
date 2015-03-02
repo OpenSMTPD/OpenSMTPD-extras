@@ -39,6 +39,7 @@ static PyObject	*py_envelope_delete;
 static PyObject	*py_envelope_update;
 static PyObject	*py_envelope_load;
 static PyObject	*py_envelope_walk;
+static PyObject	*py_message_walk;
 
 static void
 check_err(const char *name)
@@ -306,6 +307,45 @@ queue_python_envelope_walk(uint64_t *evpid, char *buf, size_t len)
 }
 
 static int
+queue_python_message_walk(uint64_t *evpid, char *buf, size_t len,
+    uint32_t msgid, int *done, void **data)
+{
+	static uint64_t	curevpid = 0;
+	PyObject       *py_ret;
+	PyObject       *py_evpid;
+	Py_buffer	py_view;
+	int		ret;
+
+	py_ret = dispatch(py_envelope_walk, Py_BuildValue("(K)",
+		(unsigned long)curevpid));
+	if (py_ret == Py_None)
+		return -1;
+
+	if (! PyTuple_Check(py_ret) || PyTuple_Size(py_ret) != 2) {
+		PyErr_SetString(PyExc_TypeError, "2-elements tuple expected");
+	}
+	else {
+		curevpid = *evpid = get_uint64_t(PyTuple_GetItem(py_ret, 0));
+		ret = PyObject_GetBuffer(PyTuple_GetItem(py_ret, 1), &py_view, PyBUF_SIMPLE);
+	}
+	Py_DECREF(py_ret);
+
+	if (ret == -1)
+		return 0;
+	if ((size_t)py_view.len >= len) {
+		PyBuffer_Release(&py_view);
+		return 0;
+	}
+
+	memset(buf, 0, len);
+	memcpy(buf, py_view.buf, py_view.len);
+	ret = py_view.len;
+	PyBuffer_Release(&py_view);
+	check_err("message_walk");
+	return ret;
+}
+
+static int
 queue_python_init(int server)
 {
 	queue_api_on_message_create(queue_python_message_create);
@@ -319,6 +359,7 @@ queue_python_init(int server)
 	queue_api_on_envelope_update(queue_python_envelope_update);
 	queue_api_on_envelope_load(queue_python_envelope_load);
 	queue_api_on_envelope_walk(queue_python_envelope_walk);
+	queue_api_on_message_walk(queue_python_message_walk);
 
 	return (1);
 }
@@ -433,6 +474,8 @@ main(int argc, char **argv)
 	if ((py_envelope_load = PyObject_GetAttrString(module, "envelope_load")) == NULL)
 		goto nosuchmethod;
 	if ((py_envelope_walk = PyObject_GetAttrString(module, "envelope_walk")) == NULL)
+		goto nosuchmethod;
+	if ((py_message_walk = PyObject_GetAttrString(module, "message_walk")) == NULL)
 		goto nosuchmethod;
 
 	queue_python_init(1);

@@ -43,6 +43,8 @@ static int (*handler_envelope_delete)(uint64_t);
 static int (*handler_envelope_update)(uint64_t, const char *, size_t);
 static int (*handler_envelope_load)(uint64_t, char *, size_t);
 static int (*handler_envelope_walk)(uint64_t *, char *, size_t);
+static int (*handler_message_walk)(uint64_t *, char *, size_t,
+    uint32_t, int *, void **);
 
 static struct imsgbuf	 ibuf;
 static struct imsg	 imsg;
@@ -273,6 +275,21 @@ queue_msg_dispatch(void)
 		queue_msg_close();
 		break;
 
+	case PROC_QUEUE_MESSAGE_WALK:
+		queue_msg_get(&msgid, sizeof(msgid));
+		queue_msg_end();
+
+		r = handler_message_walk(&evpid, buffer, sizeof(buffer),
+		    msgid, NULL, NULL);
+
+		queue_msg_add(&r, sizeof(r));
+		if (r > 0) {
+			queue_msg_add(&evpid, sizeof(evpid));
+			queue_msg_add(buffer, r);
+		}
+		queue_msg_close();
+		break;
+
 	default:
 		log_warnx("warn: queue-api: bad message %d", imsg.hdr.type);
 		fatalx("queue-api: exiting");
@@ -349,6 +366,13 @@ void
 queue_api_on_envelope_walk(int(*cb)(uint64_t *, char *, size_t))
 {
 	handler_envelope_walk = cb;
+}
+
+void
+queue_api_on_message_walk(int(*cb)(uint64_t *, char *, size_t,
+    uint32_t, int *, void **))
+{
+	handler_message_walk = cb;
 }
 
 void
