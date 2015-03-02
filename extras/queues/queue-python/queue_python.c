@@ -32,6 +32,7 @@ static PyObject	*py_message_commit;
 static PyObject	*py_message_delete;
 static PyObject	*py_message_fd_r;
 static PyObject	*py_message_corrupt;
+static PyObject	*py_message_uncorrupt;
 
 static PyObject	*py_envelope_create;
 static PyObject	*py_envelope_delete;
@@ -179,6 +180,22 @@ queue_python_message_corrupt(uint32_t msgid)
 }
 
 static int
+queue_python_message_uncorrupt(uint32_t msgid)
+{
+	PyObject       *py_ret;
+	int		ret;
+
+	py_ret = dispatch(py_message_uncorrupt, Py_BuildValue("(k)",
+		(unsigned long)msgid));
+
+	ret = get_int(py_ret);
+	Py_DECREF(py_ret);
+
+	check_err("message_uncorrupt");
+	return ret;
+}
+
+static int
 queue_python_envelope_create(uint32_t msgid, const char *buf, size_t len,
     uint64_t *evpid)
 {
@@ -296,6 +313,7 @@ queue_python_init(int server)
 	queue_api_on_message_delete(queue_python_message_delete);
 	queue_api_on_message_fd_r(queue_python_message_fd_r);
 	queue_api_on_message_corrupt(queue_python_message_corrupt);
+	queue_api_on_message_uncorrupt(queue_python_message_uncorrupt);
 	queue_api_on_envelope_create(queue_python_envelope_create);
 	queue_api_on_envelope_delete(queue_python_envelope_delete);
 	queue_api_on_envelope_update(queue_python_envelope_update);
@@ -403,6 +421,8 @@ main(int argc, char **argv)
 	if ((py_message_fd_r = PyObject_GetAttrString(module, "message_fd_r")) == NULL)
 		goto nosuchmethod;
 	if ((py_message_corrupt = PyObject_GetAttrString(module, "message_corrupt")) == NULL)
+		goto nosuchmethod;
+	if ((py_message_uncorrupt = PyObject_GetAttrString(module, "message_uncorrupt")) == NULL)
 		goto nosuchmethod;
 	if ((py_envelope_create = PyObject_GetAttrString(module, "envelope_create")) == NULL)
 		goto nosuchmethod;

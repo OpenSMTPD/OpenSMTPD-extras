@@ -37,6 +37,7 @@ static int (*handler_message_commit)(uint32_t, const char *);
 static int (*handler_message_delete)(uint32_t);
 static int (*handler_message_fd_r)(uint32_t);
 static int (*handler_message_corrupt)(uint32_t);
+static int (*handler_message_uncorrupt)(uint32_t);
 static int (*handler_envelope_create)(uint32_t, const char *, size_t, uint64_t *);
 static int (*handler_envelope_delete)(uint64_t);
 static int (*handler_envelope_update)(uint64_t, const char *, size_t);
@@ -211,6 +212,15 @@ queue_msg_dispatch(void)
 		imsg_compose(&ibuf, PROC_QUEUE_OK, 0, 0, -1, &r, sizeof(r));
 		break;
 
+	case PROC_QUEUE_MESSAGE_UNCORRUPT:
+		queue_msg_get(&msgid, sizeof(msgid));
+		queue_msg_end();
+
+		r = handler_message_uncorrupt(msgid);
+
+		imsg_compose(&ibuf, PROC_QUEUE_OK, 0, 0, -1, &r, sizeof(r));
+		break;
+
 	case PROC_QUEUE_ENVELOPE_CREATE:
 		queue_msg_get(&msgid, sizeof(msgid));
 		r = handler_envelope_create(msgid, rdata, rlen, &evpid);
@@ -303,6 +313,12 @@ void
 queue_api_on_message_corrupt(int(*cb)(uint32_t))
 {
 	handler_message_corrupt = cb;
+}
+
+void
+queue_api_on_message_uncorrupt(int(*cb)(uint32_t))
+{
+	handler_message_uncorrupt = cb;
 }
 
 void

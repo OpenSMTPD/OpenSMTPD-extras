@@ -55,6 +55,12 @@ queue_stub_message_corrupt(uint32_t msgid)
 }
 
 static int
+queue_stub_message_uncorrupt(uint32_t msgid)
+{
+	return (0);
+}
+
+static int
 queue_stub_envelope_create(uint32_t msgid, const char *buf, size_t len,
     uint64_t *evpid)
 {
@@ -93,6 +99,7 @@ queue_stub_init(int server)
 	queue_api_on_message_delete(queue_stub_message_delete);
 	queue_api_on_message_fd_r(queue_stub_message_fd_r);
 	queue_api_on_message_corrupt(queue_stub_message_corrupt);
+	queue_api_on_message_uncorrupt(queue_stub_message_uncorrupt);
 	queue_api_on_envelope_create(queue_stub_envelope_create);
 	queue_api_on_envelope_delete(queue_stub_envelope_delete);
 	queue_api_on_envelope_update(queue_stub_envelope_update);
