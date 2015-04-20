@@ -50,11 +50,8 @@ struct rxcontent {
 };
 
 static struct rxlist badhostname, badhelo, badmailfrom, badrcptto, badcontent;
-
 static int regflags = REG_EXTENDED|REG_ICASE|REG_NOSUB;
-
-/* limit body lines to check against */
-#undef REGEX_MAXLINES 200
+static size_t maxlines = 0;
 
 static void
 read_list(struct rxlist *rxl)
@@ -62,7 +59,7 @@ read_list(struct rxlist *rxl)
 	FILE *fp;
 	char line[1024];
 	struct stat sb;
-	struct rxentry *rxe;
+	struct rxentry *rxe, *last = NULL;
 
 	if (stat(rxl->path, &sb) == -1) {
 		log_warnx("warn: filter-regex: unable to stat %s", rxl->path);
@@ -91,7 +88,11 @@ read_list(struct rxlist *rxl)
 			continue;
 		}
 
-		SLIST_INSERT_HEAD(&rxl->entries, rxe, link);
+		if (SLIST_EMPTY(&rxl->entries))
+			SLIST_INSERT_HEAD(&rxl->entries, rxe, link);
+		else
+			SLIST_INSERT_AFTER(last, rxe, link);
+		last = rxe;
 	}
 
 	fclose(fp);
@@ -219,12 +220,10 @@ on_dataline(uint64_t id, const char *line)
 	log_debug("debug: filter-regex: on_dataline");
 	if (!rxc || rxc->match != NULL)
 		return;
-#ifdef REGEX_MAXLINES
-	if (rxc && rxc->lines > REGEX_MAXLINES) {
+	if (maxlines && rxc->lines > maxlines) {
 		filter_api_writeln(id, line);
 		return;
 	}
-#endif
 	if (match(line, &badcontent)) {
 		rxc->match = xstrdup(line, "filter-regex: on_dataline");
 		return;
@@ -266,9 +265,10 @@ int
 main(int argc, char **argv)
 {
 	int ch;
-	char *rootpath = NULL;
+	const char *errstr;
+	const char *rootpath = NULL;
 
-	while ((ch = getopt(argc, argv, "c:n:h:m:r:d:")) != -1) {
+	while ((ch = getopt(argc, argv, "c:n:h:m:r:d:l:")) != -1) {
 		switch (ch) {
 		case 'c':
 			rootpath = optarg;
@@ -295,6 +295,11 @@ main(int argc, char **argv)
 			filter_api_on_dataline(on_dataline);
 			filter_api_on_eom(on_eom);
 			filter_api_on_disconnect(on_disconnect);
+			break;
+		case 'l':
+			maxlines = strtonum(optarg, 1, (size_t)-1, &errstr);
+			if (errstr)
+				fatalx("option -l is %s", errstr);
 			break;
 		default:
 			log_warnx("warn: filter-regex: bad option");

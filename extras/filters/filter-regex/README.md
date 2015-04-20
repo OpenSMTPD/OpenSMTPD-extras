@@ -30,6 +30,9 @@ Answer with permanent error 530 on match.</dd>
 <dd>Use regular expressions in <i>filename</i> against mail content (per line).
 Answer with permanent error 530 on match.</dd>
 
+<dt>-l <i>number</i></dt>
+<dd>Limit number of body lines to match against.</dd>
+
 </dl>
 
 ### FORMAT
