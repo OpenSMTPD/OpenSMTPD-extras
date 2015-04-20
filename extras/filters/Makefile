@@ -1,5 +1,6 @@
 .include <bsd.own.mk>
 
+SUBDIR	+=	filter-clamav
 SUBDIR	+=	filter-dkim-signer
 SUBDIR	+=	filter-dnsbl
 #SUBDIR	+=	filter-lua
