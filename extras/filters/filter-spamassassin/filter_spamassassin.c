@@ -102,9 +102,7 @@ spamassassin_write(struct spamassassin *sa, const char *l) {
 
 static int
 spamassassin_request(struct spamassassin *sa) {
-	const char *l = "PROCESS SPAMC/1.5\r\n\r"; /* spamd.raw source: content length header is optional */
-
-	return spamassassin_write(sa, l);
+	return spamassassin_write(sa, "PROCESS SPAMC/1.5\r\n\r"); /* spamd.raw source: content length header is optional */
 }
 
 static int
@@ -155,7 +153,7 @@ spamassassin_result(struct spamassassin *sa, const char *l) {
 		return -1;
 	}
 	log_info("info: filter-spamassassin: result %s", l);
-	sa->r = !strcmp(s, "True");
+	sa->r = (strcmp(s, "True") == 0);
 	return 0;
 }
 
@@ -352,7 +350,7 @@ main(int argc, char **argv)
 		else if (strncmp(s, "reject", 6) == 0)
 			spamassassin_strategy = SPAMASSASSIN_REJECT;
 		else
-			fatalx("fatal: filter-spamassassin: bad strategy");
+			fatalx("filter-spamassassin: bad strategy");
 	}
 
 	log_debug("debug: filter-spamassassin: starting...");
