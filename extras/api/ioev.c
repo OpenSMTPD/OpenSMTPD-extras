@@ -1,4 +1,4 @@
-/*	$OpenBSD: ioev.c,v 1.18 2014/04/19 17:36:54 gilles Exp $	*/
+/*	$OpenBSD: ioev.c,v 1.19 2014/07/08 07:59:31 sobrado Exp $	*/
 /*      
  * Copyright (c) 2012 Eric Faurot <eric@openbsd.org>
  *
@@ -163,7 +163,7 @@ io_set_linger(int fd, int linger)
 
 /*
  * Event framing must not rely on an io pointer to refer to the "same" io
- * throughout the frame, beacuse this is not always the case:
+ * throughout the frame, because this is not always the case:
  *
  * 1) enter(addr0) -> free(addr0) -> leave(addr0) = SEGV
  * 2) enter(addr0) -> free(addr0) -> malloc == addr0 -> leave(addr0) = BAD!
@@ -205,7 +205,7 @@ io_frame_leave(struct io *io)
 	 * the response in the output buffer and goes to write mode.
 	 * There, the write event is set and will be triggered in the next
 	 * event frame.  In most case, the write call could be done
-	 * immediatly as part of the last read frame, thus avoiding to go
+	 * immediately as part of the last read frame, thus avoiding to go
 	 * through the event loop machinery. So, as an optimisation, we
 	 * could detect that case here and force an event dispatching.
 	 */
@@ -392,7 +392,7 @@ io_reload(struct io *io)
 		events = EV_READ;
 	if (IO_WRITING(io) && !(io->flags & IO_PAUSE_OUT) && io_queued(io))
 		events |= EV_WRITE;
-
+	log_debug("io reset: %p, events=%d, %d", io, events, io_queued(io));
 	io_reset(io, events, io_dispatch);
 }
 
@@ -545,10 +545,11 @@ io_dispatch(int fd, short ev, void *humppa)
 		goto leave;
 	}
 
+write:
 	if (ev & EV_WRITE && (w = io_queued(io))) {
 		if ((n = iobuf_write(io->iobuf, io->sock)) < 0) {
 			if (n == IOBUF_WANT_WRITE) /* kqueue bug? */
-				goto read;
+				goto write;
 			if (n == IOBUF_CLOSED)
 				io_callback(io, IO_DISCONNECTED);
 			else {
@@ -561,6 +562,11 @@ io_dispatch(int fd, short ev, void *humppa)
 		}
 		if (w > io->lowat && w - n <= io->lowat)
 			io_callback(io, IO_LOWAT);
+		else {
+			if (w - n)
+				goto write;
+		}
+
 	}
     read:
 
@@ -772,7 +778,7 @@ io_dispatch_connect_ssl(int fd, short event, void *humppa)
 	default:
 		io->error = io_ssl_error();
 		ssl_error("io_dispatch_connect_ssl:SSL_connect");
-		io_callback(io, IO_ERROR);
+		io_callback(io, IO_TLSERROR);
 		break;
 	}
 

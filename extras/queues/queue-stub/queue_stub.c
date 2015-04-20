@@ -57,6 +57,12 @@ queue_stub_message_corrupt(uint32_t msgid)
 }
 
 static int
+queue_stub_message_uncorrupt(uint32_t msgid)
+{
+	return (0);
+}
+
+static int
 queue_stub_envelope_create(uint32_t msgid, const char *buf, size_t len,
     uint64_t *evpid)
 {
@@ -88,6 +94,13 @@ queue_stub_envelope_walk(uint64_t *evpid, char *buf, size_t len)
 }
 
 static int
+queue_stub_message_walk(uint64_t *evpid, char *buf, size_t len,
+    uint32_t msgid, int *done, void **data)
+{
+	return (0);
+}
+
+static int
 queue_stub_init(int server)
 {
 	queue_api_on_message_create(queue_stub_message_create);
@@ -95,11 +108,13 @@ queue_stub_init(int server)
 	queue_api_on_message_delete(queue_stub_message_delete);
 	queue_api_on_message_fd_r(queue_stub_message_fd_r);
 	queue_api_on_message_corrupt(queue_stub_message_corrupt);
+	queue_api_on_message_uncorrupt(queue_stub_message_uncorrupt);
 	queue_api_on_envelope_create(queue_stub_envelope_create);
 	queue_api_on_envelope_delete(queue_stub_envelope_delete);
 	queue_api_on_envelope_update(queue_stub_envelope_update);
 	queue_api_on_envelope_load(queue_stub_envelope_load);
 	queue_api_on_envelope_walk(queue_stub_envelope_walk);
+	queue_api_on_message_walk(queue_stub_message_walk);
 
 	return (1);
 }
