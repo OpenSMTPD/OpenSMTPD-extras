@@ -7,3 +7,4 @@ table_mysql_SOURCES	 = $(SRCS)
 table_mysql_SOURCES	+= $(tables_srcdir)/table-mysql/table_mysql.c
 
 LDADD	+= -lmysqlclient
+

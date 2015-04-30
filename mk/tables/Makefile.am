@@ -16,6 +16,10 @@ if HAVE_TABLE_MYSQL
 SUBDIRS+=	table-mysql
 endif
 
+if HAVE_TABLE_SQLITE
+SUBDIRS+=	table-sqlite
+endif
+
 if HAVE_TABLE_REDIS
 SUBDIRS+=	table-redis
 endif

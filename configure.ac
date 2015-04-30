@@ -2127,6 +2127,19 @@ AC_ARG_WITH([table-python],
 )
 AM_CONDITIONAL([HAVE_TABLE_PYTHON], [test $HAVE_TABLE_PYTHON = yes])
 
+HAVE_TABLE_SQLITE=no
+AC_ARG_WITH([table-sqlite],
+	[  --with-table-sqlite	Enable table SQLite],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_TABLE_SQLITE], [1],
+				[Define if you have SQLite support])
+			HAVE_TABLE_SQLITE=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_TABLE_SQLITE], [test $HAVE_TABLE_SQLITE = yes])
+
 
 #
 # SCHEDULERS
