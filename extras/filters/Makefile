@@ -7,6 +7,7 @@ SUBDIR	+=	filter-monkey
 SUBDIR	+=	filter-pause
 SUBDIR	+=	filter-perl
 SUBDIR	+=	filter-python
+SUBDIR	+=	filter-spamassassin
 SUBDIR	+=	filter-stub
 SUBDIR	+=	filter-trace
 SUBDIR	+=	filter-void
