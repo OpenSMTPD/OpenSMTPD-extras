@@ -4,6 +4,7 @@ SUBDIR	+=	filter-dkim-signer
 SUBDIR	+=	filter-dnsbl
 #SUBDIR	+=	filter-lua
 SUBDIR	+=	filter-monkey
+SUBDIR	+=	filter-pause
 SUBDIR	+=	filter-perl
 SUBDIR	+=	filter-python
 SUBDIR	+=	filter-stub
