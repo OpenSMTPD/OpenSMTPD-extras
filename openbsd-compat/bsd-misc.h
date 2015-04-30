@@ -55,17 +55,6 @@ const char *strerror(int);
 #define setlinebuf(a)	(setvbuf((a), NULL, _IOLBF, 0))
 #endif
 
-#ifndef HAVE_UTIMES
-#ifndef HAVE_STRUCT_TIMEVAL
-struct timeval {
-	long tv_sec;
-	long tv_usec;
-}
-#endif /* HAVE_STRUCT_TIMEVAL */
-
-int utimes(char *, struct timeval *);
-#endif /* HAVE_UTIMES */
-
 #ifndef HAVE_TRUNCATE
 int truncate (const char *, off_t);
 #endif /* HAVE_TRUNCATE */
