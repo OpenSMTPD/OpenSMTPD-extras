@@ -2418,6 +2418,7 @@ AC_CONFIG_FILES([Makefile
 		mk/tables/table-python/Makefile
 		mk/tables/table-redis/Makefile
 		mk/tables/table-socketmap/Makefile
+		mk/tables/table-sqlite/Makefile
 		])
 
 #l4761
