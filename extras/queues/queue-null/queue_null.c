@@ -59,6 +59,12 @@ queue_null_message_corrupt(uint32_t msgid)
 }
 
 static int
+queue_null_message_uncorrupt(uint32_t msgid)
+{
+	return (0);
+}
+
+static int
 queue_null_envelope_create(uint32_t msgid, const char *buf, size_t len,
     uint64_t *evpid)
 {
@@ -91,6 +97,13 @@ queue_null_envelope_walk(uint64_t *evpid, char *buf, size_t len)
 }
 
 static int
+queue_null_message_walk(uint64_t *evpid, char *buf, size_t len,
+    uint32_t msgid, int *done, void **data)
+{
+	return (-1);
+}
+
+static int
 queue_null_init(int server)
 {
 	queue_api_on_message_create(queue_null_message_create);
@@ -98,11 +111,13 @@ queue_null_init(int server)
 	queue_api_on_message_delete(queue_null_message_delete);
 	queue_api_on_message_fd_r(queue_null_message_fd_r);
 	queue_api_on_message_corrupt(queue_null_message_corrupt);
+	queue_api_on_message_uncorrupt(queue_null_message_uncorrupt);
 	queue_api_on_envelope_create(queue_null_envelope_create);
 	queue_api_on_envelope_delete(queue_null_envelope_delete);
 	queue_api_on_envelope_update(queue_null_envelope_update);
 	queue_api_on_envelope_load(queue_null_envelope_load);
 	queue_api_on_envelope_walk(queue_null_envelope_walk);
+	queue_api_on_message_walk(queue_null_message_walk);
 
 	return (1);
 }

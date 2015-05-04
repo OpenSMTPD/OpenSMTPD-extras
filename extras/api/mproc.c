@@ -30,6 +30,7 @@
 #include <errno.h>
 #include <event.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <imsg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,6 +40,10 @@
 #include "smtpd-defines.h"
 #include "smtpd-api.h"
 #include "log.h"
+
+/* from filter_api.c */
+const char *proc_name(enum smtp_proc_type);
+const char *imsg_to_str(int);
 
 enum smtp_proc_type	smtpd_process = PROC_PONY;
 

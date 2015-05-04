@@ -37,11 +37,14 @@ static int (*handler_message_commit)(uint32_t, const char *);
 static int (*handler_message_delete)(uint32_t);
 static int (*handler_message_fd_r)(uint32_t);
 static int (*handler_message_corrupt)(uint32_t);
+static int (*handler_message_uncorrupt)(uint32_t);
 static int (*handler_envelope_create)(uint32_t, const char *, size_t, uint64_t *);
 static int (*handler_envelope_delete)(uint64_t);
 static int (*handler_envelope_update)(uint64_t, const char *, size_t);
 static int (*handler_envelope_load)(uint64_t, char *, size_t);
 static int (*handler_envelope_walk)(uint64_t *, char *, size_t);
+static int (*handler_message_walk)(uint64_t *, char *, size_t,
+    uint32_t, int *, void **);
 
 static struct imsgbuf	 ibuf;
 static struct imsg	 imsg;
@@ -211,6 +214,15 @@ queue_msg_dispatch(void)
 		imsg_compose(&ibuf, PROC_QUEUE_OK, 0, 0, -1, &r, sizeof(r));
 		break;
 
+	case PROC_QUEUE_MESSAGE_UNCORRUPT:
+		queue_msg_get(&msgid, sizeof(msgid));
+		queue_msg_end();
+
+		r = handler_message_uncorrupt(msgid);
+
+		imsg_compose(&ibuf, PROC_QUEUE_OK, 0, 0, -1, &r, sizeof(r));
+		break;
+
 	case PROC_QUEUE_ENVELOPE_CREATE:
 		queue_msg_get(&msgid, sizeof(msgid));
 		r = handler_envelope_create(msgid, rdata, rlen, &evpid);
@@ -263,6 +275,21 @@ queue_msg_dispatch(void)
 		queue_msg_close();
 		break;
 
+	case PROC_QUEUE_MESSAGE_WALK:
+		queue_msg_get(&msgid, sizeof(msgid));
+		queue_msg_end();
+
+		r = handler_message_walk(&evpid, buffer, sizeof(buffer),
+		    msgid, NULL, NULL);
+
+		queue_msg_add(&r, sizeof(r));
+		if (r > 0) {
+			queue_msg_add(&evpid, sizeof(evpid));
+			queue_msg_add(buffer, r);
+		}
+		queue_msg_close();
+		break;
+
 	default:
 		log_warnx("warn: queue-api: bad message %d", imsg.hdr.type);
 		fatalx("queue-api: exiting");
@@ -306,6 +333,12 @@ queue_api_on_message_corrupt(int(*cb)(uint32_t))
 }
 
 void
+queue_api_on_message_uncorrupt(int(*cb)(uint32_t))
+{
+	handler_message_uncorrupt = cb;
+}
+
+void
 queue_api_on_envelope_create(int(*cb)(uint32_t, const char *, size_t, uint64_t *))
 {
 	handler_envelope_create = cb;
@@ -333,6 +366,13 @@ void
 queue_api_on_envelope_walk(int(*cb)(uint64_t *, char *, size_t))
 {
 	handler_envelope_walk = cb;
+}
+
+void
+queue_api_on_message_walk(int(*cb)(uint64_t *, char *, size_t,
+    uint32_t, int *, void **))
+{
+	handler_message_walk = cb;
 }
 
 void

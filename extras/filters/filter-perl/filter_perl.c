@@ -44,6 +44,20 @@ static CV		*pl_on_rollback;
 static CV		*pl_on_dataline;
 static CV		*pl_on_disconnect;
 
+EXTERN_C void xs_init(pTHX);
+EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
+
+EXTERN_C void
+xs_init(pTHX)
+{
+	static const char file[] = __FILE__;
+	dXSUB_SYS;
+	PERL_UNUSED_CONTEXT;
+
+	/* DynaLoader is a special case */
+	newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
+}
+
 XS(XS_filter_accept);
 XS(XS_filter_reject);
 XS(XS_filter_reject_code);
@@ -139,7 +153,6 @@ static int
 on_helo(uint64_t id, const char *helo)
 {
 	call_sub_sv((SV *)pl_on_helo, "%i%s", id, helo);
-	return filter_api_accept(id);
 }
 
 static int
@@ -149,7 +162,6 @@ on_mail(uint64_t id, struct mailaddr *mail)
 
 	mailaddr = filter_api_mailaddr_to_text(mail);
 	call_sub_sv((SV *)pl_on_mail, "%i%s", id, mailaddr);
-	return filter_api_accept(id);
 }
 
 static int
@@ -159,21 +171,18 @@ on_rcpt(uint64_t id, struct mailaddr *rcpt)
 
 	mailaddr = filter_api_mailaddr_to_text(rcpt);
 	call_sub_sv((SV *)pl_on_rcpt, "%i%s", id, mailaddr);
-	return filter_api_accept(id);
 }
 
 static int
 on_data(uint64_t id)
 {
 	call_sub_sv((SV *)pl_on_data, "%i", id);
-	return filter_api_accept(id);
 }
 
 static int
 on_eom(uint64_t id, size_t size)
 {
 	call_sub_sv((SV *)pl_on_eom, "%i", id);
-	return filter_api_accept(id);
 }
 
 static void
@@ -207,7 +216,8 @@ int
 main(int argc, char **argv)
 {
 	int	ch;
-	char	*fake_argv[] = { "-e", "/tmp/test.pl", NULL };
+	char  *fake_argv[3] = { "-e", NULL, NULL };
+
 	log_init(-1);
 
 	while ((ch = getopt(argc, argv, "")) != -1) {
@@ -221,10 +231,13 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	if (argc == 0)
+		errx(1, "missing path");
+	fake_argv[1] = argv[0];
+
 	pi = perl_alloc();
 	perl_construct(pi);
-	perl_parse(pi, NULL, argc, fake_argv, NULL);
-
+	perl_parse(pi, xs_init, 2, fake_argv, NULL);
 
 	newXS("smtpd::filter_api_accept", XS_filter_accept, __FILE__);
 	newXS("smtpd::filter_api_reject", XS_filter_reject, __FILE__);
@@ -253,6 +266,7 @@ main(int argc, char **argv)
 	if ((pl_on_disconnect = perl_get_cv("on_disconnect", FALSE)))
 		filter_api_on_disconnect(on_disconnect);
 
+	filter_api_no_chroot();
 	filter_api_loop();
 
 	log_debug("debug: filter-perl: exiting");

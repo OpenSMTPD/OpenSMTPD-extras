@@ -155,11 +155,13 @@ enum {
 	PROC_QUEUE_MESSAGE_COMMIT,
 	PROC_QUEUE_MESSAGE_FD_R,
 	PROC_QUEUE_MESSAGE_CORRUPT,
+	PROC_QUEUE_MESSAGE_UNCORRUPT,
 	PROC_QUEUE_ENVELOPE_CREATE,
 	PROC_QUEUE_ENVELOPE_DELETE,
 	PROC_QUEUE_ENVELOPE_LOAD,
 	PROC_QUEUE_ENVELOPE_UPDATE,
 	PROC_QUEUE_ENVELOPE_WALK,
+	PROC_QUEUE_MESSAGE_WALK,
 };
 
 #define PROC_SCHEDULER_API_VERSION	1
@@ -393,6 +395,10 @@ void filter_api_on_rcpt(int(*)(uint64_t, struct mailaddr *));
 void filter_api_on_data(int(*)(uint64_t));
 void filter_api_on_dataline(void(*)(uint64_t, const char *));
 void filter_api_on_eom(int(*)(uint64_t, size_t));
+void filter_api_on_reset(void(*)(uint64_t));
+void filter_api_on_disconnect(void(*)(uint64_t));
+void filter_api_on_commit(void(*)(uint64_t));
+void filter_api_on_rollback(void(*)(uint64_t));
 
 
 /* mproc.c */
@@ -450,11 +456,14 @@ void queue_api_on_message_commit(int(*)(uint32_t, const char*));
 void queue_api_on_message_delete(int(*)(uint32_t));
 void queue_api_on_message_fd_r(int(*)(uint32_t));
 void queue_api_on_message_corrupt(int(*)(uint32_t));
+void queue_api_on_message_uncorrupt(int(*)(uint32_t));
 void queue_api_on_envelope_create(int(*)(uint32_t, const char *, size_t, uint64_t *));
 void queue_api_on_envelope_delete(int(*)(uint64_t));
 void queue_api_on_envelope_update(int(*)(uint64_t, const char *, size_t));
 void queue_api_on_envelope_load(int(*)(uint64_t, char *, size_t));
 void queue_api_on_envelope_walk(int(*)(uint64_t *, char *, size_t));
+void queue_api_on_message_walk(int(*)(uint64_t *, char *, size_t,
+    uint32_t, int *, void **));
 void queue_api_no_chroot(void);
 void queue_api_set_chroot(const char *);
 void queue_api_set_user(const char *);
@@ -505,5 +514,12 @@ int tree_root(struct tree *, uint64_t *, void **);
 int tree_iter(struct tree *, void **, uint64_t *, void **);
 int tree_iterfrom(struct tree *, void **, uint64_t, uint64_t *, void **);
 void tree_merge(struct tree *, struct tree *);
+
+/* util.c */
+void	*xmalloc(size_t, const char *);
+void	*xcalloc(size_t, size_t, const char *);
+char	*xstrdup(const char *, const char *);
+int	 base64_encode(unsigned char const *, size_t, char *, size_t);
+int	 base64_decode(char const *, unsigned char *, size_t);
 
 #endif

@@ -20,6 +20,7 @@
 
 #include <ctype.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -111,7 +112,6 @@ main(int argc, char **argv)
 	}
 	if (config_connect(config) == 0) {
 		log_warnx("warn: table-postgres: could not connect");
-		return (1);
 	}
 
 	table_api_on_update(table_postgres_update);

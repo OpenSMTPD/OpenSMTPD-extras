@@ -194,7 +194,7 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 	const char		*line, *name;
 	uint32_t		 v, datalen;
 	uint64_t		 id, qid;
-	int			 status, type;
+	int			 type;
 	int			 fds[2], fdin, fdout;
 
 	log_trace(TRACE_FILTERS, "filter-api:%s imsg %s", filter_name,
@@ -753,14 +753,14 @@ filter_api_init(void)
 	log_init(-1);
 	log_verbose(1);
 
+	smtpd_process = PROC_FILTER;
+	filter_name = __progname;
+
 	pw = getpwnam(SMTPD_USER);
 	if (pw == NULL) {
 		log_warn("warn: filter-api:%s getpwnam", filter_name);
 		fatalx("filter-api: exiting");
 	}
-
-	smtpd_process = PROC_FILTER;
-	filter_name = __progname;
 
 	tree_init(&queries);
 	tree_init(&sessions);
@@ -1024,6 +1024,8 @@ filter_api_mailaddr_to_text(const struct mailaddr *maddr)
 	static char  buffer[SMTPD_MAXLINESIZE];
 
 	strlcpy(buffer, maddr->user, sizeof buffer);
+	if (maddr->domain[0] == '\0')
+		return (buffer);
 	strlcat(buffer, "@", sizeof buffer);
 	if (strlcat(buffer, maddr->domain, sizeof buffer) >= sizeof buffer)
 		return (NULL);
