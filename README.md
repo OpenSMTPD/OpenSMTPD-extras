@@ -1,59 +1,29 @@
-Preliminary note
-================
+# OpenSMTPD-extras
+This is the mirror of the official repository of OpenSMTPD addons
 
-This package provides pluggable backends to the OpenSMTPD server.
+# How to install
+First, you need to clone the repository matching your OpenSMTPD version.
+As of now, only "master" and "portable" are supported, tags will be issued for specific versions later.
 
-For more information: [http://www.opensmtpd.org/](http://www.opensmtpd.org/)
-
-How to build, configure and use OpenSMTPD extras
-================================================
-
-Dependencies
-------------
-
-XXX
-
-
-Get the source
---------------
-
-    git clone -b portable git://github.com/OpenSMTPD/opensmtpd-extras.git
+    $ git clone https://github.com/OpenSMTPD/OpenSMTPD-extras.git -b master
 
 or
 
-    wget http://www.opensmtpd.org/archives/opensmtpd-extras-portable.tar.gz
-    tar xzvf opensmtpd-extras-portable.tar.gz
+    $ git clone https://github.com/OpenSMTPD/OpenSMTPD-extras.git -b portable
+    
+
+Secondly, you need to bootstrap the repository, some dependencies (autotools, libtool) may be needed:
+
+    $ sh bootstrap
+
+Then, you need to configure what add-ons you want to install, for example:
+
+    $ ./configure --libexecdir=/usr/libexec/opensmtpd --with-table-mysql --with-filter-stub --with-queue-ram
 
 
-Build
------
+Finally build and install:
 
-    cd opensmtpd-extras
-    ./bootstrap  # Only if you build from git sources
-    ./configure
-    make
+    $ make
+    # make install
 
-### Special notes for FreeBSD/DragonFlyBSD/Mac OS X:
-
-Please launch configure with special directive about libevent directory:
-
-#### FreeBSD:
-
-    ./configure --with-libevent-dir=/usr/local
-
-#### DragonFlyBSD:
-
-    ./configure --with-libevent-dir=/usr/pkg
-
-#### Mac OS X:
-
-    ./configure --with-libevent-dir=/opt/local
-    make CFLAGS="-DBIND_8_COMPAT=1"
-
-
-Install
--------
-
-    sudo make install
-
-
+The addons will be installed in /usr/libexec/opensmtpd where OpenSMTPD can find them.
