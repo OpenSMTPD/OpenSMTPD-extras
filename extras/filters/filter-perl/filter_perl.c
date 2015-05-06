@@ -140,11 +140,13 @@ call_sub_sv(SV *plsub, const char *format, ...)
 static int
 on_connect(uint64_t id, struct filter_connect *conn)
 {
-	const char *local;
-	const char *remote;
+	char local[SMTPD_MAXHOSTNAMELEN];
+	char remote[SMTPD_MAXHOSTNAMELEN];
 
-	local = filter_api_sockaddr_to_text((struct sockaddr *)&conn->local);
-	remote = filter_api_sockaddr_to_text((struct sockaddr *)&conn->remote);
+	(void)snprintf(local, sizeof local, "%s",
+	    filter_api_sockaddr_to_text((struct sockaddr *)&conn->local));
+	(void)snprintf(remote, sizeof remote, "%s",
+	    filter_api_sockaddr_to_text((struct sockaddr *)&conn->remote));
 	
 	call_sub_sv((SV *)pl_on_connect, "%i%s%s%s", id, local, remote, conn->hostname);
 }
