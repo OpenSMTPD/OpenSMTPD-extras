@@ -392,7 +392,7 @@ io_reload(struct io *io)
 		events = EV_READ;
 	if (IO_WRITING(io) && !(io->flags & IO_PAUSE_OUT) && io_queued(io))
 		events |= EV_WRITE;
-	log_debug("io reset: %p, events=%d, %d", io, events, io_queued(io));
+
 	io_reset(io, events, io_dispatch);
 }
 
@@ -545,11 +545,10 @@ io_dispatch(int fd, short ev, void *humppa)
 		goto leave;
 	}
 
-write:
 	if (ev & EV_WRITE && (w = io_queued(io))) {
 		if ((n = iobuf_write(io->iobuf, io->sock)) < 0) {
 			if (n == IOBUF_WANT_WRITE) /* kqueue bug? */
-				goto write;
+				goto read;
 			if (n == IOBUF_CLOSED)
 				io_callback(io, IO_DISCONNECTED);
 			else {
@@ -562,11 +561,6 @@ write:
 		}
 		if (w > io->lowat && w - n <= io->lowat)
 			io_callback(io, IO_LOWAT);
-		else {
-			if (w - n)
-				goto write;
-		}
-
 	}
     read:
 
