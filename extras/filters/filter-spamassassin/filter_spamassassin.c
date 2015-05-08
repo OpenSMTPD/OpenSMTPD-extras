@@ -204,8 +204,6 @@ spamassassin_message(struct spamassassin *sa, uint64_t id) {
 
 static int
 spamassassin_response(struct spamassassin *sa, uint64_t id) {
-	char *line;
-
 	if (shutdown(sa->fd, SHUT_WR) == -1) {
 		log_warn("warn: filer-spamassassin: shutdown");
 		return -1;

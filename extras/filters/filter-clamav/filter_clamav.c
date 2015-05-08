@@ -165,8 +165,6 @@ clamav_message(struct clamav *cl, uint64_t id) {
 
 static int
 clamav_response(struct clamav *cl, uint64_t id) {
-	char *line;
-
 	if (clamav_write(cl, "", EOF))
 		return -1;
 	if (clamav_message(cl, id) == -1)
