@@ -50,7 +50,8 @@ enum {
 
 struct config {
 	struct dict	 conf;
-	redisContext    *db;
+	redisContext    *master;
+	redisContext	*slave;
 	char		*queries[REDIS_MAX];
 };
 
@@ -102,6 +103,7 @@ main(int argc, char **argv)
 	}
 	if (config_connect(config) == 0) {
 		log_warnx("warn: table-redis: could not connect");
+		return (1);
 	}
 
 	table_api_on_update(table_redis_update);
@@ -116,20 +118,20 @@ main(int argc, char **argv)
 static struct config *
 config_load(const char *path)
 {
-	struct config	*conf;
+	struct config	*config;
 	FILE		*fp;
 	size_t		 flen;
 	char		*key, *value, *buf, *lbuf;
 
 	lbuf = NULL;
 
-	conf = calloc(1, sizeof(*conf));
-	if (conf == NULL) {
+	config = calloc(1, sizeof(*config));
+	if (config == NULL) {
 		log_warn("warn: table-redis: calloc");
 		return (NULL);
 	}
 
-	dict_init(&conf->conf);
+	dict_init(&config->conf);
 
 	fp = fopen(path, "r");
 	if (fp == NULL) {
@@ -174,7 +176,7 @@ config_load(const char *path)
 			goto end;
 		}
 
-		if (dict_check(&conf->conf, key)) {
+		if (dict_check(&config->conf, key)) {
 			log_warnx("warn: table-redis: duplicate key %s", key);
 			goto end;
 		}
@@ -185,40 +187,40 @@ config_load(const char *path)
 			goto end;
 		}
 
-		dict_set(&conf->conf, key, value);
+		dict_set(&config->conf, key, value);
 	}
 
 	free(lbuf);
 	fclose(fp);
-	return (conf);
+	return (config);
 
 end:
 	free(lbuf);
 	if (fp)
 		fclose(fp);
-	config_free(conf);
+	config_free(config);
 	return (NULL);
 }
 
 static void
-config_reset(struct config *conf)
+config_reset(struct config *config)
 {
 	size_t	i;
 
 	for (i = 0; i < REDIS_MAX; i++)
-		if (conf->queries[i]) {
-			free(conf->queries[i]);
-			conf->queries[i] = NULL;
+		if (config->queries[i]) {
+			free(config->queries[i]);
+			config->queries[i] = NULL;
 		}
 
-	if (conf->db) {
-		redisFree(conf->db);
-		conf->db = NULL;
+	if (config->master) {
+		redisFree(config->master);
+		config->master = NULL;
 	}
 }
 
 static int
-config_connect(struct config *conf)
+config_connect(struct config *config)
 {
 	static const struct {
 		const char	*name;
@@ -235,8 +237,10 @@ config_connect(struct config *conf)
 	};
 	size_t	 i;
 
-	char	*host = "127.0.0.1";
-	int	port = 6379;
+	char	*master = "127.0.0.1";
+	int	master_port = 6379;
+	char	*slave = "NULL";
+	int	slave_port = 6380;
 	char	*password = NULL;
 	int	database;
 
@@ -251,25 +255,36 @@ config_connect(struct config *conf)
 	log_debug("debug: table-redis: (re)connecting");
 
 	/* Disconnect first, if needed */
-	config_reset(conf);
+	config_reset(config);
 
-	if ((value = dict_get(&conf->conf, "host")))
-		host = value;
+	if ((value = dict_get(&config->conf, "master")))
+		master = value;
+	if ((value = dict_get(&config->conf, "slave")))
+		slave = value;
 
-	if ((value = dict_get(&conf->conf, "port"))) {
+	if ((value = dict_get(&config->conf, "master_port"))) {
 		e = NULL;
 		ll = strtonum(value, 0, 65535, &e);
 		if (e) {
-			log_warnx("warn: table-redis: bad value for port: %s", e);
+			log_warnx("warn: table-redis: bad value for master_port: %s", e);
 			goto end;
 		}
-		port = ll;
+		master_port = ll;
+	}
+	if ((value = dict_get(&config->conf, "slave_port"))) {
+		e = NULL;
+		ll = strtonum(value, 0, 65535, &e);
+		if (e) {
+			log_warnx("warn: table-redis: bad value for slave_port: %s", e);
+			goto end;
+		}
+		slave_port = ll;
 	}
 
-	if ((value = dict_get(&conf->conf, "password")))
+	if ((value = dict_get(&config->conf, "password")))
 	        password = value;
 
-	if ((value = dict_get(&conf->conf, "database"))) {
+	if ((value = dict_get(&config->conf, "database"))) {
 		e = NULL;
 		ll = strtonum(value, 0, 256, &e);
 		if (e) {
@@ -279,40 +294,90 @@ config_connect(struct config *conf)
 		database = ll;
 	}
 
-	conf->db = redisConnect(host, port);
-	if (conf->db == NULL) {
-		log_warnx("warn: table-redis: redisConnect return NULL");
+	if (!strncmp("unix:", master, 5)) {
+		log_debug("debug: table-redis: connect via unix socket %s", master + 5);
+		config->master = redisConnectUnix(master + 5);
+	}
+	else {
+		log_debug("debug: table-redis: connect to master via tcp at %s:%d", master, master_port);
+		config->master = redisConnect(master, master_port);
+	}
+	if (config->master == NULL) {
+		log_warnx("warn: table-redis: Can't create redis context for master");
 		goto end;
 	}
 
-	if (password) {
-		res = redisCommand(conf->db, "AUTH %s", password);
-		if (res->type == REDIS_REPLY_ERROR) {
-			log_warnx("warn: table-redis: authentication failed");
-			goto end;
+	if (!config->master->err) {
+		log_debug("debug: table-redis: connected to master");
+		if (password) {
+			res = redisCommand(config->master, "AUTH %s", password);
+			if (res->type == REDIS_REPLY_ERROR) {
+				log_warnx("warn: table-redis: authentication on master failed");
+				goto end;
+			}
+			freeReplyObject(res);
 		}
-		freeReplyObject(res);
+
+		if (database != 0) {
+			res = redisCommand(config->master, "SELECT %d", database);
+			if (res->type != REDIS_REPLY_STATUS) {
+				log_warnx("warn: table-redis: database selection on master failed");
+				goto end;
+			}
+			freeReplyObject(res);
+		}
 	}
 
-	if (database != 0) {
-		res = redisCommand(conf->db, "SELECT %d", database);
-		if (res->type != REDIS_REPLY_STATUS) {
-			log_warnx("warn: table-redis: authentication failed");
+	if (slave) {
+		if (!strncmp("unix:", slave, 5)) {
+			log_debug("debug: table-redis: connect to slave via unix socket %s", slave + 5);
+			config->slave = redisConnectUnix(slave + 5);
+		}
+		else {
+			log_debug("debug: table-redis: connect to slave via tcp at %s:%d", slave, slave_port);
+			config->slave = redisConnect(slave, slave_port);
+		}
+
+		if (config->slave == NULL) {
+			log_warnx("warn: table-redis: Can't create redis context for slave");
 			goto end;
 		}
-		freeReplyObject(res);
+		if (!config->slave->err) {
+			if (password) {
+				res = redisCommand(config->slave, "AUTH %s", password);
+				if (res->type == REDIS_REPLY_ERROR) {
+					log_warnx("warn: table-redis: authentication on slave failed");
+					goto end;
+				}
+				freeReplyObject(res);
+			}
+
+			if (database != 0) {
+				res = redisCommand(config->slave, "SELECT %d", database);
+				if (res->type != REDIS_REPLY_STATUS) {
+					log_warnx("warn: table-redis: database selection on slave failed");
+					goto end;
+				}
+				freeReplyObject(res);
+			}
+		}
 	}
 
 	for (i = 0; i < REDIS_MAX; i++) {
-		q = dict_get(&conf->conf, qspec[i].name);
+		q = dict_get(&config->conf, qspec[i].name);
 		if (q)
-			conf->queries[i] = strdup(q);
+			config->queries[i] = strdup(q);
 		else
-			conf->queries[i] = strdup(qspec[i].default_query);
-		if (conf->queries[i] == NULL) {
+			config->queries[i] = strdup(qspec[i].default_query);
+		if (config->queries[i] == NULL) {
 			log_warn("warn: table-redis: malloc");
 			goto end;
 		}
+	}
+
+	if (config->master->err && config->slave->err) {
+		log_warnx("warn: table-redis: redisConnect for master and slave failed");
+		goto end;
 	}
 
 	log_debug("debug: table-redis: connected");
@@ -322,21 +387,21 @@ config_connect(struct config *conf)
 end:
 	if (res)
 		freeReplyObject(res);
-	config_reset(conf);
+	config_reset(config);
 	return (0);
 }
 
 static void
-config_free(struct config *conf)
+config_free(struct config *config)
 {
 	void	*value;
 
-	config_reset(conf);
+	config_reset(config);
 
-	while (dict_poproot(&conf->conf, &value))
+	while (dict_poproot(&config->conf, &value))
 		free(value);
 
-	free(conf);
+	free(config);
 }
 
 static int
@@ -364,15 +429,6 @@ table_redis_query(const char *key, int service)
 	int		i;
 	int		retry_times;
 
-	for(i = 0; i < REDIS_MAX; i++)
-		if (service == 1 << i) {
-			query = config->queries[i];
-			break;
-		}
-
-	if (query == NULL)
-		return (NULL);
-
 	retry_times = 3;
 
  retry:
@@ -382,10 +438,28 @@ table_redis_query(const char *key, int service)
 		return (NULL);
 	}
 
-	res = redisCommand(config->db, query, key);
+	for(i = 0; i < REDIS_MAX; i++)
+		if (service == 1 << i) {
+			query = config->queries[i];
+			break;
+		}
+
+	if (query == NULL)
+		return (NULL);
+
+	if (!config->master->err) {
+		log_debug("debug: table-redis: running query \"%s\" on master", query);
+		res = redisCommand(config->master, query, key);
+	}
+	else if (!config->slave->err) {
+		log_debug("debug: table-redis: running query \"%s\" on slave", query);
+		res = redisCommand(config->slave, query, key);
+	}
+	else
+		return (NULL);
 	if (res == NULL) {
 		log_warnx("warn: table-redis: redisCommand: %s",
-		    config->db->errstr);
+		    config->master->errstr);
 
 		if (config_connect(config))
 			goto retry;
@@ -402,7 +476,7 @@ table_redis_check(int service, struct dict *params, const char *key)
 	int		 r;
 	redisReply	*reply;
 
-	if (config->db == NULL && config_connect(config) == 0)
+	if (config->master == NULL && config_connect(config) == 0)
 		return (-1);
 
 	reply = table_redis_query(key, service);
@@ -439,7 +513,7 @@ table_redis_lookup(int service, struct dict *params, const char *key, char *dst,
 	unsigned int	i;
 	int		r;
 
-	if (config->db == NULL && config_connect(config) == 0)
+	if (config->master == NULL && config_connect(config) == 0)
 		return (-1);
 
 	reply = table_redis_query(key, service);
