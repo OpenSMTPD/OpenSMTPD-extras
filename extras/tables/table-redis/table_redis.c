@@ -36,28 +36,28 @@
 #include "log.h"
 
 enum {
-	SQL_ALIAS = 0,
-	SQL_DOMAIN,
-	SQL_CREDENTIALS,
-	SQL_NETADDR,
-	SQL_USERINFO,
-	SQL_SOURCE,
-	SQL_MAILADDR,
-	SQL_ADDRNAME,
+	REDIS_ALIAS = 0,
+	REDIS_DOMAIN,
+	REDIS_CREDENTIALS,
+	REDIS_NETADDR,
+	REDIS_USERINFO,
+	REDIS_SOURCE,
+	REDIS_MAILADDR,
+	REDIS_ADDRNAME,
 
-	SQL_MAX
+	REDIS_MAX
 };
 
 struct config {
 	struct dict	 conf;
 	redisContext    *db;
-	char		*statements[SQL_MAX];
+	char		*queries[REDIS_MAX];
 };
 
 static int table_redis_update(void);
-static int table_redis_lookup(int, const char *, char *, size_t);
-static int table_redis_check(int, const char *);
-static int table_redis_fetch(int, char *, size_t);
+static int table_redis_lookup(int, struct dict *, const char *, char *, size_t);
+static int table_redis_check(int, struct dict *, const char *);
+static int table_redis_fetch(int, struct dict *, char *, size_t);
 
 static redisReply *table_redis_query(const char *key, int service);
 
@@ -178,7 +178,7 @@ config_load(const char *path)
 			log_warnx("warn: table-redis: duplicate key %s", key);
 			goto end;
 		}
-		
+
 		value = strdup(value);
 		if (value == NULL) {
 			log_warn("warn: table-redis: malloc");
@@ -205,10 +205,10 @@ config_reset(struct config *conf)
 {
 	size_t	i;
 
-	for (i = 0; i < SQL_MAX; i++)
-		if (conf->statements[i]) {
-			free(conf->statements[i]);
-			conf->statements[i] = NULL;
+	for (i = 0; i < REDIS_MAX; i++)
+		if (conf->queries[i]) {
+			free(conf->queries[i]);
+			conf->queries[i] = NULL;
 		}
 
 	if (conf->db) {
@@ -223,7 +223,7 @@ config_connect(struct config *conf)
 	static const struct {
 		const char	*name;
 		const char	*default_query;
-	} qspec[SQL_MAX] = {
+	} qspec[REDIS_MAX] = {
 		{ "query_alias",	"GET alias:%s" },
 		{ "query_domain",	"GET domain:%s" },
 		{ "query_credentials",	"GET credentials:%s" },
@@ -235,8 +235,10 @@ config_connect(struct config *conf)
 	};
 	size_t	 i;
 
-	char	*host;
-	int	port;
+	char	*host = "127.0.0.1";
+	int	port = 6379;
+	char	*password = NULL;
+	int	database;
 
 	char	*q;
 
@@ -244,8 +246,7 @@ config_connect(struct config *conf)
 	const char	*e;
 	long long	 ll;
 
-	host = "127.0.0.1";
-	port = 6379;
+	redisReply	*res = NULL;
 
 	log_debug("debug: table-redis: (re)connecting");
 
@@ -265,18 +266,49 @@ config_connect(struct config *conf)
 		port = ll;
 	}
 
+	if ((value = dict_get(&conf->conf, "password")))
+	        password = value;
+
+	if ((value = dict_get(&conf->conf, "database"))) {
+		e = NULL;
+		ll = strtonum(value, 0, 256, &e);
+		if (e) {
+			log_warnx("warn: table-redis: bad value for database: %s", e);
+			goto end;
+		}
+		database = ll;
+	}
+
 	conf->db = redisConnect(host, port);
 	if (conf->db == NULL) {
 		log_warnx("warn: table-redis: redisConnect return NULL");
 		goto end;
 	}
 
-	for (i = 0; i < SQL_MAX; i++) {
+	if (password) {
+		res = redisCommand(conf->db, "AUTH %s", password);
+		if (res->type == REDIS_REPLY_ERROR) {
+			log_warnx("warn: table-redis: authentication failed");
+			goto end;
+		}
+		freeReplyObject(res);
+	}
+
+	if (database != 0) {
+		res = redisCommand(conf->db, "SELECT %d", database);
+		if (res->type != REDIS_REPLY_STATUS) {
+			log_warnx("warn: table-redis: authentication failed");
+			goto end;
+		}
+		freeReplyObject(res);
+	}
+
+	for (i = 0; i < REDIS_MAX; i++) {
 		q = dict_get(&conf->conf, qspec[i].name);
 		if (q)
-			conf->statements[i] = strdup(q);
+			conf->queries[i] = strdup(q);
 		else
-			conf->statements[i] = strdup(qspec[i].default_query);
+			conf->queries[i] = strdup(qspec[i].default_query);
 	}
 
 	log_debug("debug: table-redis: connected");
@@ -284,6 +316,8 @@ config_connect(struct config *conf)
 	return (1);
 
 end:
+	if (res)
+		freeReplyObject(res);
 	config_reset(conf);
 	return (0);
 }
@@ -333,12 +367,12 @@ retry:
 	if (retry_times < 0) {
 		log_warnx("warn: table-redis: giving up: too many retries");
 		return (NULL);
-	} 
+	}
 
 	stmt = NULL;
-	for(i = 0; i < SQL_MAX; i++)
+	for(i = 0; i < REDIS_MAX; i++)
 		if (service == 1 << i) {
-			stmt = config->statements[i];
+			stmt = config->queries[i];
 			break;
 		}
 
@@ -360,7 +394,7 @@ retry:
 }
 
 static int
-table_redis_check(int service, const char *key)
+table_redis_check(int service, struct dict *params, const char *key)
 {
 	int		 r;
 	redisReply	*reply;
@@ -378,7 +412,7 @@ table_redis_check(int service, const char *key)
 		case REDIS_REPLY_ARRAY:
 			r = 1;
 			break;
-		
+
 		case REDIS_REPLY_NIL:
 			r = 0;
 			break;
@@ -396,7 +430,7 @@ table_redis_check(int service, const char *key)
 }
 
 static int
-table_redis_lookup(int service, const char *key, char *dst, size_t sz)
+table_redis_lookup(int service, struct dict *params, const char *key, char *dst, size_t sz)
 {
 	redisReply	*reply, *elmt;
 	unsigned int	i;
@@ -426,7 +460,7 @@ table_redis_lookup(int service, const char *key, char *dst, size_t sz)
 		else if (reply->type == REDIS_REPLY_ARRAY) {
 			if (reply->elements == 0)
 				r = 0;
-			
+
 			for (i = 0; i < reply->elements; i++) {
 				elmt = reply->element[i];
 				if (elmt == NULL ||
@@ -469,13 +503,12 @@ table_redis_lookup(int service, const char *key, char *dst, size_t sz)
 		r = -1;
 	}
 
-end:
 	freeReplyObject(reply);
 	return (r);
 }
 
 static int
-table_redis_fetch(int service, char *dst, size_t sz)
+table_redis_fetch(int service, struct dict *params, char *dst, size_t sz)
 {
 	return (-1);
 }
