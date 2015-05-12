@@ -360,30 +360,29 @@ static redisReply *
 table_redis_query(const char *key, int service)
 {
 	redisReply	*res;
-	char		*stmt;
+	char		*query = NULL;
 	int		i;
 	int		retry_times;
 
+	for(i = 0; i < REDIS_MAX; i++)
+		if (service == 1 << i) {
+			query = config->queries[i];
+			break;
+		}
+
+	if (query == NULL)
+		return (NULL);
+
 	retry_times = 3;
 
-retry:
+ retry:
 	--retry_times;
 	if (retry_times < 0) {
 		log_warnx("warn: table-redis: giving up: too many retries");
 		return (NULL);
 	}
 
-	stmt = NULL;
-	for(i = 0; i < REDIS_MAX; i++)
-		if (service == 1 << i) {
-			stmt = config->queries[i];
-			break;
-		}
-
-	if (stmt == NULL)
-		return (NULL);
-
-	res = redisCommand(config->db, stmt, key);
+	res = redisCommand(config->db, query, key);
 	if (res == NULL) {
 		log_warnx("warn: table-redis: redisCommand: %s",
 		    config->db->errstr);
