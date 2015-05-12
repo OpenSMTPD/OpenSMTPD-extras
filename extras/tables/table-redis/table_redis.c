@@ -446,10 +446,6 @@ table_redis_lookup(int service, struct dict *params, const char *key, char *dst,
 	case K_ALIAS:
 		memset(dst, 0, sz);
 		if (reply->type == REDIS_REPLY_STRING) {
-			if (dst[0] && strlcat(dst, ", ", sz) >= sz) {
-				log_warnx("warn: table-redis: result too large");
-				r = -1;
-			}
 			if (strlcat(dst, reply->str, sz) >= sz) {
 				log_warnx("warn: table-redis: result too large");
 				r = -1;
@@ -481,6 +477,37 @@ table_redis_lookup(int service, struct dict *params, const char *key, char *dst,
 		break;
 	case K_CREDENTIALS:
 	case K_USERINFO:
+		memset(dst, 0, sz);
+		if (reply->type == REDIS_REPLY_STRING) {
+			if (strlcpy(dst, reply->str, sz) >= sz) {
+				log_warnx("warn: table-redis: result too large");
+				r = -1;
+			}
+		}
+		else if (reply->type == REDIS_REPLY_ARRAY) {
+			if (reply->elements == 0)
+				r = 0;
+
+			for (i = 0; i < reply->elements; i++) {
+				elmt = reply->element[i];
+				if (elmt == NULL ||
+				    elmt->type != REDIS_REPLY_STRING) {
+					r = -1;
+					break;
+				}
+				if (dst[0] && strlcat(dst, ":", sz) >= sz) {
+					log_warnx("warn: table-redis: result too large");
+					r = -1;
+				}
+				if (strlcat(dst, elmt->str, sz) >= sz) {
+					log_warnx("warn: table-redis: result too large");
+					r = -1;
+				}
+			}
+		}
+		else
+			r = -1;
+		break;
 	case K_DOMAIN:
 	case K_NETADDR:
 	case K_SOURCE:
