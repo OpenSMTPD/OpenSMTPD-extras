@@ -20,6 +20,7 @@
 
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
@@ -130,10 +131,10 @@ spamassassin_read(struct spamassassin *sa, char **l) {
 
 static int
 spamassassin_status(struct spamassassin *sa, const char *l) {
-	char s[SPAMASSASSIN_EX_MAX];
+	char s[SPAMASSASSIN_EX_MAX + 1];
 	int r;
 
-	if (sscanf(l, "SPAMD/%*d.%*d %d %"SPAMASSASSIN_QUOTE(SPAMASSASSIN_EX_MAX)"s", &r, &s) != 2) {
+	if (sscanf(l, "SPAMD/%*d.%*d %d %"SPAMASSASSIN_QUOTE(SPAMASSASSIN_EX_MAX)"s", &r, s) != 2) {
 		(errno ? log_warn : log_warnx)("warn: filer-spamassassin: status sscanf");
 		return -1;
 	}
@@ -146,9 +147,9 @@ spamassassin_status(struct spamassassin *sa, const char *l) {
 
 static int
 spamassassin_result(struct spamassassin *sa, const char *l) {
-	char s[SPAMASSASSIN_EX_MAX];
+	char s[SPAMASSASSIN_EX_MAX + 1];
 
-	if (sscanf(l, "Spam: %"SPAMASSASSIN_QUOTE(SPAMASSASSIN_EX_MAX)"s ; %*lf / %*lf", &s) != 1) {
+	if (sscanf(l, "Spam: %"SPAMASSASSIN_QUOTE(SPAMASSASSIN_EX_MAX)"s ; %*f / %*f", s) != 1) {
 		(errno ? log_warn : log_warnx)("warn: filer-spamassassin: result sscanf");
 		return -1;
 	}
@@ -204,8 +205,6 @@ spamassassin_message(struct spamassassin *sa, uint64_t id) {
 
 static int
 spamassassin_response(struct spamassassin *sa, uint64_t id) {
-	char *line;
-
 	if (shutdown(sa->fd, SHUT_WR) == -1) {
 		log_warn("warn: filer-spamassassin: shutdown");
 		return -1;

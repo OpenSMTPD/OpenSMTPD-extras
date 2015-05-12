@@ -21,6 +21,7 @@
 
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <limits.h>
@@ -132,9 +133,9 @@ clamav_read(struct clamav *cl, char **l) {
 
 static int
 clamav_result(struct clamav *cl, const char *l) {
-	char s[BUFSIZ];
+	char s[BUFSIZ + 1];
 
-	if (sscanf(l, "stream: %"CLAMAV_QUOTE(BUFSIZ)"s", &s) != 1) {
+	if (sscanf(l, "stream: %"CLAMAV_QUOTE(BUFSIZ)"s", s) != 1) {
 		(errno ? log_warn : log_warnx)("warn: filer-clamav: result sscanf");
 		return -1;
 	}
@@ -144,9 +145,8 @@ clamav_result(struct clamav *cl, const char *l) {
 }
 
 static int
-clamav_message(struct clamav *cl, uint64_t id) {
+clamav_message(struct clamav *cl) {
 	char *l = NULL;
-	int r;
 
 	if (clamav_read(cl, &l) != 0)
 		return -1;
@@ -164,12 +164,10 @@ clamav_message(struct clamav *cl, uint64_t id) {
 }
 
 static int
-clamav_response(struct clamav *cl, uint64_t id) {
-	char *line;
-
+clamav_response(struct clamav *cl) {
 	if (clamav_write(cl, "", EOF))
 		return -1;
-	if (clamav_message(cl, id) == -1)
+	if (clamav_message(cl) == -1)
 		return -1;
 	return 0;
 }
@@ -218,7 +216,6 @@ static void
 clamav_on_dataline(uint64_t id, const char *l)
 {
 	struct clamav *cl;
-	uint32_t len;
 
 	filter_api_writeln(id, l);
 	if ((cl = filter_api_get_udata(id)) == NULL)
@@ -235,7 +232,7 @@ clamav_on_eom(uint64_t id, size_t size)
 
 	if ((cl = filter_api_get_udata(id)) == NULL)
 		return filter_api_accept(id);
-	if (clamav_response(cl, id) == -1) {
+	if (clamav_response(cl) == -1) {
 		clamav_clear(cl);
 		filter_api_set_udata(id, NULL);
 		return filter_api_reject_code(id, FILTER_FAIL, 471, "Virus filter failed"); /* todo: better code/message? */
