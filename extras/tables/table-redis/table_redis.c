@@ -307,6 +307,10 @@ config_connect(struct config *conf)
 			conf->queries[i] = strdup(q);
 		else
 			conf->queries[i] = strdup(qspec[i].default_query);
+		if (conf->queries[i] == NULL) {
+			log_warn("warn: table-redis: malloc");
+			goto end;
+		}
 	}
 
 	log_debug("debug: table-redis: connected");
