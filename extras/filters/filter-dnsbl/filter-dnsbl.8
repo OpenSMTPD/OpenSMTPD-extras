@@ -1,0 +1,58 @@
+.\"	$OpenBSD: $
+.\"
+.\" Copyright (c) 2015, Joerg Jung <jung@openbsd.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd $Mdocdate: May 15 2015 $
+.Dt FILTER-DNSBL 8
+.Os
+.Sh NAME
+.Nm filter-dnsbl
+.Nd smtpd filter for DNSBL checks
+.Sh SYNOPSIS
+.Nm
+.Op Fl h Ar host
+.Sh DESCRIPTION
+.Nm
+is a filter for
+.Xr smtpd 8
+which can be used to check new connections against a
+DNS-based Blackhole List (DNSBL).
+.Pp
+The options are as follows:
+.Bl -tag -width "-h host"
+.It Fl h Ar host
+Set the DNSBL
+.Ar host
+to be queried.
+.Pp
+The default
+.Ar host
+is dnsbl.sorbs.net.
+.El
+.Pp
+The remote IP address of new connections is used in a DNS query against the
+DNSBL.
+If the remote address is listed, the connection is rejected, otherwise
+accepted.
+.Sh SEE ALSO
+.Xr smtpd.conf 5 ,
+.Xr smtpd 8
+.Sh HISTORY
+The first version of
+.Nm
+was written in 2013.
+.Sh AUTHORS
+Eric Faurot
+.Aq eric@openbsd.org

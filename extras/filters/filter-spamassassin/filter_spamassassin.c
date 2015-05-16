@@ -280,7 +280,7 @@ spamassassin_on_eom(uint64_t id, size_t size)
 	if (spamassassin_response(sa, id) == -1) {
 		spamassassin_clear(sa);
 		filter_api_set_udata(id, NULL);
-		return filter_api_reject_code(id, FILTER_FAIL, 471, "Spam filter failed"); /* todo: better code/message? */
+		return filter_api_reject_code(id, FILTER_FAIL, 471, "Spam filter failed");
 	}
 	r = sa->r;
 	spamassassin_clear(sa);
@@ -292,7 +292,7 @@ spamassassin_on_eom(uint64_t id, size_t size)
 		}
 		if (spamassassin_strategy == SPAMASSASSIN_REJECT) {
 			log_warnx("warn: spamassassin_filter: on_eom: REJECT spam id=%016"PRIx64, id);
-			return filter_api_reject_code(id, FILTER_CLOSE, 554, "Spam"); /* todo: be more verbose here, add spam score or extended code 5.7.1 */
+			return filter_api_reject_code(id, FILTER_CLOSE, 554, "Spam");
 		}
 	}
 	return filter_api_accept(id);

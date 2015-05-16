@@ -14,5 +14,3 @@ DPADD+=		${LIBUTIL} ${LIBEVENT}
 LDADD+=		${LIBUTIL} ${LIBEVENT}
 
 BINDIR	= /usr/libexec/smtpd
-
-NOMAN	= noman
