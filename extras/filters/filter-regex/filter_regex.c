@@ -162,7 +162,7 @@ regex_on_connect(uint64_t id, struct filter_connect *c)
 {
 	if (regex_match(&regex_connect, c->hostname)) {
 		log_warnx("filter-regex: on_connect: REJECT connect hostname id=%016"PRIx64, id);
-		return filter_api_reject_code(id, FILTER_FAIL, 554, "Hostname rejected");
+		return filter_api_reject_code(id, FILTER_FAIL, 554, "5.7.1 Hostname rejected");
 	}
 	return filter_api_accept(id);
 }
@@ -172,7 +172,7 @@ regex_on_helo(uint64_t id, const char *h)
 {
 	if (regex_match(&regex_helo, h)) {
 		log_warnx("filter-regex: on_helo: REJECT helo hostname id=%016"PRIx64, id);
-		return filter_api_reject_code(id, FILTER_FAIL, 554, "Helo rejected");
+		return filter_api_reject_code(id, FILTER_FAIL, 554, "5.7.1 Helo rejected");
 	}
 	return filter_api_accept(id);
 }
@@ -182,7 +182,7 @@ regex_on_mail(uint64_t id, struct mailaddr *m)
 {
 	if (regex_match(&regex_mail, filter_api_mailaddr_to_text(m))) {
 		log_warnx("filter-regex: on_mail: REJECT mail from id=%016"PRIx64, id);
-		return filter_api_reject_code(id, FILTER_FAIL, 554, "Sender rejected");
+		return filter_api_reject_code(id, FILTER_FAIL, 554, "5.7.1 Sender rejected");
 	}
 	return filter_api_accept(id);
 }
@@ -192,7 +192,7 @@ regex_on_rcpt(uint64_t id, struct mailaddr *r)
 {
 	if (regex_match(&regex_rcpt, filter_api_mailaddr_to_text(r))) {
 		log_warnx("filter-regex: on_rcpt: REJECT rcpt to id=%016"PRIx64, id);
-		return filter_api_reject_code(id, FILTER_FAIL, 554, "Recipient rejected");
+		return filter_api_reject_code(id, FILTER_FAIL, 554, "5.7.1 Recipient rejected");
 	}
 	return filter_api_accept(id);
 }
@@ -222,7 +222,7 @@ regex_on_eom(uint64_t id, size_t size)
 	r = *m, free(m), filter_api_set_udata(id, NULL);
 	if (r) {
 		log_warnx("filter-regex: on_eom: REJECT dataline id=%016"PRIx64, id);
-		return filter_api_reject_code(id, FILTER_CLOSE, 554, "Message content rejected");
+		return filter_api_reject_code(id, FILTER_CLOSE, 554, "5.7.1 Message content rejected");
 	}
 	return filter_api_accept(id);
 }
