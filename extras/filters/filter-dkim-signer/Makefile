@@ -6,4 +6,7 @@ DPADD+=	${LIBCRYPTO}
 
 NOMAN=	noman
 
+uninstall:
+	rm -f ${BINDIR}/filter-dkim-signer
+
 .include<bsd.prog.mk>

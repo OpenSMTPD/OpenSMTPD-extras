@@ -4,6 +4,7 @@ NEED_ASR!=	grep -q event_asr_run /usr/include/event.h && echo No || echo Yes
 
 PROG=	filter-dnsbl
 SRCS=	filter_dnsbl.c
+MAN=	filter-dnsbl.8
 
 .if ${NEED_ASR} == "Yes"
 CFLAGS+=	-I${ASRDIR}
@@ -31,5 +32,9 @@ SRCS+=	res_send_async.c
 SRCS+=	sethostent.c
 SRCS+=	event_asr_run.c
 .endif
+
+uninstall:
+	rm -f /usr/share/man/man8/filter-dnsbl.8
+	rm -f ${BINDIR}/filter-dnsbl
 
 .include <bsd.prog.mk>

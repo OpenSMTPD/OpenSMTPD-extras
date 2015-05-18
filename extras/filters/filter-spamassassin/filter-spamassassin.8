@@ -1,0 +1,80 @@
+.\"	$OpenBSD: $
+.\"
+.\" Copyright (c) 2015, Joerg Jung <jung@openbsd.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd $Mdocdate: May 15 2015 $
+.Dt FILTER-SPAMASSASSIN 8
+.Os
+.Sh NAME
+.Nm filter-spamassassin
+.Nd smtpd filter for SpamAssassin spamd
+.Sh SYNOPSIS
+.Nm
+.Op Fl s Ar strategy
+.Sh DESCRIPTION
+.Nm
+is a filter for
+.Xr smtpd 8
+which can be used to filter mails based on decisions from SpamAssassin's
+.Xr spamd 1
+daemon.
+Mails are piped to the daemon, which decides whether a mail is spam or not,
+according to its own configuration.
+.Pp
+The options are as follows:
+.Bl -tag -width "-s strategy"
+.It Fl s Ar strategy
+Set the
+.Ar strategy
+of
+.Nm
+to either accept or reject spam mails.
+The accepted values are:
+.Pp
+.Bl -tag -width "accept" -compact
+.It accept
+Spam mails are accepted.
+.It reject
+Spam mails are rejected.
+.El
+.Pp
+The default
+.Ar strategy
+value is accept.
+.El
+.Pp
+Depending on the chosen
+.Ar strategy
+spam mails are either accepted or rejected with a SMTP 554 reply.
+Non-spam mails are always accepted.
+.\"Accepted messages are marked with a
+.\".Dq X-Filter-SpamAssassin
+.\"header.
+.Sh SPAMASSASSIN CONFIGURATION
+.Nm
+expects that SpamAssassin's
+.Xr spamd 1
+to listen on 127.0.0.1 port 783 for incoming requests.
+This matches to the default configuration of the daemon.
+.Sh SEE ALSO
+.Xr smtpd.conf 5 ,
+.Xr smtpd 8
+.Sh HISTORY
+The first version of
+.Nm
+was written in 2015.
+.Sh AUTHORS
+Joerg Jung
+.Aq jung@openbsd.org

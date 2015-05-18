@@ -235,14 +235,14 @@ clamav_on_eom(uint64_t id, size_t size)
 	if (clamav_response(cl) == -1) {
 		clamav_clear(cl);
 		filter_api_set_udata(id, NULL);
-		return filter_api_reject_code(id, FILTER_FAIL, 471, "Virus filter failed"); /* todo: better code/message? */
+		return filter_api_reject_code(id, FILTER_FAIL, 451, "4.7.1 Virus filter failed");
 	}
 	r = cl->r;
 	clamav_clear(cl);
 	filter_api_set_udata(id, NULL);
 	if (r) {
 		log_warnx("warn: clamav_filter: on_eom: REJECT virus id=%016"PRIx64, id);
-		return filter_api_reject_code(id, FILTER_CLOSE, 554, "Virus"); /* todo: be more verbose here, add virus name or extended code 5.7.1 */
+		return filter_api_reject_code(id, FILTER_CLOSE, 554, "5.7.1 Virus found");
 	}
 	return filter_api_accept(id);
 }
