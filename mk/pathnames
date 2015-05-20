@@ -13,5 +13,3 @@ PATHS=		-DSMTPD_CONFDIR=\"$(sysconfdir)\"			\
 		-DPATH_SMTPCTL=\"$(sbindir)/smtpctl\"			\
 		-DPATH_MAILLOCAL=\"$(pkglibexecdir)/mail.local\"	\
 		-DPATH_LIBEXEC=\"$(pkglibexecdir)\"
-
-

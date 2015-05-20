@@ -1,5 +1,3 @@
-AUTOMAKE_OPTIONS = subdir-objects
-
 AM_CPPFLAGS	 = -I$(smtpd_srcdir)
 AM_CPPFLAGS	+= -I$(compat_srcdir)
 
