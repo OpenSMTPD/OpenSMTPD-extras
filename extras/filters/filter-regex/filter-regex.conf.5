@@ -1,0 +1,128 @@
+.\"	$OpenBSD: $
+.\"
+.\" Copyright (c) 2015, Joerg Jung <jung@openbsd.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd $Mdocdate: May 15 2015 $
+.Dt FILTER-REGEX.CONF 5
+.Os
+.Sh NAME
+.Nm filter-regex.conf
+.Nd filter-regex configuration file
+.Sh DESCRIPTION
+.Nm
+is the configuration file for
+.Xr filter-regex 8 .
+.Pp
+The file consists of rules that, when matched, cause
+.Xr filter-regex 8
+to reject mails.
+.Pp
+The current line can be extended over multiple lines using a trailing backslash
+.Pq Sq \e .
+Comments can be put anywhere in the file using a hash mark
+.Pq Sq # ,
+and extend to the end of the current line.
+Emtpy lines and lines starting with
+.Sq #
+are ignored, as well as leading whitespaces.
+.Pp
+The syntax of
+.Nm
+is described below.
+.Bl -tag -width Ds
+.It Xo
+.Ic connect
+.Op Ic \&!
+.Pf < Ar hostname Ns >
+.Xc
+Reject the connection if the connection sender's
+.Ar hostname
+matches the specified regular expressions.
+.It Xo
+.Ic helo
+.Op Ic \&!
+.Pf < Ar name Ns >
+.Xc
+Reject the connection if the sender supplied HELO
+.Ar name
+matches the specified regular expression.
+.It Xo
+.Ic mail
+.Op Ic \&!
+.Pf < Ar address Ns >
+.Xc
+Reject the mail if the sender supplied MAIL FROM
+.Ar address
+matches the specified regular expression.
+.It Xo
+.Ic rcpt
+.Op Ic \&!
+.Pf < Ar address Ns >
+.Xc
+Reject the mail if the sender supplied RCPT TO
+.Ar address
+matches the specified regular expression.
+.It Xo
+.Ic dataline
+.Op Ic \&!
+.Pf < Ar line Ns >
+.Xc
+Reject the mail if a data (header or body)
+.Ar line
+matches the specified regular expression.
+.El
+.Sh REGULAR EXPRESSIONS
+The regular expressions used in the configuration rules do not need further
+escaping.
+.Pp
+The optional
+.Sq \&!
+character in front of the regular expression (separated by a whitespace)
+reverses the matching result and causes the rule, when matched, to be accepted.
+This is considered a negotiation and break operation, thus allows exceptions to
+the actual rejection rules.
+.Pp
+All subsequent argument characters up to the end of the line are taken
+literally as the regular expression.
+.Pp
+See
+.Xr re_format 7
+for a detailed description of basic and extended regular expressions.
+.Sh EXAMPLES
+The default filter-regex.conf file which ships with OpenSMTPD-extras contains
+commented examples.
+.Sh FILES
+.Bl -tag -width "/etc/mail/filter-regex.conf" -compact
+.It Pa /etc/mail/filter-regex.conf
+Default
+.Nm
+configuration file.
+.El
+.Sh SEE ALSO
+.Xr filter-regex 8 ,
+.Xr smtpd.conf 5 ,
+.Xr smtpd 8 ,
+.Xr re_format 7 ,
+.Xr regex 3
+.Sh HISTORY
+The first version of
+.Xr filter-regex 8
+was written in 2015.
+.Sh AUTHORS
+.Xr filter-regex 8
+was intially written by
+.An Armin Wolfermann Aq Mt armin@wolfermann.org
+and further improved by
+.An Joerg Jung Aq Mt jung@openbsd.org .
