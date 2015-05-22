@@ -1876,7 +1876,7 @@ AC_SUBST([mansubdir])
 #
 HAVE_FILTER_CLAMAV=no
 AC_ARG_WITH([filter-clamav],
-	[  --with-filter-dnsbl	Enable filter clamav],
+	[  --with-filter-clamav	Enable filter clamav],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_CLAMAV], [1],
