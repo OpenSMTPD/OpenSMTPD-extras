@@ -2392,32 +2392,34 @@ LIBS="$LIBS ${SMTPDLIBS}"
 AC_CONFIG_FILES([Makefile
 		openbsd-compat/Makefile
 		mk/Makefile
-		mk/filters/Makefile
-		mk/filters/filter-dnsbl/Makefile
-		mk/filters/filter-monkey/Makefile
-		mk/filters/filter-perl/Makefile
-		mk/filters/filter-python/Makefile
-		mk/filters/filter-trace/Makefile
-		mk/filters/filter-stub/Makefile
-		mk/filters/filter-void/Makefile
-		mk/queues/Makefile
-		mk/queues/queue-null/Makefile
-		mk/queues/queue-python/Makefile
-		mk/queues/queue-ram/Makefile
-		mk/queues/queue-stub/Makefile
-		mk/schedulers/Makefile
-		mk/schedulers/scheduler-python/Makefile
-		mk/schedulers/scheduler-ram/Makefile
-		mk/schedulers/scheduler-stub/Makefile
-		mk/tables/Makefile
-		mk/tables/table-passwd/Makefile
-		mk/tables/table-ldap/Makefile
-		mk/tables/table-mysql/Makefile
-		mk/tables/table-postgres/Makefile
-		mk/tables/table-python/Makefile
-		mk/tables/table-redis/Makefile
-		mk/tables/table-socketmap/Makefile
-		mk/tables/table-sqlite/Makefile
+		mk/stable/Makefile
+		mk/wip/Makefile
+		mk/wip/filters/Makefile
+		mk/wip/filters/filter-dnsbl/Makefile
+		mk/wip/filters/filter-monkey/Makefile
+		mk/wip/filters/filter-perl/Makefile
+		mk/wip/filters/filter-python/Makefile
+		mk/wip/filters/filter-trace/Makefile
+		mk/wip/filters/filter-stub/Makefile
+		mk/wip/filters/filter-void/Makefile
+		mk/wip/queues/Makefile
+		mk/wip/queues/queue-null/Makefile
+		mk/wip/queues/queue-python/Makefile
+		mk/wip/queues/queue-ram/Makefile
+		mk/wip/queues/queue-stub/Makefile
+		mk/wip/schedulers/Makefile
+		mk/wip/schedulers/scheduler-python/Makefile
+		mk/wip/schedulers/scheduler-ram/Makefile
+		mk/wip/schedulers/scheduler-stub/Makefile
+		mk/wip/tables/Makefile
+		mk/wip/tables/table-passwd/Makefile
+		mk/wip/tables/table-ldap/Makefile
+		mk/wip/tables/table-mysql/Makefile
+		mk/wip/tables/table-postgres/Makefile
+		mk/wip/tables/table-python/Makefile
+		mk/wip/tables/table-redis/Makefile
+		mk/wip/tables/table-socketmap/Makefile
+		mk/wip/tables/table-sqlite/Makefile
 		])
 
 #l4761

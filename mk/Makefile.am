@@ -1,1 +1,2 @@
-SUBDIRS =		filters queues schedulers tables
+SUBDIRS =	stable wip
+
