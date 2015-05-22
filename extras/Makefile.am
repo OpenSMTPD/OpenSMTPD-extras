@@ -1,1 +1,2 @@
-SUBDIRS	=	wip
+SUBDIRS	=	wip stable
+

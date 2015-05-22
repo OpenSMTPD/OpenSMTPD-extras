@@ -2406,6 +2406,7 @@ AC_CONFIG_FILES([Makefile
 		openbsd-compat/Makefile
 
 		extras/Makefile
+		extras/stable/Makefile
 		extras/wip/Makefile
 
 		extras/wip/filters/Makefile
