@@ -1,5 +1,4 @@
 api_srcdir		= $(top_srcdir)/api
-smtpd_srcdir		= $(top_srcdir)/api
 filters_srcdir		= $(top_srcdir)/extras/filters
 queues_srcdir		= $(top_srcdir)/extras/queues
 schedulers_srcdir	= $(top_srcdir)/extras/schedulers
