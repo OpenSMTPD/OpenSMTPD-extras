@@ -1874,6 +1874,19 @@ AC_SUBST([mansubdir])
 #
 # FILTERS
 #
+HAVE_FILTER_CLAMAV=no
+AC_ARG_WITH([filter-clamav],
+	[  --with-filter-dnsbl	Enable filter clamav],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_FILTER_CLAMAV], [1],
+				[Define if you have filter clamav])
+			HAVE_FILTER_CLAMAV=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_FILTER_CLAMAV], [test $HAVE_FILTER_CLAMAV = yes])
+
 HAVE_FILTER_DNSBL=no
 AC_ARG_WITH([filter-dnsbl],
 	[  --with-filter-dnsbl	Enable filter dnsbl],
@@ -2396,6 +2409,7 @@ AC_CONFIG_FILES([Makefile
 		extras/wip/Makefile
 
 		extras/wip/filters/Makefile
+		extras/wip/filters/filter-clamav/Makefile
 		extras/wip/filters/filter-dnsbl/Makefile
 		extras/wip/filters/filter-monkey/Makefile
 		extras/wip/filters/filter-perl/Makefile

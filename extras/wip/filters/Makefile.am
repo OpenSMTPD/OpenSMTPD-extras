@@ -1,5 +1,9 @@
 SUBDIRS =
 
+if HAVE_FILTER_CLAMAV
+SUBDIRS +=	filter-clamav
+endif
+
 if HAVE_FILTER_DNSBL
 SUBDIRS	+=	filter-dnsbl
 endif
