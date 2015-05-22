@@ -1887,6 +1887,19 @@ AC_ARG_WITH([filter-clamav],
 )
 AM_CONDITIONAL([HAVE_FILTER_CLAMAV], [test $HAVE_FILTER_CLAMAV = yes])
 
+HAVE_FILTER_DKIM_SIGNER=no
+AC_ARG_WITH([filter-dkim-signer],
+	[  --with-filter-dkim-signer	Enable filter dkim-signer],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_FILTER_DKIM_SIGNER], [1],
+				[Define if you have filter dkim-signer])
+			HAVE_FILTER_DKIM_SIGNER=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_FILTER_DKIM_SIGNER], [test $HAVE_FILTER_DKIM_SIGNER = yes])
+
 HAVE_FILTER_DNSBL=no
 AC_ARG_WITH([filter-dnsbl],
 	[  --with-filter-dnsbl	Enable filter dnsbl],
@@ -1900,6 +1913,19 @@ AC_ARG_WITH([filter-dnsbl],
 )
 AM_CONDITIONAL([HAVE_FILTER_DNSBL], [test $HAVE_FILTER_DNSBL = yes])
 
+HAVE_FILTER_LUA=no
+AC_ARG_WITH([filter-lua],
+	[  --with-filter-lua	Enable filter lua],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_FILTER_LUA], [1],
+				[Define if you have filter lua])
+			HAVE_FILTER_LUA=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_FILTER_LUA], [test $HAVE_FILTER_LUA = yes])
+
 HAVE_FILTER_MONKEY=no
 AC_ARG_WITH([filter-monkey],
 	[  --with-filter-monkey	Enable filter monkey],
@@ -1912,6 +1938,19 @@ AC_ARG_WITH([filter-monkey],
 	]
 )
 AM_CONDITIONAL([HAVE_FILTER_MONKEY], [test $HAVE_FILTER_MONKEY = yes])
+
+HAVE_FILTER_PAUSE=no
+AC_ARG_WITH([filter-pause],
+	[  --with-filter-pause	Enable filter pause],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_FILTER_PAUSE], [1],
+				[Define if you have filter pause])
+			HAVE_FILTER_PAUSE=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_FILTER_PAUSE], [test $HAVE_FILTER_PAUSE = yes])
 
 HAVE_FILTER_PERL=no
 AC_ARG_WITH([filter-perl],
@@ -1938,6 +1977,32 @@ AC_ARG_WITH([filter-python],
 	]
 )
 AM_CONDITIONAL([HAVE_FILTER_PYTHON], [test $HAVE_FILTER_PYTHON = yes])
+
+HAVE_FILTER_REGEX=no
+AC_ARG_WITH([filter-regex],
+	[  --with-filter-regex	Enable filter regex],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_FILTER_REGEX], [1],
+				[Define if you have filter regex])
+			HAVE_FILTER_REGEX=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_FILTER_REGEX], [test $HAVE_FILTER_REGEX = yes])
+
+HAVE_FILTER_SPAMASSASSIN=no
+AC_ARG_WITH([filter-spamassassin],
+	[  --with-filter-spamassassin	Enable filter spamassassin],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_FILTER_SPAMASSASSIN], [1],
+				[Define if you have filter spamassassin])
+			HAVE_FILTER_SPAMASSASSIN=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_FILTER_SPAMASSASSIN], [test $HAVE_FILTER_SPAMASSASSIN = yes])
 
 HAVE_FILTER_STUB=no
 AC_ARG_WITH([filter-stub],
@@ -2411,12 +2476,17 @@ AC_CONFIG_FILES([Makefile
 
 		extras/wip/filters/Makefile
 		extras/wip/filters/filter-clamav/Makefile
+		extras/wip/filters/filter-dkim-signer/Makefile
 		extras/wip/filters/filter-dnsbl/Makefile
+		extras/wip/filters/filter-lua/Makefile
 		extras/wip/filters/filter-monkey/Makefile
+		extras/wip/filters/filter-pause/Makefile
 		extras/wip/filters/filter-perl/Makefile
 		extras/wip/filters/filter-python/Makefile
-		extras/wip/filters/filter-trace/Makefile
+		extras/wip/filters/filter-regex/Makefile
+		extras/wip/filters/filter-spamassassin/Makefile
 		extras/wip/filters/filter-stub/Makefile
+		extras/wip/filters/filter-trace/Makefile
 		extras/wip/filters/filter-void/Makefile
 
 		extras/wip/queues/Makefile
