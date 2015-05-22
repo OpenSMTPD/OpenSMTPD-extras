@@ -2391,35 +2391,39 @@ LIBS="$LIBS ${SMTPDLIBS}"
 
 AC_CONFIG_FILES([Makefile
 		openbsd-compat/Makefile
-		mk/Makefile
-		mk/stable/Makefile
-		mk/wip/Makefile
-		mk/wip/filters/Makefile
-		mk/wip/filters/filter-dnsbl/Makefile
-		mk/wip/filters/filter-monkey/Makefile
-		mk/wip/filters/filter-perl/Makefile
-		mk/wip/filters/filter-python/Makefile
-		mk/wip/filters/filter-trace/Makefile
-		mk/wip/filters/filter-stub/Makefile
-		mk/wip/filters/filter-void/Makefile
-		mk/wip/queues/Makefile
-		mk/wip/queues/queue-null/Makefile
-		mk/wip/queues/queue-python/Makefile
-		mk/wip/queues/queue-ram/Makefile
-		mk/wip/queues/queue-stub/Makefile
-		mk/wip/schedulers/Makefile
-		mk/wip/schedulers/scheduler-python/Makefile
-		mk/wip/schedulers/scheduler-ram/Makefile
-		mk/wip/schedulers/scheduler-stub/Makefile
-		mk/wip/tables/Makefile
-		mk/wip/tables/table-passwd/Makefile
-		mk/wip/tables/table-ldap/Makefile
-		mk/wip/tables/table-mysql/Makefile
-		mk/wip/tables/table-postgres/Makefile
-		mk/wip/tables/table-python/Makefile
-		mk/wip/tables/table-redis/Makefile
-		mk/wip/tables/table-socketmap/Makefile
-		mk/wip/tables/table-sqlite/Makefile
+
+		extras/Makefile
+		extras/wip/Makefile
+
+		extras/wip/filters/Makefile
+		extras/wip/filters/filter-dnsbl/Makefile
+		extras/wip/filters/filter-monkey/Makefile
+		extras/wip/filters/filter-perl/Makefile
+		extras/wip/filters/filter-python/Makefile
+		extras/wip/filters/filter-trace/Makefile
+		extras/wip/filters/filter-stub/Makefile
+		extras/wip/filters/filter-void/Makefile
+
+		extras/wip/queues/Makefile
+		extras/wip/queues/queue-null/Makefile
+		extras/wip/queues/queue-python/Makefile
+		extras/wip/queues/queue-ram/Makefile
+		extras/wip/queues/queue-stub/Makefile
+
+		extras/wip/schedulers/Makefile
+		extras/wip/schedulers/scheduler-python/Makefile
+		extras/wip/schedulers/scheduler-ram/Makefile
+		extras/wip/schedulers/scheduler-stub/Makefile
+
+		extras/wip/tables/Makefile
+		extras/wip/tables/table-passwd/Makefile
+		extras/wip/tables/table-ldap/Makefile
+		extras/wip/tables/table-mysql/Makefile
+		extras/wip/tables/table-postgres/Makefile
+		extras/wip/tables/table-python/Makefile
+		extras/wip/tables/table-redis/Makefile
+		extras/wip/tables/table-socketmap/Makefile
+		extras/wip/tables/table-sqlite/Makefile
 		])
 
 #l4761
