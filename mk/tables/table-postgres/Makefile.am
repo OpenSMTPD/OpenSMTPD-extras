@@ -1,4 +1,4 @@
-include	$(top_srcdir)/mk/pathnames
+include	$(top_srcdir)/mk/wip.mk
 include	$(top_srcdir)/mk/table.mk
 
 pkglibexec_PROGRAMS	 = table-postgres
