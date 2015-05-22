@@ -1,11 +1,11 @@
-SUBDIRS =
+SUBDIRS	=
 
 if HAVE_FILTER_CLAMAV
-SUBDIRS +=	filter-clamav
+SUBDIRS	+=	filter-clamav
 endif
 
 if HAVE_FILTER_DKIM_SIGNER
-SUBDIRS +=	filter-dkim-signer
+SUBDIRS	+=	filter-dkim-signer
 endif
 
 if HAVE_FILTER_DNSBL
@@ -21,7 +21,7 @@ SUBDIRS	+=	filter-monkey
 endif
 
 if HAVE_FILTER_PAUSE
-SUBDIRS +=	filter-pause
+SUBDIRS	+=	filter-pause
 endif
 
 if HAVE_FILTER_PERL
