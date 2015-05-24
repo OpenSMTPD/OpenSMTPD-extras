@@ -365,8 +365,10 @@ main() { if (NSVersionOfRunTimeLibrary("System") >= (60 << 16))
 	use_pie=auto
 	AC_DEFINE([HAVE_ATTRIBUTE__SENTINEL__], [1], [OpenBSD's gcc has sentinel])
 	AC_DEFINE([HAVE_ATTRIBUTE__BOUNDED__], [1], [OpenBSD's gcc has bounded])
+	asr_in_libc=1
 	;;
 esac
+AM_CONDITIONAL([NO_LIBASR], [test $asr_in_libc=1])
 
 AC_MSG_CHECKING([compiler and flags for sanity])
 AC_RUN_IFELSE([AC_LANG_PROGRAM([[ #include <stdio.h> ]], [[ exit(0); ]])],
