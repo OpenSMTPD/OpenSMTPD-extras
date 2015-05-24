@@ -6,7 +6,7 @@ SRCS	=  $(api_srcdir)/filter_api.c
 SRCS	+= $(api_srcdir)/mproc.c
 SRCS	+= $(api_srcdir)/log.c
 SRCS	+= $(api_srcdir)/tree.c
-#SRCS	+= $(api_srcdir)/util.c
+SRCS	+= $(api_srcdir)/util.c
 SRCS	+= $(api_srcdir)/iobuf.c
 SRCS	+= $(api_srcdir)/ioev.c
 
