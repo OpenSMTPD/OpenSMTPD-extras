@@ -2219,6 +2219,19 @@ AC_ARG_WITH([table-sqlite],
 )
 AM_CONDITIONAL([HAVE_TABLE_SQLITE], [test $HAVE_TABLE_SQLITE = yes])
 
+HAVE_TABLE_STUB=no
+AC_ARG_WITH([table-stub],
+	[  --with-table-stub	Enable table stub],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_TABLE_STUB], [1],
+				[Define if you have stub support])
+			HAVE_TABLE_STUB=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_TABLE_STUB], [test $HAVE_TABLE_STUB = yes])
+
 
 #
 # SCHEDULERS
@@ -2511,6 +2524,7 @@ AC_CONFIG_FILES([Makefile
 		extras/wip/tables/table-redis/Makefile
 		extras/wip/tables/table-socketmap/Makefile
 		extras/wip/tables/table-sqlite/Makefile
+		extras/wip/tables/table-stub/Makefile
 		])
 
 #l4761

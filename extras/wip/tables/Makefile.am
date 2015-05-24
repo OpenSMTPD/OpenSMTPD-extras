@@ -31,3 +31,8 @@ endif
 if HAVE_TABLE_PASSWD
 SUBDIRS+=	table-passwd
 endif
+
+if HAVE_TABLE_STUB
+SUBDIRS+=	table-stub
+endif
+
