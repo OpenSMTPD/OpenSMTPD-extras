@@ -26,7 +26,6 @@
 
 #include <ctype.h>
 #include <err.h>
-#include <event.h>
 #include <fcntl.h>
 #include <getopt.h>
 #include <imsg.h>
