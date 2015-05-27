@@ -2335,31 +2335,6 @@ AC_LINK_IFELSE(
 	]
 )
 
-# Search for libdb
-AC_CHECK_HEADER(db_185.h, [AC_DEFINE([HAVE_DB_185_H], [], [if you have the <db_185.h> header file]) ] , [
-AC_CHECK_HEADER(db.h,     [AC_DEFINE([HAVE_DB_H],     [], [if you have the <db.h> header file])     ] , [
-AC_CHECK_HEADER(db1/db.h, [AC_DEFINE([HAVE_DB1_DB_H], [], [if you have the <db1/db.h> header file]) ] , [
-				AC_MSG_ERROR([*** Can't find Berkeley DB headers (see config.log for details) ***])
-])])])
-
-
-save_LIBS="$LIBS"
-DB_LIB=
-
-for libdb in db db1 c; do
-    AC_CHECK_LIB($libdb, dbopen,       [ DB_LIB="$libdb"; break; ], 
-    AC_CHECK_LIB($libdb, __db185_open, [ DB_LIB="$libdb"; break; ]))
-done
-
-if test -z "$DB_LIB" ; then
-    AC_MSG_ERROR([Berkeley DB not found or not built with --enable-185])
-fi
-
-DB_LIB="-l$DB_LIB"
-AC_SUBST([DB_LIB])
-
-LIBS="$save_LIBS"
-
 LIBS="$LIBS ${SMTPDLIBS}"
 ##end of chl
 
