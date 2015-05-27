@@ -2320,86 +2320,10 @@ AC_ARG_WITH([libevent-dir],
 
 LIBS="-levent $LIBS"
 
-# Determine libevent header version
-AC_MSG_CHECKING([libevent header version])
-AC_RUN_IFELSE(
-	[AC_LANG_PROGRAM([[
-#include <stdio.h>
-#include <string.h>
-#include <event.h>
-#define DATA "conftest.libeventincver"
-	]], [[
-	FILE *fd;
-	int rc;
-
-	fd = fopen(DATA,"w");
-	if(fd == NULL)
-		exit(1);
-
-	if ((rc = fprintf(fd ,"%s\n", _EVENT_VERSION)) <0)
-		exit(1);
-
-	exit(0);
-	]])],
-	[
-		libevent_header_ver=`cat conftest.libeventincver`
-		AC_MSG_RESULT([$libevent_header_ver])
-	],
-	[
-		AC_MSG_RESULT([not found])
-		AC_MSG_ERROR([libevent version header not found.])
-	],
-	[
-		AC_MSG_WARN([cross compiling: not checking])
-	]
-)
-
-# Determine libevent library version
-AC_MSG_CHECKING([libevent library version])
-AC_RUN_IFELSE(
-	[AC_LANG_PROGRAM([[
-#include <stdio.h>
-#include <string.h>
-#include <event.h>
-#define DATA "conftest.libeventlibver"
-	]], [[
-	FILE *fd;
-	int rc;
-
-	fd = fopen(DATA,"w");
-	if(fd == NULL)
-		exit(1);
-
-	if ((rc = fprintf(fd ,"%s\n", event_get_version())) <0)
-		exit(1);
-
-	exit(0);
-	]])],
-	[
-		libevent_library_ver=`cat conftest.libeventlibver`
-		AC_MSG_RESULT([$libevent_library_ver])
-	],
-	[
-		AC_MSG_RESULT([not found])
-		AC_MSG_ERROR([libevent library not found.])
-	],
-	[
-		AC_MSG_WARN([cross compiling: not checking])
-	]
-)
-
-libevent_major_version=`cat conftest.libeventlibver|head -c1 || echo 1`
-
-AC_DEFINE_UNQUOTED([LIBEVENT_MAJOR_VERSION], [$libevent_major_version], [Define libevent major version])
-
 AC_MSG_CHECKING([if programs using libevent functions will link])
 AC_LINK_IFELSE(
 	[AC_LANG_PROGRAM([[
-#if LIBEVENT_MAJOR_VERSION < 2
-#include <event.h>
-#else
-#include <event2/event.h>
-#endif
+	#include <event.h>
 	]], [[
 	event_base_new();
 	]])],
