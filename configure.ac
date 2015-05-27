@@ -2392,48 +2392,6 @@ libevent_major_version=`cat conftest.libeventlibver|head -c1 || echo 1`
 
 AC_DEFINE_UNQUOTED([LIBEVENT_MAJOR_VERSION], [$libevent_major_version], [Define libevent major version])
 
-AC_ARG_WITH([libevent-header-check],
-	[  --without-libevent-header-check Disable libevent version consistency check],
-	[  if test "x$withval" = "xno" ; then
-		libevent_check_nonfatal=1
-	   fi
-	]
-)
-
-# Sanity check libevent headers
-AC_MSG_CHECKING([whether libevent's headers match the library])
-AC_RUN_IFELSE(
-	[AC_LANG_PROGRAM([[
-#if LIBEVENT_MAJOR_VERSION < 2
-#include <event.h>
-#else
-#include <event2/event.h>
-#endif
-#include <stdlib.h>
-#include <string.h>
-	]], [[
-	exit(strcmp(event_get_version(), _EVENT_VERSION) == 0 ? 0 : 1);
-	]])],
-	[
-		AC_MSG_RESULT([yes])
-	],
-	[
-		AC_MSG_RESULT([no])
-		if test "x$libevent_check_nonfatal" = "x"; then
-			AC_MSG_ERROR([Your libevent headers do not match your
-library. Check config.log for details.
-If you are sure your installation is consistent, you can disable the check
-by running "./configure --without-libevent-header-check".])
-		else
-			AC_MSG_WARN([Your libevent headers do not match your
-library. Check config.log for details.])
-		fi
-	],
-	[
-		AC_MSG_WARN([cross compiling: not checking])
-	]
-)
-
 AC_MSG_CHECKING([if programs using libevent functions will link])
 AC_LINK_IFELSE(
 	[AC_LANG_PROGRAM([[
