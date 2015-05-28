@@ -26,7 +26,12 @@
 #include <stdio.h>
 #include <unistd.h>
 
+/* _GNU_SOURCE is not properly protected in Python.h ... */
+#undef _GNU_SOURCE
 #include <Python.h>
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 
 #include "smtpd-defines.h"
 #include "smtpd-api.h"
@@ -484,7 +489,7 @@ loadfile(const char * path)
 	if (fseek(f, 0, SEEK_SET) == -1)
 		err(1, "fseek");
 
-	if (oz >= SIZE_MAX)
+	if ((size_t)oz >= SIZE_MAX)
 		errx(1, "too big");
 
 	sz = oz;

@@ -1975,6 +1975,7 @@ AC_ARG_WITH([filter-python],
 			AC_DEFINE([HAVE_FILTER_PYTHON], [1],
 				[Define if you have filter python])
 			HAVE_FILTER_PYTHON=yes
+			need_python=yes
 		fi
 	]
 )
@@ -2070,6 +2071,7 @@ AC_ARG_WITH([queue-python],
 			AC_DEFINE([HAVE_QUEUE_PYTHON], [1],
 				[Define if you have queue python])
 			HAVE_QUEUE_PYTHON=yes
+			need_python=yes
 		fi
 	]
 )
@@ -2201,6 +2203,7 @@ AC_ARG_WITH([table-python],
 			AC_DEFINE([HAVE_TABLE_PYTHON], [1],
 				[Define if you want to enable table python])
 			HAVE_TABLE_PYTHON=yes
+			need_python=yes
 		fi
 	]
 )
@@ -2262,7 +2265,7 @@ AC_ARG_WITH([scheduler-stub],
 )
 AM_CONDITIONAL([HAVE_SCHEDULER_STUB], [test $HAVE_SCHEDULER_STUB = yes])
 
-HAVE_SCHEDULER_STUB=no
+HAVE_SCHEDULER_PYTHON=no
 AC_ARG_WITH([scheduler-python],
 	[  --with-scheduler-python	Enable scheduler python],
 	[
@@ -2270,11 +2273,50 @@ AC_ARG_WITH([scheduler-python],
 			AC_DEFINE([HAVE_SCHEDULER_PYTHON], [1],
 				[Define if you have scheduler python])
 			HAVE_SCHEDULER_PYTHON=yes
+			need_python=yes
 		fi
 	]
 )
 AM_CONDITIONAL([HAVE_SCHEDULER_PYTHON], [test $HAVE_SCHEDULER_PYTHON = yes])
 
+
+AC_ARG_WITH([python],
+	[  --with-python=PATH     Specify path to libevent installation ],
+	[
+		if test "x$withval" != "xno" ; then
+			python_prefix="${withval}"
+		fi
+	]
+)
+
+#
+# check for python
+#
+PYTHON_CPPFLAGS=
+PYTHON_LDFLAGS=
+if test x"${need_python}" = x"yes"; then
+   PYTHON_CONFIG=
+   for path in /usr/local/bin /usr/bin; do
+	if test -f ${path}/python-config; then
+		PYTHON_CONFIG=${path}/python-config
+		break
+	fi
+   done
+
+   # if python provided --with-python, override
+   if test x"${with_python}" != x""; then
+      PYTHON_CONFIG="${python_prefix}/bin/python-config"
+   fi
+
+   if ! test -f $PYTHON_CONFIG; then
+      AC_MSG_ERROR([*** $PYTHON_CONFIG could not be found, please install or use --with-python ***])
+   fi
+
+   PYTHON_CPPFLAGS="`$PYTHON_CONFIG --includes`"
+   PYTHON_LDFLAGS="-L`$PYTHON_CONFIG --prefix`/lib `$PYTHON_CONFIG --libs`"
+fi
+AC_SUBST([PYTHON_CPPFLAGS])
+AC_SUBST([PYTHON_LDFLAGS])
 
 ##chl (based on OpenSSL checks, see above)
 # Search for libevent
@@ -2430,9 +2472,12 @@ echo "    Compiler flags: ${CFLAGS}"
 echo "Preprocessor flags: ${CPPFLAGS}"
 echo "      Linker flags: ${LDFLAGS}"
 echo "         Libraries: ${LIBS}"
-echo "      DB Libraries: ${DB_LIB}"
-if test ! -z "${SMTPDLIBS}"; then
-echo "         +for sshd: ${SMTPDLIBS}"
+echo ""
+
+if test x"${need_python}" = x"yes"; then
+echo "Built with Python support:"
+echo "          CPPFLAGS: ${PYTHON_CPPFLAGS}"
+echo "           LDFLAGS: ${PYTHON_LDFLAGS}"
 fi
 
 echo ""

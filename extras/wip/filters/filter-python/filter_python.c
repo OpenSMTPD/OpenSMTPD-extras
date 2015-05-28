@@ -25,7 +25,12 @@
 #include <stdio.h>
 #include <unistd.h>
 
+/* _GNU_SOURCE is not properly protected in Python.h ... */
+#undef _GNU_SOURCE
 #include <Python.h>
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 
 #include "smtpd-defines.h"
 #include "smtpd-api.h"

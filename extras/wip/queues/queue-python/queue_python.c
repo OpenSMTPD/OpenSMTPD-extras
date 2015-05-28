@@ -23,7 +23,12 @@
 #include <err.h>
 #include <unistd.h>
 
+/* _GNU_SOURCE is not properly protected in Python.h ... */
+#undef _GNU_SOURCE
 #include <Python.h>
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 
 #include "smtpd-defines.h"
 #include "smtpd-api.h"
@@ -234,7 +239,6 @@ queue_python_envelope_update(uint64_t evpid, const char *buf, size_t len)
 {
 	PyObject       *py_ret;
 	int		ret;
-	Py_buffer	view;
 
 	py_ret = dispatch(py_envelope_update, Py_BuildValue("Ks#",
 		(unsigned long long)evpid, (const char *)buf, (int)len));
@@ -275,7 +279,6 @@ queue_python_envelope_walk(uint64_t *evpid, char *buf, size_t len)
 {
 	static uint64_t	curevpid = 0;
 	PyObject       *py_ret;
-	PyObject       *py_evpid;
 	Py_buffer	py_view;
 	int		ret;
 
@@ -286,6 +289,7 @@ queue_python_envelope_walk(uint64_t *evpid, char *buf, size_t len)
 
 	if (! PyTuple_Check(py_ret) || PyTuple_Size(py_ret) != 2) {
 		PyErr_SetString(PyExc_TypeError, "2-elements tuple expected");
+		ret = -1;
 	}
 	else {
 		curevpid = *evpid = get_uint64_t(PyTuple_GetItem(py_ret, 0));
@@ -314,7 +318,6 @@ queue_python_message_walk(uint64_t *evpid, char *buf, size_t len,
 {
 	static uint64_t	curevpid = 0;
 	PyObject       *py_ret;
-	PyObject       *py_evpid;
 	Py_buffer	py_view;
 	int		ret;
 
@@ -325,6 +328,7 @@ queue_python_message_walk(uint64_t *evpid, char *buf, size_t len,
 
 	if (! PyTuple_Check(py_ret) || PyTuple_Size(py_ret) != 2) {
 		PyErr_SetString(PyExc_TypeError, "2-elements tuple expected");
+		ret = -1;
 	}
 	else {
 		curevpid = *evpid = get_uint64_t(PyTuple_GetItem(py_ret, 0));

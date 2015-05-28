@@ -26,7 +26,12 @@
 #include <stdio.h>
 #include <unistd.h>
 
+/* _GNU_SOURCE is not properly protected in Python.h ... */
+#undef _GNU_SOURCE
 #include <Python.h>
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 
 #include "smtpd-defines.h"
 #include "smtpd-api.h"
@@ -65,56 +70,6 @@ dispatch(PyObject *handler, PyObject *args)
 	}
 
 	return (ret);
-}
-
-
-
-static int
-get_int(PyObject *o)
-{
-	if (PyLong_Check(o))
-		return (PyLong_AsLong(o));
-	if (PyInt_Check(o))
-		return (PyInt_AsLong(o));
-
-	PyErr_SetString(PyExc_TypeError, "int type expected");
-	return (0);
-}
-
-static size_t
-get_size_t(PyObject *o)
-{
-	if (PyLong_Check(o))
-		return (PyLong_AsUnsignedLongLong(o));
-	if (PyInt_Check(o))
-		return (PyInt_AsUnsignedLongLongMask(o));
-
-	PyErr_SetString(PyExc_TypeError, "int type expected");
-	return (0);
-}
-
-static size_t
-get_uint32_t(PyObject *o)
-{
-	if (PyLong_Check(o))
-		return (PyLong_AsUnsignedLong(o));
-	if (PyInt_Check(o))
-		return (PyInt_AsUnsignedLongMask(o));
-
-	PyErr_SetString(PyExc_TypeError, "int type expected");
-	return (0);
-}
-
-static time_t
-get_time_t(PyObject *o)
-{
-	if (PyLong_Check(o))
-		return (PyLong_AsUnsignedLongLong(o));
-	if (PyInt_Check(o))
-		return (PyInt_AsUnsignedLongLongMask(o));
-
-	PyErr_SetString(PyExc_TypeError, "int type expected");
-	return (0);
 }
 
 static PyObject *
@@ -304,7 +259,7 @@ loadfile(const char * path)
 	if (fseek(f, 0, SEEK_SET) == -1)
 		err(1, "fseek");
 
-	if (oz >= SIZE_MAX)
+	if ((size_t)oz >= SIZE_MAX)
 		errx(1, "too big");
 
 	sz = oz;
