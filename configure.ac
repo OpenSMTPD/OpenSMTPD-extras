@@ -1923,6 +1923,7 @@ AC_ARG_WITH([filter-lua],
 			AC_DEFINE([HAVE_FILTER_LUA], [1],
 				[Define if you have filter lua])
 			HAVE_FILTER_LUA=yes
+			need_lua=yes
 		fi
 	]
 )
@@ -2299,6 +2300,24 @@ AC_ARG_WITH([perl],
 	]
 )
 
+AC_ARG_WITH([lua],
+	[  --with-lua=PATH       Specify prefix of lua installation ],
+	[
+		if test "x$withval" != "xno" ; then
+			lua_prefix="${withval}"
+		fi
+	]
+
+)
+AC_ARG_WITH([lua-type],
+	[  --with-lua-type=PATH  Specify the type of lua used (automatic if unspecified, otherwise luajit, lua, or another version) ],
+	[
+		if test "x$withval" != "xno" ; then
+			lua_type="${withval}"
+		fi
+	]
+)
+
 #
 # check for python
 #
@@ -2356,6 +2375,53 @@ if test x"${need_perl}" = x"yes"; then
 fi
 AC_SUBST([PERL_CPPFLAGS])
 AC_SUBST([PERL_LDFLAGS])
+
+#
+# check for lua
+#
+LUA_CPPFLAGS=
+LUA_LDFLAGS=
+if test x"${need_lua}" = x"yes"; then
+   LUA_CONFIG=
+   for path in /usr/local/bin /usr/bin; do
+	if test -f ${path}/pkg-config; then
+		LUA_CONFIG=${path}/pkg-config
+		break
+	fi
+   done
+
+   # if lua provided --with-lua, override
+   if test x"${with_lua}" != x""; then
+      LUA_CONFIG="${lua_prefix}/bin/pkg-config"
+   fi
+
+   if ! test -f $LUA_CONFIG; then
+     if test x"${lua_type}" = x""; then
+       for i in luajit lua lua5.2 lua-5.2 lua5.1 lua-5.1; do
+         if test -d ${lua_prefix:-/usr/local}/include/${i}*; then
+	   lua_type=$i
+	   break
+	 fi
+       done
+     fi
+     LUA_CPPFLAGS="-I${lua_prefix:-/usr/local}/include/${lua_type}"
+     LUA_LDFLAGS="-L${lua_prefix:-/usr/local}/lib -l${lua_type} -lm"
+   else
+     if test x"${lua_type}" = x""; then
+       for i in luajit lua lua5.2 lua-5.2 lua5.1 lua-5.1; do
+         if $LUA_CONFIG --exists $i 2>/dev/null; then
+	   lua_type=$i
+	   break
+	 fi
+       done
+     fi
+     LUA_CPPFLAGS="`$LUA_CONFIG --cflags $lua_type`"
+     LUA_LDFLAGS="`$LUA_CONFIG --libs $lua_type`"
+   fi
+fi
+AC_SUBST([LUA_CPPFLAGS])
+AC_SUBST([LUA_LDFLAGS])
+
 
 ##chl (based on OpenSSL checks, see above)
 # Search for libevent
@@ -2527,3 +2593,9 @@ echo "           LDFLAGS: ${PERL_LDFLAGS}"
 echo ""
 fi
 
+if test x"${need_lua}" = x"yes"; then
+echo "Built with Lua support:"
+echo "          CPPFLAGS: ${LUA_CPPFLAGS}"
+echo "           LDFLAGS: ${LUA_LDFLAGS}"
+echo ""
+fi
