@@ -2281,7 +2281,7 @@ AM_CONDITIONAL([HAVE_SCHEDULER_PYTHON], [test $HAVE_SCHEDULER_PYTHON = yes])
 
 
 AC_ARG_WITH([python],
-	[  --with-python=PATH     Specify path to libevent installation ],
+	[  --with-python=PATH     Specify prefix of python installation ],
 	[
 		if test "x$withval" != "xno" ; then
 			python_prefix="${withval}"
