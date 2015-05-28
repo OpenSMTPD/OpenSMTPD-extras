@@ -1962,6 +1962,7 @@ AC_ARG_WITH([filter-perl],
 			AC_DEFINE([HAVE_FILTER_PERL], [1],
 				[Define if you have filter perl])
 			HAVE_FILTER_PERL=yes
+			need_perl=yes
 		fi
 	]
 )
@@ -2281,10 +2282,19 @@ AM_CONDITIONAL([HAVE_SCHEDULER_PYTHON], [test $HAVE_SCHEDULER_PYTHON = yes])
 
 
 AC_ARG_WITH([python],
-	[  --with-python=PATH     Specify prefix of python installation ],
+	[  --with-python=PATH    Specify prefix of python installation ],
 	[
 		if test "x$withval" != "xno" ; then
 			python_prefix="${withval}"
+		fi
+	]
+)
+
+AC_ARG_WITH([perl],
+	[  --with-perl=PATH      Specify prefix of perl installation ],
+	[
+		if test "x$withval" != "xno" ; then
+			perl_prefix="${withval}"
 		fi
 	]
 )
@@ -2317,6 +2327,35 @@ if test x"${need_python}" = x"yes"; then
 fi
 AC_SUBST([PYTHON_CPPFLAGS])
 AC_SUBST([PYTHON_LDFLAGS])
+
+#
+# check for perl
+#
+PERL_CPPFLAGS=
+PERL_LDFLAGS=
+if test x"${need_perl}" = x"yes"; then
+   PERL_CONFIG=
+   for path in /usr/local/bin /usr/bin; do
+	if test -f ${path}/perl; then
+		PERL_CONFIG=${path}/perl
+		break
+	fi
+   done
+
+   # if perl provided --with-perl, override
+   if test x"${with_perl}" != x""; then
+      PERL_CONFIG="${perl_prefix}/bin/perl"
+   fi
+
+   if ! test -f $PERL_CONFIG; then
+      AC_MSG_ERROR([*** $PERL_CONFIG could not be found, please install or use --with-perl ***])
+   fi
+
+   PERL_CPPFLAGS="`perl -MExtUtils::Embed -e ccopts`"
+   PERL_LDFLAGS="`perl -MExtUtils::Embed -e ldopts`"
+fi
+AC_SUBST([PERL_CPPFLAGS])
+AC_SUBST([PERL_LDFLAGS])
 
 ##chl (based on OpenSSL checks, see above)
 # Search for libevent
@@ -2478,6 +2517,13 @@ if test x"${need_python}" = x"yes"; then
 echo "Built with Python support:"
 echo "          CPPFLAGS: ${PYTHON_CPPFLAGS}"
 echo "           LDFLAGS: ${PYTHON_LDFLAGS}"
+echo ""
 fi
 
+if test x"${need_perl}" = x"yes"; then
+echo "Built with Perl support:"
+echo "          CPPFLAGS: ${PERL_CPPFLAGS}"
+echo "           LDFLAGS: ${PERL_LDFLAGS}"
 echo ""
+fi
+
