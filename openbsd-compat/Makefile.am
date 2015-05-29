@@ -11,6 +11,6 @@ libopenbsd_compat_a_SOURCES =							\
 
 EXTRA_DIST =	asr.h base64.h bsd-misc.h bsd-waitpid.h chacha_private.h	\
 		defines.h entropy.h imsg.h includes.h log.h openbsd-compat.h	\
-		sys/queue.h sys/tree.h vis.h xmalloc.h
+		sys/queue.h sys/tree.h util.h vis.h xmalloc.h
 
 AM_CPPFLAGS = -I$(top_srcdir)/smtpd -I$(top_srcdir)/openbsd-compat
