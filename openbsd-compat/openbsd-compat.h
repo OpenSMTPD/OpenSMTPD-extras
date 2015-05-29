@@ -192,14 +192,6 @@ void explicit_bzero(void *p, size_t n);
 char * fgetln(FILE *stream, size_t *len);
 #endif
 
-#ifndef HAVE_FPARSELN
-char * fparseln(FILE *fp, size_t *size, size_t *lineno, const char str[3], int flags);
-#endif
-
-#ifndef HAVE_PIDFILE
-int pidfile(const char *basename);
-#endif
-
 #ifndef HAVE_PW_DUP
 struct passwd *pw_dup(const struct passwd *);
 #endif
