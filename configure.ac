@@ -368,7 +368,7 @@ main() { if (NSVersionOfRunTimeLibrary("System") >= (60 << 16))
 	asr_in_libc=1
 	;;
 esac
-AM_CONDITIONAL([NO_LIBASR], [test $asr_in_libc=1])
+AM_CONDITIONAL([NO_LIBASR], [test x$asr_in_libc = x1])
 
 AC_MSG_CHECKING([compiler and flags for sanity])
 AC_RUN_IFELSE([AC_LANG_PROGRAM([[ #include <stdio.h> ]], [[ exit(0); ]])],
