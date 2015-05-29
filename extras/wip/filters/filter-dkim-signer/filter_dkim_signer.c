@@ -18,13 +18,13 @@
 #include <sys/queue.h>
 
 #include <inttypes.h>
-#include <sha2.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
+#include <openssl/sha.h>
 
 #include "smtpd-defines.h"
 #include "smtpd-api.h"
@@ -48,14 +48,14 @@ struct entry {
 
 struct signer {
 	SIMPLEQ_HEAD(, entry)	 lines;
-	SHA2_CTX		 hdr_ctx;
-	SHA2_CTX		 body_ctx;
+	SHA256_CTX		 hdr_ctx;
+	SHA256_CTX		 body_ctx;
 	char			 b64_rsa_sig[BUFSIZ];
 	char			 b64_body_hash[BUFSIZ];
 	char			 hdrs_list[BUFSIZ];
 	char			 hdr_hash[SHA256_DIGEST_LENGTH];
 	char			 body_hash[SHA256_DIGEST_LENGTH];
-	SHA2_CTX		*ctx;
+	SHA256_CTX		*ctx;
 	size_t			 nlines;
 	size_t			 emptylines;
 };
@@ -95,8 +95,8 @@ on_data(uint64_t id)
 
 	s = xmalloc(sizeof *s, "dkim_signer: on_data");
 	SIMPLEQ_INIT(&s->lines);
-	SHA256Init(&s->hdr_ctx);
-	SHA256Init(&s->body_ctx);
+	SHA256_Init(&s->hdr_ctx);
+	SHA256_Init(&s->body_ctx);
 	s->ctx = &s->hdr_ctx;
 	s->nlines = 0;
 	s->emptylines = 0;
@@ -163,15 +163,15 @@ on_dataline(uint64_t id, const char *line)
 			return;
 		} else {
 			while (s->emptylines--)
-				SHA256Update(s->ctx, CRLF, CRLF_LEN);
+				SHA256_Update(s->ctx, CRLF, CRLF_LEN);
 
 			s->emptylines = 0;
 		}
 	}
 
-	SHA256Update(s->ctx, line, strlen(line));
+	SHA256_Update(s->ctx, line, strlen(line));
 	/* explicitly terminate with a CRLF */
-	SHA256Update(s->ctx, CRLF, CRLF_LEN);
+	SHA256_Update(s->ctx, CRLF, CRLF_LEN);
 }
 
 static int
@@ -185,9 +185,9 @@ on_eom(uint64_t id, size_t size)
 	s = filter_api_get_udata(id);
 	/* empty body should be treated as a single CRLF */
 	if (s->nlines == 0)
-		SHA256Update(&s->body_ctx, CRLF, CRLF_LEN);
+		SHA256_Update(&s->body_ctx, CRLF, CRLF_LEN);
 
-	SHA256Final(s->body_hash, &s->body_ctx);
+	SHA256_Final(s->body_hash, &s->body_ctx);
 	if (base64_encode(s->body_hash, sizeof(s->body_hash),
 	    s->b64_body_hash, sizeof(s->b64_body_hash)) == -1) {
 		log_warnx("warn: dkim_signer: on_eom: __b64_ntop failed");
@@ -203,8 +203,8 @@ on_eom(uint64_t id, size_t size)
 		return filter_api_reject(id, FILTER_FAIL);
 	}
 
-	SHA256Update(&s->hdr_ctx, dkim_sig, dkim_sig_len);
-	SHA256Final(s->hdr_hash, &s->hdr_ctx);
+	SHA256_Update(&s->hdr_ctx, dkim_sig, dkim_sig_len);
+	SHA256_Final(s->hdr_hash, &s->hdr_ctx);
 
 	rsa_sig = xmalloc(RSA_size(rsa), "dkim_signer: on_eom");
 	if (RSA_sign(NID_sha256, s->hdr_hash, sizeof(s->hdr_hash),
