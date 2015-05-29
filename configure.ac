@@ -449,10 +449,6 @@ AC_CHECK_FUNCS([ \
 	arc4random_stir \
 	arc4random_uniform \
 	asprintf \
-	b64_ntop \
-	__b64_ntop \
-	b64_pton \
-	__b64_pton \
 	bcopy \
 	chflags \
 	closefrom \
@@ -637,9 +633,6 @@ AC_CHECK_FUNC([fparseln],
 	[AC_CHECK_LIB([util], [fparseln],
 		[LIBS="$LIBS -lutil"; AC_DEFINE([HAVE_FPARSELN])])]
 )
-
-AC_SEARCH_LIBS(res_9_b64_ntop, resolv)
-##chl
 
 #l1873
 # Check for broken snprintf
