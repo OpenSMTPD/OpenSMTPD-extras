@@ -16,6 +16,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include "includes.h"
+
 #include <sys/types.h>
 
 #include <err.h>
@@ -29,7 +31,6 @@
 #include "smtpd-defines.h"
 #include "smtpd-api.h"
 #include "log.h"
-#include "includes.h"
 
 static int table_passwd_update(void);
 static int table_passwd_check(int, struct dict *, const char *);
