@@ -199,6 +199,11 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 	int			 type;
 	int			 fds[2], fdin, fdout;
 
+	if (imsg == NULL) {
+		log_trace(TRACE_FILTERS, "filter-api:%s server closed", filter_name);
+		exit(0);
+	}
+
 	log_trace(TRACE_FILTERS, "filter-api:%s imsg %s", filter_name,
 	    filterimsg_to_str(imsg->hdr.type));
 
