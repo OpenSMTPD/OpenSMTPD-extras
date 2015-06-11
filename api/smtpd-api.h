@@ -380,7 +380,6 @@ void *filter_api_get_udata(uint64_t);
 
 void filter_api_loop(void);
 int filter_api_accept(uint64_t);
-int filter_api_accept_notify(uint64_t, uint64_t *);
 int filter_api_reject(uint64_t, enum filter_status);
 int filter_api_reject_code(uint64_t, enum filter_status, uint32_t,
     const char *);
