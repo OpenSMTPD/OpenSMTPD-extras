@@ -173,32 +173,6 @@ including rpc/rpc.h breaks Solaris 6
 typedef unsigned int u_int;
 #endif
 
-#ifndef HAVE_INTXX_T
-typedef signed char int8_t;
-# if (SIZEOF_SHORT_INT == 2)
-typedef short int int16_t;
-# else
-#  ifdef _UNICOS
-#   if (SIZEOF_SHORT_INT == 4)
-typedef short int16_t;
-#   else
-typedef long  int16_t;
-#   endif
-#  else
-#   error "16 bit int type not found."
-#  endif /* _UNICOS */
-# endif
-# if (SIZEOF_INT == 4)
-typedef int int32_t;
-# else
-#  ifdef _UNICOS
-typedef long  int32_t;
-#  else
-#   error "32 bit int type not found."
-#  endif /* _UNICOS */
-# endif
-#endif
-
 /* If sys/types.h does not supply u_intXX_t, supply them ourselves */
 #ifndef HAVE_U_INTXX_T
 # ifdef HAVE_UINTXX_T
@@ -235,15 +209,6 @@ typedef unsigned long  u_int32_t;
 #endif
 
 /* 64-bit types */
-#ifndef HAVE_INT64_T
-# if (SIZEOF_LONG_INT == 8)
-typedef long int int64_t;
-# else
-#  if (SIZEOF_LONG_LONG_INT == 8)
-typedef long long int int64_t;
-#  endif
-# endif
-#endif
 #ifndef HAVE_U_INT64_T
 # if (SIZEOF_LONG_INT == 8)
 typedef unsigned long int u_int64_t;
@@ -252,21 +217,6 @@ typedef unsigned long int u_int64_t;
 typedef unsigned long long int u_int64_t;
 #  endif
 # endif
-#endif
-
-#ifndef HAVE_UINTXX_T
-typedef u_int8_t uint8_t;
-typedef u_int16_t uint16_t;
-typedef u_int32_t uint32_t;
-typedef u_int64_t uint64_t;
-#endif
-
-#ifndef HAVE_INTMAX_T
-typedef long long intmax_t;
-#endif
-
-#ifndef HAVE_UINTMAX_T
-typedef unsigned long long uintmax_t;
 #endif
 
 #ifndef HAVE_U_CHAR
@@ -282,20 +232,9 @@ typedef unsigned char u_char;
 #define SIZE_T_MAX ULONG_MAX
 #endif /* SIZE_T_MAX */
 
-#ifndef HAVE_SIZE_T
-typedef unsigned int size_t;
-# define HAVE_SIZE_T
-# define SIZE_T_MAX UINT_MAX
-#endif /* HAVE_SIZE_T */
-
 #ifndef SIZE_MAX
 #define SIZE_MAX SIZE_T_MAX
 #endif
-
-#ifndef HAVE_SSIZE_T
-typedef int ssize_t;
-# define HAVE_SSIZE_T
-#endif /* HAVE_SSIZE_T */
 
 #ifndef HAVE_CLOCK_T
 typedef long clock_t;
@@ -307,20 +246,10 @@ typedef int sa_family_t;
 # define HAVE_SA_FAMILY_T
 #endif /* HAVE_SA_FAMILY_T */
 
-#ifndef HAVE_PID_T
-typedef int pid_t;
-# define HAVE_PID_T
-#endif /* HAVE_PID_T */
-
 #ifndef HAVE_SIG_ATOMIC_T
 typedef int sig_atomic_t;
 # define HAVE_SIG_ATOMIC_T
 #endif /* HAVE_SIG_ATOMIC_T */
-
-#ifndef HAVE_MODE_T
-typedef int mode_t;
-# define HAVE_MODE_T
-#endif /* HAVE_MODE_T */
 
 #if !defined(HAVE_SS_FAMILY_IN_SS) && defined(HAVE___SS_FAMILY_IN_SS)
 # define ss_family __ss_family

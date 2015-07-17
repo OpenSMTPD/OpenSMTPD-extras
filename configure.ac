@@ -1128,11 +1128,20 @@ AC_DEFINE_UNQUOTED([SMTPD_USER], ["$SMTPD_USER"],
 	[non-privileged user for privilege separation])
 AC_SUBST([SMTPD_USER])
 
-#l3037 (customized s/SSH/SMTPD/)
-# Check for  long long datatypes
-AC_CHECK_TYPES([long long, unsigned long long, long double])
+# Checks for typedefs, structures, and compiler characteristics.
+AC_TYPE_MODE_T
+AC_TYPE_OFF_T
+AC_TYPE_PID_T
+AC_TYPE_SIZE_T
+AC_TYPE_SSIZE_T
+AC_TYPE_UID_T
+AC_TYPE_UINT16_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINT64_T
+AC_TYPE_UINT8_T
 
-# Check datatype sizes
+AC_CHECK_TYPES([long long, unsigned long long])
+
 AC_CHECK_SIZEOF([short int], [2])
 AC_CHECK_SIZEOF([int], [4])
 AC_CHECK_SIZEOF([long int], [4])
@@ -1252,50 +1261,6 @@ if test "x$ac_cv_have_u_int" = "xyes" ; then
 	have_u_int=1
 fi
 
-AC_CACHE_CHECK([for intXX_t types], ac_cv_have_intxx_t, [
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <sys/types.h> ]],
-	[[ int8_t a; int16_t b; int32_t c; a = b = c = 1;]])],
-	[ ac_cv_have_intxx_t="yes" ], [ ac_cv_have_intxx_t="no" 
-	])
-])
-if test "x$ac_cv_have_intxx_t" = "xyes" ; then
-	AC_DEFINE([HAVE_INTXX_T], [1], [define if you have intxx_t data type])
-	have_intxx_t=1
-fi
-
-if (test -z "$have_intxx_t" && \
-	   test "x$ac_cv_header_stdint_h" = "xyes")
-then
-    AC_MSG_CHECKING([for intXX_t types in stdint.h])
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <stdint.h> ]],
-	[[ int8_t a; int16_t b; int32_t c; a = b = c = 1;]])],
-		[
-			AC_DEFINE([HAVE_INTXX_T])
-			AC_MSG_RESULT([yes])
-		], [ AC_MSG_RESULT([no]) 
-	])
-fi
-
-AC_CACHE_CHECK([for int64_t type], ac_cv_have_int64_t, [
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-#include <sys/types.h>
-#ifdef HAVE_STDINT_H
-# include <stdint.h>
-#endif
-#include <sys/socket.h>
-#ifdef HAVE_SYS_BITYPES_H
-# include <sys/bitypes.h>
-#endif
-		]], [[
-int64_t a; a = 1;
-		]])],
-	[ ac_cv_have_int64_t="yes" ], [ ac_cv_have_int64_t="no" 
-	])
-])
-if test "x$ac_cv_have_int64_t" = "xyes" ; then
-	AC_DEFINE([HAVE_INT64_T], [1], [define if you have int64_t data type])
-fi
-
 AC_CACHE_CHECK([for u_intXX_t types], ac_cv_have_u_intxx_t, [
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <sys/types.h> ]],
 	[[ u_int8_t a; u_int16_t b; u_int32_t c; a = b = c = 1;]])],
@@ -1361,46 +1326,18 @@ if test -z "$have_u_intxx_t" ; then
 	fi
 fi
 
-if (test -z "$have_uintxx_t" && \
-	   test "x$ac_cv_header_stdint_h" = "xyes")
-then
-    AC_MSG_CHECKING([for uintXX_t types in stdint.h])
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <stdint.h> ]],
-	[[ uint8_t a; uint16_t b; uint32_t c; a = b = c = 1;]])],
-		[
-			AC_DEFINE([HAVE_UINTXX_T])
-			AC_MSG_RESULT([yes])
-		], [ AC_MSG_RESULT([no]) 
-	])
-fi
-
-if (test -z "$have_uintxx_t" && \
-	   test "x$ac_cv_header_inttypes_h" = "xyes")
-then
-    AC_MSG_CHECKING([for uintXX_t types in inttypes.h])
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <inttypes.h> ]],
-	[[ uint8_t a; uint16_t b; uint32_t c; a = b = c = 1;]])],
-		[
-			AC_DEFINE([HAVE_UINTXX_T])
-			AC_MSG_RESULT([yes])
-		], [ AC_MSG_RESULT([no]) 
-	])
-fi
-
-if (test -z "$have_u_intxx_t" || test -z "$have_intxx_t" && \
+if (test -z "$have_u_intxx_t" && \
 	   test "x$ac_cv_header_sys_bitypes_h" = "xyes")
 then
-	AC_MSG_CHECKING([for intXX_t and u_intXX_t types in sys/bitypes.h])
+	AC_MSG_CHECKING([for and u_intXX_t types in sys/bitypes.h])
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #include <sys/bitypes.h>
 		]], [[
-			int8_t a; int16_t b; int32_t c;
-			u_int8_t e; u_int16_t f; u_int32_t g;
-			a = b = c = e = f = g = 1;
+			u_int8_t a; u_int16_t b; u_int32_t c;
+			a = b = c = 1;
 		]])],
 		[
 			AC_DEFINE([HAVE_U_INTXX_T])
-			AC_DEFINE([HAVE_INTXX_T])
 			AC_MSG_RESULT([yes])
 		], [AC_MSG_RESULT([no])
 	])
@@ -1417,34 +1354,9 @@ if test "x$ac_cv_have_u_char" = "xyes" ; then
 	AC_DEFINE([HAVE_U_CHAR], [1], [define if you have u_char data type])
 fi
 
-AC_CHECK_TYPES([intmax_t, uintmax_t], , , [
-#include <sys/types.h>
-#include <stdint.h>
-])
-
 TYPE_SOCKLEN_T
 
 AC_CHECK_TYPES([sig_atomic_t], , , [#include <signal.h>])
-
-AC_CACHE_CHECK([for size_t], ac_cv_have_size_t, [
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <sys/types.h> ]],
-	[[ size_t foo; foo = 1235; ]])],
-	[ ac_cv_have_size_t="yes" ], [ ac_cv_have_size_t="no" 
-	])
-])
-if test "x$ac_cv_have_size_t" = "xyes" ; then
-	AC_DEFINE([HAVE_SIZE_T], [1], [define if you have size_t data type])
-fi
-
-AC_CACHE_CHECK([for ssize_t], ac_cv_have_ssize_t, [
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <sys/types.h> ]],
-	[[ ssize_t foo; foo = 1235; ]])],
-	[ ac_cv_have_ssize_t="yes" ], [ ac_cv_have_ssize_t="no" 
-	])
-])
-if test "x$ac_cv_have_ssize_t" = "xyes" ; then
-	AC_DEFINE([HAVE_SSIZE_T], [1], [define if you have ssize_t data type])
-fi
 
 AC_CACHE_CHECK([for clock_t], ac_cv_have_clock_t, [
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <time.h> ]],
@@ -1475,26 +1387,6 @@ AC_CACHE_CHECK([for sa_family_t], ac_cv_have_sa_family_t, [
 if test "x$ac_cv_have_sa_family_t" = "xyes" ; then
 	AC_DEFINE([HAVE_SA_FAMILY_T], [1],
 		[define if you have sa_family_t data type])
-fi
-
-AC_CACHE_CHECK([for pid_t], ac_cv_have_pid_t, [
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <sys/types.h> ]],
-	[[ pid_t foo; foo = 1235; ]])],
-	[ ac_cv_have_pid_t="yes" ], [ ac_cv_have_pid_t="no" 
-	])
-])
-if test "x$ac_cv_have_pid_t" = "xyes" ; then
-	AC_DEFINE([HAVE_PID_T], [1], [define if you have pid_t data type])
-fi
-
-AC_CACHE_CHECK([for mode_t], ac_cv_have_mode_t, [
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <sys/types.h> ]],
-	[[ mode_t foo; foo = 1235; ]])],
-	[ ac_cv_have_mode_t="yes" ], [ ac_cv_have_mode_t="no" 
-	])
-])
-if test "x$ac_cv_have_mode_t" = "xyes" ; then
-	AC_DEFINE([HAVE_MODE_T], [1], [define if you have mode_t data type])
 fi
 
 
@@ -1578,15 +1470,6 @@ fi
 
 AC_CHECK_TYPES([struct timespec])
 
-# We need int64_t or else certian parts of the compile will fail.
-if test "x$ac_cv_have_int64_t" = "xno" && \
-	test "x$ac_cv_sizeof_long_int" != "x8" && \
-	test "x$ac_cv_sizeof_long_long_int" = "x0" ; then
-	echo "OpenSMTPD requires int64_t support.  Contact your vendor or install"
-	echo "an alternative compiler (I.E., GCC) before continuing."
-	echo ""
-	exit 1;
-else
 dnl test snprintf (broken on SCO w/gcc)
 	AC_RUN_IFELSE(
 		[AC_LANG_SOURCE([[
@@ -1615,7 +1498,6 @@ main() { exit(0); }
 		]])], [ true ], [ AC_DEFINE([BROKEN_SNPRINTF]) ],
 		AC_MSG_WARN([cross compiling: Assuming working snprintf()])
 	)
-fi
 #l3539
 
 #l3561

@@ -234,14 +234,14 @@ ber_get_enumerated(struct ber_element *elm, long long *n)
 
 
 struct ber_element *
-ber_add_boolean(struct ber_element *prev, int bool)
+ber_add_boolean(struct ber_element *prev, int boolean)
 {
 	struct ber_element *elm;
 
 	if ((elm = ber_get_element(BER_TYPE_BOOLEAN)) == NULL)
 		return NULL;
 
-	elm->be_numeric = bool ? 0xff : 0;
+	elm->be_numeric = boolean ? 0xff : 0;
 	elm->be_len = 1;
 
 	ber_link_elements(prev, elm);
