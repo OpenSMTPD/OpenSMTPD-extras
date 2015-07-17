@@ -14,9 +14,11 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-dnl AC_INIT([OpenSMTPD-portable],[4.9.0],[Charles Longeau <chl@openbsd.org>])
-dnl AC_INIT([OpenSMTPD-portable], m4_esyscmd(date +%Y%m%d%H%M%S | sed -e 's/^\(.*\)$/5.2-\1/' | tr -d '\n'),[Charles Longeau <chl@openbsd.org>])
-AC_INIT([opensmtpd], [portable], [bugs@opensmtpd.org])
+AC_PREREQ(2.69)
+
+dnl AC_INIT([OpenSMTPD-extras], m4_esyscmd(date +%Y%m%d%H%M%S | sed -e 's/^\(.*\)$/5.7-\1/' | tr -d '\n'), [bugs@opensmtpd.org], [opensmtpd-extras], [https://github.com/OpenSMTPD/OpenSMTPD-extras])
+AC_INIT([OpenSMTPD-extras], [5.7.2], [bugs@opensmtpd.org], [opensmtpd-extras], [https://github.com/OpenSMTPD/OpenSMTPD-extras])
+
 AC_LANG([C])
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -1860,6 +1862,8 @@ fi
 AC_SUBST([mansubdir])
 #l4207
 
+pkglibexecdir="$libexecdir/smtpd"
+AC_SUBST([pkglibexecdir])
 
 
 #
@@ -2560,6 +2564,7 @@ echo "                   encrypt program: $F"
 echo "                      Manual pages: $G"
 echo "                    smtpd.sock dir: $H"
 echo "  Privilege separation chroot path: $I"
+echo "                Package libexecdir: ${pkglibexecdir}"
 echo "                    Manpage format: $MANTYPE"
 
 echo ""
