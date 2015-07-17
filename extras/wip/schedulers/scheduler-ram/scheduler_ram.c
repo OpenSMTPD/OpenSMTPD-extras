@@ -27,13 +27,13 @@
 #include <ctype.h>
 #include <err.h>
 #include <fcntl.h>
-#include <getopt.h>
 #include <imsg.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "smtpd-defines.h"
 #include "smtpd-api.h"

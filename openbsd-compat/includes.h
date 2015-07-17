@@ -35,9 +35,6 @@
 #ifdef HAVE_ENDIAN_H
 # include <endian.h>
 #endif
-#ifdef HAVE_MAILLOCK_H
-# include <maillock.h> /* For _PATH_MAILDIR */
-#endif
 #ifdef HAVE_PATHS_H
 # include <paths.h>
 #endif

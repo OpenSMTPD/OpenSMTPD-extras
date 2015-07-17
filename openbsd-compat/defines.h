@@ -389,15 +389,6 @@ struct winsize {
 # define _PATH_DEVNULL "/dev/null"
 #endif
 
-/* user may have set a different path */
-#if defined(_PATH_MAILDIR) && defined(MAIL_DIRECTORY)
-# undef _PATH_MAILDIR
-#endif /* defined(_PATH_MAILDIR) && defined(MAIL_DIRECTORY) */
-
-#ifdef MAIL_DIRECTORY
-# define _PATH_MAILDIR MAIL_DIRECTORY
-#endif
-
 #ifdef MAILDIR
 # undef MAILDIR
 #endif
@@ -547,10 +538,6 @@ struct winsize {
 	 (struct cmsghdr *)(mhdr)->msg_control : \
 	 (struct cmsghdr *)NULL)
 #endif /* CMSG_FIRSTHDR */
-
-#if defined(HAVE_DECL_OFFSETOF) && HAVE_DECL_OFFSETOF == 0
-# define offsetof(type, member) ((size_t) &((type *)0)->member)
-#endif
 
 /* Set up BSD-style BYTE_ORDER definition if it isn't there already */
 /* XXX: doesn't try to cope with strange byte orders (PDP_ENDIAN) */

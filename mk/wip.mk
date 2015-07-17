@@ -10,6 +10,4 @@ tables_srcdir		= $(top_srcdir)/extras/wip/tables
 
 PATHS=		-DSMTPD_CONFDIR=\"$(sysconfdir)\"			\
 		-DPATH_CHROOT=\"$(PRIVSEP_PATH)\"			\
-		-DPATH_SMTPCTL=\"$(sbindir)/smtpctl\"			\
-		-DPATH_MAILLOCAL=\"$(pkglibexecdir)/mail.local\"	\
 		-DPATH_LIBEXEC=\"$(pkglibexecdir)\"

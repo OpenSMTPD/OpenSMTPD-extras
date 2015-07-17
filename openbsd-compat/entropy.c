@@ -37,7 +37,6 @@
 #include <signal.h>
 #include <string.h>
 #include <unistd.h>
-#include <stddef.h> /* for offsetof */
 
 #include <openssl/rand.h>
 #include <openssl/crypto.h>

@@ -269,28 +269,33 @@ AC_ARG_WITH([Werror],
 #l325
 
 AC_CHECK_HEADERS([ \
-	crypt.h \
+	arpa/inet.h \
 	dirent.h \
 	fcntl.h \
-	getopt.h \
+	inttypes.h \
 	limits.h \
-	maillock.h \
 	mach/mach_time.h \
 	ndir.h \
 	netdb.h \
+	netinet/in.h \
 	pam/pam_appl.h \
 	paths.h \
 	security/pam_appl.h \
-	shadow.h \
+	stdint.h \
+	stdlib.h \
+	string.h \
+	strings.h \
 	sys/dir.h \
-	sys/file.h \
 	sys/ndir.h \
+	sys/param.h \
 	sys/pstat.h \
+	sys/socket.h \
 	sys/time.h \
 	sys/un.h \
+	syslog.h \
 	time.h \
 	ucred.h \
-	utime.h \
+	unistd.h \
 	vis.h
 ])
 
@@ -532,10 +537,6 @@ AC_CHECK_DECLS([writev], , , [
 
 AC_CHECK_DECLS([MAXSYMLINKS], , , [
 #include <sys/param.h>
-	])
-
-AC_CHECK_DECLS([offsetof], , , [
-#include <stddef.h>
 	])
 
 # extra bits for select(2)
@@ -2573,27 +2574,18 @@ A=`eval echo ${prefix}` ; A=`eval echo ${A}`
 B=`eval echo ${bindir}` ; B=`eval echo ${B}`
 C=`eval echo ${sbindir}` ; C=`eval echo ${C}`
 D=`eval echo ${sysconfdir}` ; D=`eval echo ${D}`
-E=`eval echo ${libexecdir}/${PACKAGE}/mail.local` ; E=`eval echo ${E}`
-F=`eval echo ${libexecdir}/${PACKAGE}/encrypt` ; F=`eval echo ${F}`
-G=`eval echo ${mandir}/${mansubdir}X` ; G=`eval echo ${G}`
-H=`eval echo ${sockdir}` ; H=`eval echo ${H}`
-I=`eval echo ${PRIVSEP_PATH}` ; I=`eval echo ${I}`
-J=`eval echo ${user_path}` ; J=`eval echo ${J}`
-K=`eval echo ${superuser_path}` ; K=`eval echo ${K}`
+E=`eval echo ${mandir}/${mansubdir}X` ; E=`eval echo ${E}`
+F=`eval echo ${PRIVSEP_PATH}` ; F=`eval echo ${F}`
 
 echo ""
-echo "OpenSMTPD has been configured with the following options:"
+echo "OpenSMTPD-extras have been configured with the following options:"
 echo "                     User binaries: $B"
 echo "                   System binaries: $C"
 echo "               Configuration files: $D"
-echo "                mail.local program: $E"
-echo "                   encrypt program: $F"
-echo "                      Manual pages: $G"
-echo "                    smtpd.sock dir: $H"
-echo "  Privilege separation chroot path: $I"
+echo "                      Manual pages: $E"
+echo "  Privilege separation chroot path: $F"
 echo "                Package libexecdir: ${pkglibexecdir}"
 echo "                    Manpage format: $MANTYPE"
-
 echo ""
 
 echo "              Host: ${host}"
