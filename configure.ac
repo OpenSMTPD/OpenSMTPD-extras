@@ -103,17 +103,6 @@ if test "$GCC" = "yes" || test "$GCC" = "egcs"; then
 	OSSH_CHECK_CFLAG_COMPILE([-Wunused-result], [-Wno-unused-result])
 	OSSH_CHECK_CFLAG_COMPILE([-fno-strict-aliasing])
 #	OSSH_CHECK_CFLAG_COMPILE([-D_FORTIFY_SOURCE=2])
-    if test "x$use_toolchain_hardening" = "x1"; then
-	OSSH_CHECK_LDFLAG_LINK([-Wl,-z,relro])
-	OSSH_CHECK_LDFLAG_LINK([-Wl,-z,now])
-	OSSH_CHECK_LDFLAG_LINK([-Wl,-z,noexecstack])
-	# NB. -ftrapv expects certain support functions to be present in
-	# the compiler library (libgcc or similar) to detect integer operations
-	# that can overflow. We must check that the result of enabling it
-	# actually links. The test program compiled/linked includes a number
-	# of integer operations that should exercise this.
-	OSSH_CHECK_CFLAG_LINK([-ftrapv])
-    fi
 	AC_MSG_CHECKING([gcc version])
 	GCC_VER=`$CC -v 2>&1 | $AWK '/gcc version /{print $3}'`
 	case $GCC_VER in
@@ -295,8 +284,7 @@ AC_CHECK_HEADERS([ \
 	syslog.h \
 	time.h \
 	ucred.h \
-	unistd.h \
-	vis.h
+	unistd.h
 ])
 
 #l432 (customized)
@@ -304,11 +292,6 @@ AC_CHECK_HEADERS([ \
 	case "$host" in
 *-*-aix*)
 	check_for_aix_broken_getaddrinfo=1
-	AC_DEFINE([BROKEN_REALPATH], [1], [Define if you have a broken realpath.])
-	AC_DEFINE([SETEUID_BREAKS_SETUID], [1],
-	    [Define if your platform breaks doing a seteuid before a setuid])
-	AC_DEFINE([BROKEN_SETREUID], [1], [Define if your setreuid() is broken])
-	AC_DEFINE([BROKEN_SETREGID], [1], [Define if your setregid() is broken])
 	AC_DEFINE([SPT_TYPE], [SPT_REUSEARGV],
 		[Define to a Set Process Title type if your system is
 		supported by bsd-setproctitle.c])
@@ -329,9 +312,6 @@ main() { if (NSVersionOfRunTimeLibrary("System") >= (60 << 16))
 		[getaddrinfo is broken (if present)])
 	],
 	[AC_MSG_RESULT([assume it is working])])
-	AC_DEFINE([SETEUID_BREAKS_SETUID])
-	AC_DEFINE([BROKEN_SETREUID])
-	AC_DEFINE([BROKEN_SETREGID])
 	AC_DEFINE([BROKEN_GLOB], [1], [OS X glob does not do what we expect])
 	AC_DEFINE_UNQUOTED([BIND_8_COMPAT], [1],
 		[Define if your resolver libs need this for getrrsetbyname])
@@ -358,14 +338,10 @@ main() { if (NSVersionOfRunTimeLibrary("System") >= (60 << 16))
 	if test "x$withval" != "xno" ; then
 		need_dash_r=1
 	fi
-	AC_DEFINE([BROKEN_STRNVIS], [1],
-	    [NetBSD strnvis argument order is swapped compared to OpenBSD])
 	;;
 *-*-freebsd*)
 	check_for_libcrypt_later=1
 	AC_DEFINE([BROKEN_GLOB], [1], [FreeBSD glob does not do what we need])
-	AC_DEFINE([BROKEN_STRNVIS], [1],
-	    [FreeBSD strnvis argument order is swapped compared to OpenBSD])
 	;;
 *-*-openbsd*)
 	use_pie=auto
@@ -392,11 +368,7 @@ AC_CHECK_FUNC([setsockopt], , [AC_CHECK_LIB([socket], [setsockopt])])
 
 dnl    Checks for libutil functions
 AC_CHECK_HEADERS([bsd/libutil.h libutil.h])
-AC_SEARCH_LIBS([fmt_scaled], [util bsd])
-AC_SEARCH_LIBS([scan_scaled], [util bsd])
-AC_CHECK_FUNCS([fmt_scaled scan_scaled])
 #l1242
-
 
 #l1525
 AC_ARG_WITH([pie],
@@ -410,10 +382,6 @@ AC_ARG_WITH([pie],
     ]
 )
 if test "x$use_pie" = "x"; then
-	use_pie=no
-fi
-if test "x$use_toolchain_hardening" != "x1" && test "x$use_pie" = "xauto"; then
-	# Turn off automatic PIE when toolchain hardening is off.
 	use_pie=no
 fi
 if test "x$use_pie" = "xauto"; then
@@ -447,64 +415,47 @@ if test "x$use_pie" != "xno"; then
 fi
 #l1570
 
-#l1572 (customized)
-dnl    Checks for library functions. Please keep in alphabetical order
+# Checks for library functions.
+AC_FUNC_FORK
+AC_FUNC_FSEEKO
+AC_FUNC_MALLOC
+AC_FUNC_REALLOC
+
 AC_CHECK_FUNCS([ \
 	arc4random \
-	arc4random_buf \
-	arc4random_stir \
 	arc4random_uniform \
 	asprintf \
-	bcopy \
-	chflags \
 	closefrom \
 	dirfd \
-	dirname \
-	endgrent \
-	explicit_bzero \
 	freeaddrinfo \
 	getaddrinfo \
 	getline \
+	gethostname \
 	getnameinfo \
 	getopt \
-	getpeereid \
-	getspnam \
-	inet_aton \
-	inet_ntoa \
-	inet_ntop \
-	isblank \
 	memmove \
-	nsleep \
-	pw_dup \
-	reallocarray \
-	setenv \
-	setlinebuf \
-	setproctitle \
-	setregid \
-	setreuid \
+	memchr \
+	memset \
+	regcomp \
 	setsid \
-	sigaction \
 	socketpair \
 	strdup \
 	strerror \
+	strncasecmp \
+	strpbrk \
+	strrchr \
+	strtol \
+	strtoumax \
+	strtoull \
 	strlcat \
 	strlcpy \
-	strnvis \
-	strmode \
 	strtonum \
 	sysconf \
-	tcgetpgrp \
-	truncate \
+	time \
+	tzset \
 	vasprintf \
-	vsnprintf \
-	waitpid \
+	vsnprintf
 ])
-#l1685
-
-#l1715
-AC_SEARCH_LIBS([clock_gettime], [rt],
-	[AC_DEFINE([HAVE_CLOCK_GETTIME], [1], [Have clock_gettime])])
-#l1719
 
 #l1723
 AC_CHECK_DECL([strsep],
@@ -535,6 +486,7 @@ AC_CHECK_DECLS([writev], , , [
 #include <unistd.h>
 	])
 
+<<<<<<< HEAD
 AC_CHECK_DECLS([MAXSYMLINKS], , , [
 #include <sys/param.h>
 	])
@@ -570,6 +522,12 @@ AC_CHECK_TYPES([fd_mask], [], [], [[
 #endif
 	]])
 
+=======
+AC_CHECK_DECLS([offsetof], , , [
+#include <stddef.h>
+	])
+
+>>>>>>> remove unused functions from configure and compat layer
 AC_CHECK_FUNCS([setresuid], [
 	dnl Some platorms have setresuid that isn't implemented, test for this
 	AC_MSG_CHECKING([if setresuid seems to work])
@@ -615,18 +573,6 @@ AC_CHECK_FUNCS([setresgid], [
 		[AC_MSG_WARN([cross compiling: not checking setresuid])]
 	)
 ])
-
-dnl    Checks for time functions
-AC_CHECK_FUNCS([gettimeofday time])
-#l1850
-
-#l1860
-AC_CHECK_FUNC([daemon],
-	[AC_DEFINE([HAVE_DAEMON], [1], [Define if your libraries define daemon()])],
-	[AC_CHECK_LIB([bsd], [daemon],
-		[LIBS="$LIBS -lbsd"; AC_DEFINE([HAVE_DAEMON])])]
-)
-#l1864
 
 #l1873
 # Check for broken snprintf
@@ -699,22 +645,7 @@ int snprintf(char *a, size_t b, const char *c, ...) { return 0; }
    [AC_MSG_RESULT([no])
     AC_DEFINE([SNPRINTF_CONST], [/* not const */])])
 
-# Check for missing getpeereid (or equiv) support
-NO_PEERCHECK=""
-if test "x$ac_cv_func_getpeereid" != "xyes" -a "x$ac_cv_func_getpeerucred" != "xyes"; then
-	AC_MSG_CHECKING([whether system supports SO_PEERCRED getsockopt])
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-#include <sys/types.h>
-#include <sys/socket.h>]], [[int i = SO_PEERCRED;]])],
-		[ AC_MSG_RESULT([yes])
-		  AC_DEFINE([HAVE_SO_PEERCRED], [1], [Have PEERCRED socket option])
-		], [AC_MSG_RESULT([no])
-		NO_PEERCHECK=1
-        ])
-fi
-
 dnl see whether mkstemp() requires XXXXXX
-if test "x$ac_cv_func_mkdtemp" = "xyes" ; then
 AC_MSG_CHECKING([for (overly) strict mkstemp])
 AC_RUN_IFELSE(
 	[AC_LANG_PROGRAM([[
@@ -738,7 +669,6 @@ AC_RUN_IFELSE(
 		AC_DEFINE([HAVE_STRICT_MKSTEMP])
 	]
 )
-fi
 #l1982
 
 #l2030

@@ -27,39 +27,13 @@
 
 /* $Id: defines.h,v 1.181 2014/06/11 19:22:50 dtucker Exp $ */
 
-
 /* Constants */
-
-#if defined(HAVE_DECL_SHUT_RD) && HAVE_DECL_SHUT_RD == 0
-enum
-{
-  SHUT_RD = 0,		/* No more receptions.  */
-  SHUT_WR,			/* No more transmissions.  */
-  SHUT_RDWR			/* No more receptions or transmissions.  */
-};
-# define SHUT_RD   SHUT_RD
-# define SHUT_WR   SHUT_WR
-# define SHUT_RDWR SHUT_RDWR
-#endif
 
 #ifndef PATH_MAX
 # ifdef _POSIX_PATH_MAX
 # define PATH_MAX _POSIX_PATH_MAX
 # endif
 #endif
-
-#ifndef MAXPATHLEN
-# ifdef PATH_MAX
-#  define MAXPATHLEN PATH_MAX
-# else /* PATH_MAX */
-#  define MAXPATHLEN 64
-#  define PATH_MAX 64
-/* realpath uses a fixed buffer of size MAXPATHLEN, so force use of ours */
-#  ifndef BROKEN_REALPATH
-#   define BROKEN_REALPATH 1
-#  endif /* BROKEN_REALPATH */
-# endif /* PATH_MAX */
-#endif /* MAXPATHLEN */
 
 /*
  * Looks like ugly, but MAX_IMSGSIZE equals 16384,
@@ -70,32 +44,11 @@ enum
 #  define PATH_MAX 1024
 #endif
 
-#if MAXPATHLEN > 1024
-#  undef  MAXPATHLEN
-#  define MAXPATHLEN 1024
-#endif
-
-#ifndef MAXHOSTNAMELEN
-# define MAXHOSTNAMELEN  64
-#endif
-
-#ifndef LOGIN_NAME_MAX
-# define LOGIN_NAME_MAX 9
-#endif
-
-#ifndef MAXLOGNAME
-#define MAXLOGNAME      LOGIN_NAME_MAX
-#endif
-
 #ifndef UID_MAX
 #define	UID_MAX	UINT_MAX
 #endif
 #ifndef GID_MAX
 #define	GID_MAX	UINT_MAX
-#endif
-
-#if defined(HAVE_DECL_MAXSYMLINKS) && HAVE_DECL_MAXSYMLINKS == 0
-# define MAXSYMLINKS 5
 #endif
 
 #ifndef STDIN_FILENO
@@ -108,29 +61,9 @@ enum
 # define STDERR_FILENO   2
 #endif
 
-#ifndef NGROUPS_MAX	/* Disable groupaccess if NGROUP_MAX is not set */
-#ifdef NGROUPS
-#define NGROUPS_MAX NGROUPS
-#else
-#define NGROUPS_MAX 0
-#endif
-#endif
-
 #if defined(HAVE_DECL_O_NONBLOCK) && HAVE_DECL_O_NONBLOCK == 0
 # define O_NONBLOCK      00004	/* Non Blocking Open */
 #endif
-
-#ifndef S_ISDIR
-# define S_ISDIR(mode)	(((mode) & (_S_IFMT)) == (_S_IFDIR))
-#endif /* S_ISDIR */
-
-#ifndef S_ISREG
-# define S_ISREG(mode)	(((mode) & (_S_IFMT)) == (_S_IFREG))
-#endif /* S_ISREG */
-
-#ifndef S_ISLNK
-# define S_ISLNK(mode)	(((mode) & S_IFMT) == S_IFLNK)
-#endif /* S_ISLNK */
 
 #ifndef S_IXUSR
 # define S_IXUSR			0000100	/* execute/search permission, */
@@ -147,22 +80,6 @@ enum
 # define S_IRWXG			0000070	/* read, write, execute */
 # define S_IRWXO			0000007	/* read, write, execute */
 #endif /* S_IXUSR */
-
-#if !defined(MAP_ANON) && defined(MAP_ANONYMOUS)
-#define MAP_ANON MAP_ANONYMOUS
-#endif
-
-#ifndef MAP_FAILED
-# define MAP_FAILED ((void *)-1)
-#endif
-
-/*
-SCO Open Server 3 has INADDR_LOOPBACK defined in rpc/rpc.h but
-including rpc/rpc.h breaks Solaris 6
-*/
-#ifndef INADDR_LOOPBACK
-#define INADDR_LOOPBACK ((u_long)0x7f000001)
-#endif
 
 /* Types */
 
@@ -280,24 +197,7 @@ struct winsize {
 };
 #endif
 
-/* bits needed for select that may not be in the system headers */
-#ifndef HAVE_FD_MASK
- typedef unsigned long int	fd_mask;
-#endif
-
-#if defined(HAVE_DECL_NFDBITS) && HAVE_DECL_NFDBITS == 0
-# define	NFDBITS (8 * sizeof(unsigned long))
-#endif
-
-#if defined(HAVE_DECL_HOWMANY) && HAVE_DECL_HOWMANY == 0
-# define howmany(x,y)	(((x)+((y)-1))/(y))
-#endif
-
 /* Paths */
-
-#ifndef _PATH_BSHELL
-# define _PATH_BSHELL "/bin/sh"
-#endif
 
 #ifdef USER_PATH
 # ifdef _PATH_STDPATH
@@ -528,10 +428,6 @@ struct winsize {
 # define DO_LOG_SAFE_IN_SIGHAND
 #endif
 
-#if !defined(HAVE_MEMMOVE) && defined(HAVE_BCOPY)
-# define memmove(s1, s2, n) bcopy((s2), (s1), (n))
-#endif /* !defined(HAVE_MEMMOVE) && defined(HAVE_BCOPY) */
-
 #ifdef USE_BSM_AUDIT
 # define SSH_AUDIT_EVENTS
 # define CUSTOM_SSH_AUDIT_EVENTS
@@ -665,10 +561,6 @@ struct winsize {
 
 /** end of login recorder definitions */
 
-#ifdef BROKEN_GETGROUPS
-# define getgroups(a,b) ((a)==0 && (b)==NULL ? NGROUPS_MAX : getgroups((a),(b)))
-#endif
-
 #if defined(HAVE_MMAP) && defined(BROKEN_MMAP)
 # undef HAVE_MMAP
 #endif
@@ -689,15 +581,6 @@ struct winsize {
 
 #ifndef INET6_ADDRSTRLEN	/* for non IPv6 machines */
 #define INET6_ADDRSTRLEN 46
-#endif
-
-/*
- * Platforms that have arc4random_uniform() and not arc4random_stir()
- * shouldn't need the latter.
- */
-#if defined(HAVE_ARC4RANDOM) && defined(HAVE_ARC4RANDOM_UNIFORM) && \
-    !defined(HAVE_ARC4RANDOM_STIR)
-# define arc4random_stir()
 #endif
 
 #ifndef HAVE_VA_COPY
@@ -763,10 +646,6 @@ struct winsize {
 # else
 #  error "Neither EAI_NODATA and EAI_NONAME are defined! :("
 # endif
-#endif
-
-#ifndef CLOCK_MONOTONIC
-#define CLOCK_MONOTONIC -1
 #endif
 /* end of chl */
 

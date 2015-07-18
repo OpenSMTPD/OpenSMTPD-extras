@@ -34,22 +34,17 @@
 #include <ctype.h>
 #include <unistd.h>
 
-#if !defined(HAVE_MKDTEMP) || defined(HAVE_STRICT_MKSTEMP)
-
-#define MKTEMP_NAME	0
-#define MKTEMP_FILE	1
-#define MKTEMP_DIR	2
+#if defined(HAVE_STRICT_MKSTEMP)
 
 #define TEMPCHARS	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 #define NUM_CHARS	(sizeof(TEMPCHARS) - 1)
 
 static int
-mktemp_internal(char *path, int slen, int mode)
+mktemp_internal(char *path, int slen)
 {
 	char *start, *cp, *ep;
 	const char *tempchars = TEMPCHARS;
 	unsigned int r, tries;
-	struct stat sb;
 	size_t len;
 	int fd;
 
@@ -73,69 +68,18 @@ mktemp_internal(char *path, int slen, int mode)
 			*cp = tempchars[r];
 		}
 
-		switch (mode) {
-		case MKTEMP_NAME:
-			if (lstat(path, &sb) != 0)
-				return(errno == ENOENT ? 0 : -1);
-			break;
-		case MKTEMP_FILE:
-			fd = open(path, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR);
-			if (fd != -1 || errno != EEXIST)
-				return(fd);
-			break;
-		case MKTEMP_DIR:
-			if (mkdir(path, S_IRUSR|S_IWUSR|S_IXUSR) == 0)
-				return(0);
-			if (errno != EEXIST)
-				return(-1);
-			break;
-		}
+		fd = open(path, O_CREAT|O_EXCL|O_RDWR, S_IRUSR|S_IWUSR);
+		if (fd != -1 || errno != EEXIST)
+			return(fd);
 	} while (--tries);
 
 	errno = EEXIST;
 	return(-1);
 }
 
-#if 0
-char *_mktemp(char *);
-
-char *
-_mktemp(char *path)
-{
-	if (mktemp_internal(path, 0, MKTEMP_NAME) == -1)
-		return(NULL);
-	return(path);
-}
-
-__warn_references(mktemp,
-    "warning: mktemp() possibly used unsafely; consider using mkstemp()");
-
-char *
-mktemp(char *path)
-{
-	return(_mktemp(path));
-}
-#endif
-
 int
 mkstemp(char *path)
 {
-	return(mktemp_internal(path, 0, MKTEMP_FILE));
+	return(mktemp_internal(path, 0));
 }
-
-int
-mkstemps(char *path, int slen)
-{
-	return(mktemp_internal(path, slen, MKTEMP_FILE));
-}
-
-char *
-mkdtemp(char *path)
-{
-	int error;
-
-	error = mktemp_internal(path, 0, MKTEMP_DIR);
-	return(error ? NULL : path);
-}
-
-#endif /* !defined(HAVE_MKDTEMP) || defined(HAVE_STRICT_MKSTEMP) */
+#endif /* defined(HAVE_STRICT_MKSTEMP) */

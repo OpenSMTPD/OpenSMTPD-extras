@@ -41,24 +41,15 @@
 
 #include <sys/queue.h>
 #include <sys/tree.h>
-#include "vis.h"
 #include "xmalloc.h"
 
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif
 
-#ifndef HAVE_BASENAME
-char *basename(const char *path);
-#endif
-
 #ifndef HAVE_CLOSEFROM
 void closefrom(int);
 #endif
-
-#if !defined(HAVE_REALPATH) || defined(BROKEN_REALPATH)
-char *realpath(const char *path, char *resolved);
-#endif 
 
 #ifndef HAVE_STRLCPY
 size_t strlcpy(char *dst, const char *src, size_t size);
@@ -68,44 +59,12 @@ size_t strlcpy(char *dst, const char *src, size_t size);
 size_t strlcat(char *dst, const char *src, size_t size);
 #endif
 
-#ifndef HAVE_STRMODE
-void strmode(int mode, char *p);
-#endif
-
-#if !defined(HAVE_MKDTEMP) || defined(HAVE_STRICT_MKSTEMP)
-int mkstemps(char *path, int slen);
+#if defined(HAVE_STRICT_MKSTEMP)
 int mkstemp(char *path);
-char *mkdtemp(char *path);
 #endif 
-
-#ifndef HAVE_DAEMON
-int daemon(int nochdir, int noclose);
-#endif 
-
-#ifndef HAVE_DIRNAME
-char *dirname(const char *path);
-#endif
-
-#ifndef HAVE_FMT_SCALED
-#define	FMT_SCALED_STRSIZE	7
-int	fmt_scaled(long long number, char *result);
-#endif
-
-#ifndef HAVE_SCAN_SCALED
-int	scan_scaled(char *, long long *);
-#endif
-
-#ifndef HAVE_INET_NTOP
-const char *inet_ntop(int af, const void *src, char *dst, socklen_t size);
-#endif
 
 #ifndef HAVE_STRSEP
 char *strsep(char **stringp, const char *delim);
-#endif
-
-#ifndef HAVE_SETPROCTITLE
-void setproctitle(const char *fmt, ...);
-void compat_init_setproctitle(int argc, char *argv[]);
 #endif
 
 #if !defined(HAVE_GETOPT) || !defined(HAVE_GETOPT_OPTRESET)
@@ -116,27 +75,10 @@ int	BSDoptind;		/* index into parent argv vector */
 
 /* Home grown routines */
 #include "bsd-misc.h"
-/* #include "bsd-setres_id.h" */
-/* #include "bsd-statvfs.h" */
-#include "bsd-waitpid.h"
-/* #include "bsd-poll.h" */
 
-#ifndef HAVE_GETPEEREID
-int getpeereid(int , uid_t *, gid_t *);
-#endif 
-
-#ifdef HAVE_ARC4RANDOM
-# ifndef HAVE_ARC4RANDOM_STIR
-#  define arc4random_stir()
-# endif
-#else
+#ifndef HAVE_ARC4RANDOM
 unsigned int arc4random(void);
-void arc4random_stir(void);
 #endif /* !HAVE_ARC4RANDOM */
-
-#ifndef HAVE_ARC4RANDOM_BUF
-void arc4random_buf(void *, size_t);
-#endif
 
 #ifndef HAVE_ARC4RANDOM_UNIFORM
 u_int32_t arc4random_uniform(u_int32_t);
@@ -154,10 +96,6 @@ int snprintf(char *, size_t, SNPRINTF_CONST char *, ...);
 
 #ifndef HAVE_STRTOLL
 long long strtoll(const char *, char **, int);
-#endif
-
-#ifndef HAVE_STRTOUL
-unsigned long strtoul(const char *, char **, int);
 #endif
 
 #ifndef HAVE_STRTOULL
@@ -180,15 +118,7 @@ int vasprintf(char **, const char *, va_list);
 int vsnprintf(char *, size_t, const char *, va_list);
 #endif
 
-#ifndef HAVE_EXPLICIT_BZERO
-void explicit_bzero(void *p, size_t n);
-#endif
-
-/* OpenSMTPD-portable specific entries */
-
-#ifndef HAVE_PW_DUP
-struct passwd *pw_dup(const struct passwd *);
-#endif
+/* OpenSMTPD-extras specific entries */
 
 #ifndef HAVE_REALLOCARRAY
 void *reallocarray(void *, size_t, size_t);

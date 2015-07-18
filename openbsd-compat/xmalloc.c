@@ -93,35 +93,3 @@ __xstrdup(const char *str)
 	strlcpy(cp, str, len);
 	return cp;
 }
-
-int
-xasprintf(char **ret, const char *fmt, ...)
-{
-	va_list ap;
-	int i;
-
-	va_start(ap, fmt);
-	i = vasprintf(ret, fmt, ap);
-	va_end(ap);
-
-	if (i < 0 || *ret == NULL)
-		fatal("xasprintf: could not allocate memory");
-
-	return (i);
-}
-
-int
-xsnprintf(char *str, size_t size, const char *fmt, ...)
-{
-	va_list ap;
-	int i;
-
-	va_start(ap, fmt);
-	i = vsnprintf(str, size, fmt, ap);
-	va_end(ap);
-
-	if (i == -1 || i >= (int)size)
-		fatal("xsnprintf: overflow");
-
-	return (i);
-}

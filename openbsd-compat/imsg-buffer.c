@@ -150,7 +150,7 @@ ibuf_write(struct msgbuf *msgbuf)
 	unsigned int	 i = 0;
 	ssize_t	n;
 
-	bzero(&iov, sizeof(iov));
+	memset(&iov, 0, sizeof(iov));
 	TAILQ_FOREACH(buf, &msgbuf->bufs, entry) {
 		if (i >= IOV_MAX)
 			break;
@@ -234,8 +234,8 @@ msgbuf_write(struct msgbuf *msgbuf)
 		char		buf[CMSG_SPACE(sizeof(int))];
 	} cmsgbuf;
 
-	bzero(&iov, sizeof(iov));
-	bzero(&msg, sizeof(msg));
+	memset(&iov, 0, sizeof(iov));
+	memset(&msg, 0, sizeof(msg));
 	TAILQ_FOREACH(buf, &msgbuf->bufs, entry) {
 		if (i >= IOV_MAX)
 			break;

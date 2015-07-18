@@ -49,9 +49,6 @@
 # include <login.h>
 #endif
 
-#ifdef HAVE_RPC_TYPES_H
-# include <rpc/types.h> /* For INADDR_LOOPBACK */
-#endif
 #ifdef USE_PAM
 #if defined(HAVE_SECURITY_PAM_APPL_H)
 # include <security/pam_appl.h>

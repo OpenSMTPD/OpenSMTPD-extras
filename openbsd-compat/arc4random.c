@@ -198,40 +198,7 @@ arc4random(void)
 	_ARC4_UNLOCK();
 	return val;
 }
-
-/*
- * If we are providing arc4random, then we can provide a more efficient 
- * arc4random_buf().
- */
-# ifndef HAVE_ARC4RANDOM_BUF
-void
-arc4random_buf(void *buf, size_t n)
-{
-	_ARC4_LOCK();
-	_rs_random_buf(buf, n);
-	_ARC4_UNLOCK();
-}
-# endif /* !HAVE_ARC4RANDOM_BUF */
 #endif /* !HAVE_ARC4RANDOM */
-
-/* arc4random_buf() that uses platform arc4random() */
-#if !defined(HAVE_ARC4RANDOM_BUF) && defined(HAVE_ARC4RANDOM)
-void
-arc4random_buf(void *_buf, size_t n)
-{
-	size_t i;
-	u_int32_t r = 0;
-	char *buf = (char *)_buf;
-
-	for (i = 0; i < n; i++) {
-		if (i % 4 == 0)
-			r = arc4random();
-		buf[i] = r & 0xff;
-		r >>= 8;
-	}
-	explicit_bzero(&r, sizeof(r));
-}
-#endif /* !defined(HAVE_ARC4RANDOM_BUF) && defined(HAVE_ARC4RANDOM) */
 
 #ifndef HAVE_ARC4RANDOM_UNIFORM
 /*

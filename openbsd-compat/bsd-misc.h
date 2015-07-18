@@ -21,86 +21,12 @@
 
 #include "includes.h"
 
-char *ssh_get_progname(char *);
-
 #ifndef HAVE_SETSID
 #define setsid() setpgrp(0, getpid())
 #endif /* !HAVE_SETSID */
 
-#ifndef HAVE_SETENV
-int setenv(const char *, const char *, int);
-#endif /* !HAVE_SETENV */
-
-#ifndef HAVE_SETLOGIN
-int setlogin(const char *);
-#endif /* !HAVE_SETLOGIN */
-
-#ifndef HAVE_INNETGR
-int innetgr(const char *, const char *, const char *, const char *);
-#endif /* HAVE_INNETGR */
-
-#if !defined(HAVE_SETEUID) && defined(HAVE_SETREUID)
-int seteuid(uid_t);
-#endif /* !defined(HAVE_SETEUID) && defined(HAVE_SETREUID) */
-
-#if !defined(HAVE_SETEGID) && defined(HAVE_SETRESGID)
-int setegid(uid_t);
-#endif /* !defined(HAVE_SETEGID) && defined(HAVE_SETRESGID) */
-
 #if !defined(HAVE_STRERROR) && defined(HAVE_SYS_ERRLIST) && defined(HAVE_SYS_NERR)
 const char *strerror(int);
 #endif 
-
-#if !defined(HAVE_SETLINEBUF)
-#define setlinebuf(a)	(setvbuf((a), NULL, _IOLBF, 0))
-#endif
-
-#ifndef HAVE_TRUNCATE
-int truncate (const char *, off_t);
-#endif /* HAVE_TRUNCATE */
-
-#if !defined(HAVE_NANOSLEEP) && !defined(HAVE_NSLEEP)
-#ifndef HAVE_STRUCT_TIMESPEC
-struct timespec {
-	time_t	tv_sec;
-	long	tv_nsec;
-};
-#endif
-int nanosleep(const struct timespec *, struct timespec *);
-#endif
-
-#ifndef HAVE_USLEEP
-int usleep(unsigned int useconds);
-#endif
-
-#ifndef HAVE_TCGETPGRP
-pid_t tcgetpgrp(int);
-#endif
-
-#ifndef HAVE_TCSENDBREAK
-int tcsendbreak(int, int);
-#endif
-
-#ifndef HAVE_UNSETENV
-int unsetenv(const char *);
-#endif
-
-/* wrapper for signal interface */
-typedef void (*mysig_t)(int);
-mysig_t mysignal(int sig, mysig_t act);
-
-#define signal(a,b) mysignal(a,b)
-
-#ifndef HAVE_ISBLANK
-int	isblank(int);
-#endif
-
-#ifndef HAVE_GETPGID
-pid_t getpgid(pid_t);
-#endif
-
-#ifndef HAVE_ENDGRENT
-# define endgrent() {}
-#endif
 
 #endif /* _BSD_MISC_H */

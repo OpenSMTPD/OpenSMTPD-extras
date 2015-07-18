@@ -62,7 +62,7 @@ void
 imsg_init(struct imsgbuf *ibuf, int fd)
 {
 	msgbuf_init(&ibuf->w);
-	bzero(&ibuf->r, sizeof(ibuf->r));
+	memset(&ibuf->r, 0, sizeof(ibuf->r));
 	ibuf->fd = fd;
 	ibuf->w.fd = fd;
 	ibuf->pid = getpid();
@@ -83,7 +83,7 @@ imsg_read(struct imsgbuf *ibuf)
 	int			 fd;
 	struct imsg_fd		*ifd;
 
-	bzero(&msg, sizeof(msg));
+	memset(&msg, 0, sizeof(msg));
 
 	iov.iov_base = ibuf->r.buf + ibuf->r.wpos;
 	iov.iov_len = sizeof(ibuf->r.buf) - ibuf->r.wpos;
