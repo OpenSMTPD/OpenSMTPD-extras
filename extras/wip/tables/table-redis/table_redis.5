@@ -1,0 +1,149 @@
+.\" Copyright (c) 2015 Emmanuel Vadot <elbarto@bocal.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.\"
+.Dd $Mdocdate: May 14 2015 $
+.Dt TABLE_REDIS 5
+.Os
+.Sh NAME
+.Nm table_redis
+.Nd format description for smtpd redis tables
+.Sh DESCRIPTION
+This manual page documents the file format of redis tables used by the
+.Xr smtpd 8
+mail daemon.
+.Pp
+The format described here applies to tables as defined in
+.Xr smtpd.conf 5 .
+.Sh REDIS TABLE
+A Redis table allows the storing of usernames, passwords, aliases, and domains
+in a redis server.
+.Pp
+The table is used by
+.Xr smtpd 8
+when authenticating a user, when user information such as user-id and/or
+home directory is required for a delivery, when a domain lookup may be required,
+and/or when looking for an alias.
+.Pp
+A Redis table consists of one Redis Databases with one or more keys.
+.Pp
+If the table is used for authentication, the password should be 
+encrypted using the
+.Xr crypt 3
+function.
+Such passwords can be generated using the
+.Xr encrypt 1
+utility or
+.Xr smtpctl 8
+encrypt command.
+.Sh REDIS TABLE CONFIG FILE
+.Cd master
+.Dl This is the IP of the master redis server.
+.Dl To connect via an unix socket use unix:/path/to/sock
+.Dl The default is 127.0.0.1
+
+.Cd master_port
+.Dl This is the port used to connect to the master redis server.
+.Dl The default is 6379
+
+.Cd slave
+.Dl This is the IP of the slave redis server, if any.
+.Dl To connect via an unix socket use unix:/path/to/sock
+
+.Cd slave_port
+.Dl This is the port used to connect to the slave redis server if any.
+
+.Cd database
+.Dl The database number to use.
+.Dl The default is 0.
+
+.Cd password
+.Dl The password to use to authenticate to the redis server if any.
+
+.Cd query_domain
+.Dl This is used to provide a query for a domain query call. All the '%s' are replaced
+.Dl with the appropriate data, in this case it would be the right hand side of the SMTP address.
+.Dl This expects one string to be returned with a matching domain name.
+
+.Cd query_userinfo
+.Dl This is used to provide a query for looking up user information.
+.Dl All the '%s' are replaced with the appropriate data, in this case it
+.Dl would be the left hand side of the SMTP address.
+.Dl This expects three fields to be returned an int containing a UID, an int containing a GID
+.Dl and a string containing the home directory for the user.
+
+.Cd query_credentials
+.Dl This is used to provide a query for looking up credentials. All the '%s' are replaced
+.Dl with the appropriate data, in this case it would be the left hand side of the SMTP address.
+.Dl the query expects that there are two strings returned one with a 
+.Dl user name one with a password in encrypted format.
+
+.Cd query_alias
+.Dl This is used to provide a query to look up aliases. All the '%s' are replaced
+.Dl with the appropriate data, in this case it would be the left hand side of the SMTP address.
+.Dl This expects one string to be returned with the user name the alias resolves to.
+.Dl If the query returns an array, all the data will be concatenated into one string with ',' as a separator
+
+.Cd query_mailaddr
+.Dl This is used to provide a query to check if a mail address exists.
+.Dl All the '%s' are replaced with the appropriate data, in this case it would be the SMTP address.
+.Dl This expects an integer as a reply, 0 = false and 1 = true
+
+.Pp
+.Sh EXAMPLES
+Due to the nature of redis, multiple schemas can be used. Those provided here a known to work.
+.Pp
+.Cd domain
+.Dl # redis-cli sadd domains example.net
+
+.Dl in the redis table configuration file :
+.Dl query_domain    SISMEMBER domains %s
+
+.Cd userinfo
+.Dl Hash works well for users
+.Dl # redis-cli HSET user:foo uid 1001
+.Dl # redis-cli HSET user:foo gid 1001
+.Dl # redis-cli HSET user:foo maildir "/mail/foo"
+
+.Dl in the redis table configuration file :
+.Dl query_userinfo  HMGET user:%s uid gid maildir
+
+.Cd credentials
+.Dl We can extend the hash for our user to put credential in it
+.Dl # redis-cli HSET user:foo login foo
+.Dl # redis-cli HSET user:foo passwd encrypted_password
+
+.Dl in the redis table configuration file :
+.Dl query_credentials  HMGET user:%s login passwd
+
+.Cd alias
+.Dl Using redis sorted list :
+.Dl # redis-cli LPUSH aliases:foo@example.net foo
+.Dl # redis-cli LPUSH aliases:bar@example.net foo
+
+.Dl in the redis table configuration file :
+.Dl query_alias     LRANGE aliases:%s 0 -1
+
+.Cd mailaddr
+.Dl # redis-cli sadd mailaddr foo@example.net
+
+.Dl in the redis table configuration file :
+.Dl query_mailaddr    SISMEMBER mailaddr %s
+
+
+.Sh SEE ALSO
+.Xr encrypt 1 ,
+.Xr smtpd.conf 5 ,
+.Xr smtpctl 8 ,
+.Xr smtpd 8

@@ -2167,6 +2167,7 @@ AC_ARG_WITH([table-redis],
 			AC_DEFINE([HAVE_TABLE_REDIS], [1],
 				[Define if you have experimental Redis support])
 			HAVE_TABLE_REDIS=yes
+			need_redis=yes
 		fi
 	]
 )
@@ -2426,6 +2427,34 @@ fi
 AC_SUBST([LUA_CPPFLAGS])
 AC_SUBST([LUA_LDFLAGS])
 
+#
+# check for hiredis
+#
+REDIS_CPPFLAGS=
+REDIS_LDFLAGS=
+if test x"${need_redis}" = x"yes"; then
+   REDIS_CONFIG=
+   for path in /usr/local/bin /usr/bin; do
+	if test -f ${path}/pkg-config; then
+		REDIS_CONFIG=${path}/pkg-config
+		break
+	fi
+   done
+
+   # if redis provided --with-redis, override
+   if test x"${with_hiredis}" != x""; then
+      REDIS_CONFIG="${redis_prefix}/bin/pkg-config"
+   fi
+
+   if ! test -f $REDIS_CONFIG; then
+      AC_MSG_ERROR([*** $REDIS_CONFIG could not be found, please install or use --with-redis ***])
+   fi
+
+   REDIS_CPPFLAGS="`$REDIS_CONFIG --cflags hiredis`"
+   REDIS_LDFLAGS="`$REDIS_CONFIG --libs hiredis`"
+fi
+AC_SUBST([REDIS_CPPFLAGS])
+AC_SUBST([REDIS_LDFLAGS])
 
 ##chl (based on OpenSSL checks, see above)
 # Search for libevent
@@ -2602,5 +2631,12 @@ if test x"${need_lua}" = x"yes"; then
 echo "Built with Lua support:"
 echo "          CPPFLAGS: ${LUA_CPPFLAGS}"
 echo "           LDFLAGS: ${LUA_LDFLAGS}"
+echo ""
+fi
+
+if test x"${need_redis}" = x"yes"; then
+echo "Built with redis support:"
+echo "          CPPFLAGS: ${REDIS_CPPFLAGS}"
+echo "           LDFLAGS: ${REDIS_LDFLAGS}"
 echo ""
 fi
