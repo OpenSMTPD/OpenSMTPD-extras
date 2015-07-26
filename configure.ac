@@ -1862,7 +1862,14 @@ fi
 AC_SUBST([mansubdir])
 #l4207
 
-pkglibexecdir="$libexecdir/smtpd"
+case "$host" in
+*-*-openbsd*)
+	pkglibexecdir="$libexecdir/smtpd"
+	;;
+*)
+	pkglibexecdir="$libexecdir/opensmtpd"
+	;;
+esac
 AC_SUBST([pkglibexecdir])
 
 
