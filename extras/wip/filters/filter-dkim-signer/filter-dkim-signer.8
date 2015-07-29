@@ -1,0 +1,73 @@
+.\"	$OpenBSD: $
+.\"
+.\" Copyright (c) 2015, Joerg Jung <jung@openbsd.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd $Mdocdate: July 29 2015 $
+.Dt FILTER-DKIM-SIGNER 8
+.Os
+.Sh NAME
+.Nm filter-dkim-signer
+.Nd smtpd filter to add DKIM signatures
+.Sh SYNOPSIS
+.Nm
+.Op Fl d Ar domain
+.Op Fl p Ar private-key
+.Op Fl s Ar selector
+.Sh DESCRIPTION
+.Nm
+is a filter for
+.Xr smtpd 8
+which can be used to add rsa-sha256 DKIM signatures to
+SMTP-headers
+.Pp
+The options are as follows:
+.Bl -tag -width "-p private-key"
+.It Fl d Ar domain
+Set the DKIM
+.Ar domain
+to be added.
+.Pp
+The default
+.Ar domain
+is retrieved with gethostname().
+.It Fl p Ar private-key
+The file-name that contains the RSA
+.Ar private-key
+to be used for signing
+.Pp
+The default
+.Ar private-key
+is /etc/ssl/private/rsa.private
+.It Fl s Ar selector
+Set the DKIM
+.Ar selector
+.Pp
+The default
+.Ar selector
+is "default"
+.El
+.Pp
+This adds an rsa-sha256 DKIM-Signature header to the mail passing through
+the filter.
+.Sh SEE ALSO
+.Xr filter_api 3 ,
+.Xr smtpd.conf 5 ,
+.Xr smtpd 8
+.Sh HISTORY
+The first version of
+.Nm
+was written in 2014.
+.Sh AUTHORS
+.An Bernard Spil Aq Mt brnrd@FreeBSD.org
