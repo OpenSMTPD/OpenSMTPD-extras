@@ -8,3 +8,5 @@ table_redis_SOURCES	+= $(tables_srcdir)/table-redis/table_redis.c
 
 CFLAGS                  += ${REDIS_CPPFLAGS}
 LDFLAGS                 += ${REDIS_LDFLAGS}
+
+man_MANS		 = table_redis.5
