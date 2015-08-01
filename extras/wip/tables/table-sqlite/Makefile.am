@@ -7,3 +7,5 @@ table_sqlite_SOURCES	 = $(SRCS)
 table_sqlite_SOURCES	+= $(tables_srcdir)/table-sqlite/table_sqlite.c
 
 LDADD	+= -lsqlite3
+
+man_MANS		 = $(tables_srcdir)/table-sqlite/table_sqlite.5

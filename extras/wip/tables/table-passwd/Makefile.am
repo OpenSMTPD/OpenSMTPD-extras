@@ -5,3 +5,5 @@ pkglibexec_PROGRAMS	 = table-passwd
 
 table_passwd_SOURCES	 = $(SRCS)
 table_passwd_SOURCES	+= $(tables_srcdir)/table-passwd/table_passwd.c
+
+man_MANS		 = table_passwd.5

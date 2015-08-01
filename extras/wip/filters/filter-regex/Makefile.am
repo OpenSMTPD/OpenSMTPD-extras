@@ -5,3 +5,5 @@ pkglibexec_PROGRAMS	 = filter-regex
 
 filter_regex_SOURCES	 = $(SRCS)
 filter_regex_SOURCES	+= $(filters_srcdir)/filter-regex/filter_regex.c
+
+man_MANS		= filter-regex.8

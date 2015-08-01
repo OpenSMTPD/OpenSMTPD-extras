@@ -9,3 +9,5 @@ filter_dnsbl_SOURCES	+= $(filters_srcdir)/filter-dnsbl/filter_dnsbl.c
 if !NO_LIBASR
 LDADD	 += -lasr
 endif
+
+man_MANS		 = filter-dnsbl.8
