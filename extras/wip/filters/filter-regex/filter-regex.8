@@ -22,6 +22,7 @@
 .Nd smtpd filter for regular expression filtering
 .Sh SYNOPSIS
 .Nm
+.Op Fl dv
 .Op Fl l Ar limit
 .Op Ar file
 .Sh DESCRIPTION
@@ -33,6 +34,11 @@ session parameters.
 .Pp
 The options are as follows:
 .Bl -tag -width "-l limit"
+.It Fl d
+Debug mode, if this option is specified,
+.Nm
+will run in the foreground and log to
+.Em stderr .
 .It Fl l Ar limit
 Set the number of lines
 .Ar limit
@@ -45,7 +51,14 @@ The accepted values are within the range of 1 and UINT_MAX.
 The default
 .Ar limit
 value is 0 (unlimited).
+.It Fl v
+Produce more verbose output.
 .El
+.Pp
+The debug and verbose options given with the
+.Xr smtpd 8
+invocation are intially passed to
+.Nm .
 .Pp
 Depending if one of the regular expressions matches mails are either accepted
 or rejected with a SMTP 554 reply.
@@ -58,12 +71,12 @@ Default
 configuration file.
 .El
 .Sh SEE ALSO
-.Xr filter-regex.conf 5 ,
 .Xr filter_api 3 ,
+.Xr regex 3 ,
+.Xr filter-regex.conf 5 ,
 .Xr smtpd.conf 5 ,
-.Xr smtpd 8 ,
 .Xr re_format 7 ,
-.Xr regex 3
+.Xr smtpd 8
 .Sh HISTORY
 The first version of
 .Nm

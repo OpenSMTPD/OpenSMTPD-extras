@@ -1,6 +1,7 @@
 .\"	$OpenBSD: $
 .\"
 .\" Copyright (c) 2015, Bernard Spil <brnrd@FreeBSD.org>
+.\" Copyright (c) 2015, Joerg Jung <jung@openbsd.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
@@ -22,7 +23,8 @@
 .Nd smtpd filter to add DKIM signatures
 .Sh SYNOPSIS
 .Nm
-.Op Fl d Ar domain
+.Op Fl dv
+.Op Fl D Ar domain
 .Op Fl p Ar private-key
 .Op Fl s Ar selector
 .Sh DESCRIPTION
@@ -30,11 +32,11 @@
 is a filter for
 .Xr smtpd 8
 which can be used to add rsa-sha256 DKIM signatures to
-SMTP-headers
+SMTP headers
 .Pp
 The options are as follows:
 .Bl -tag -width "-p private-key"
-.It Fl d Ar domain
+.It Fl D Ar domain
 Set the DKIM
 .Ar domain
 to be added.
@@ -42,6 +44,11 @@ to be added.
 The default
 .Ar domain
 is retrieved with gethostname().
+.It Fl d
+Debug mode, if this option is specified,
+.Nm
+will run in the foreground and log to
+.Em stderr .
 .It Fl p Ar private-key
 The file-name that contains the RSA
 .Ar private-key
@@ -57,10 +64,19 @@ Set the DKIM
 The default
 .Ar selector
 is "default"
+.It Fl v
+Produce more verbose output.
 .El
 .Pp
-This adds an rsa-sha256 DKIM-Signature header to the mail passing through
-the filter.
+The debug and verbose options given with the
+.Xr smtpd 8
+invocation are intially passed to
+.Nm .
+.Pp
+With
+.Nm
+enabled, an rsa-sha256 DKIM signature header is added to mails passing
+through the filter.
 .Sh SEE ALSO
 .Xr filter_api 3 ,
 .Xr smtpd.conf 5 ,

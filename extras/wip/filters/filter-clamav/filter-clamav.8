@@ -22,6 +22,7 @@
 .Nd smtpd filter for Clam AntiVirus clamd
 .Sh SYNOPSIS
 .Nm
+.Op Fl dv
 .Sh DESCRIPTION
 .Nm
 is a filter for
@@ -30,6 +31,22 @@ which can be used to filter mails based on the decision from Clam AntiVirus's
 .Xr clamd 8
 daemon.
 Mails are piped to the daemon, which scans the mail for viruses.
+.Pp
+The options are as follows:
+.Bl -tag -width "-d"
+.It Fl d
+Debug mode, if this option is specified,
+.Nm
+will run in the foreground and log to
+.Em stderr .
+.It Fl v
+Produce more verbose output.
+.El
+.Pp
+The debug and verbose options given with the
+.Xr smtpd 8
+invocation are intially passed to
+.Nm .
 .Pp
 Mails which contain a virus are rejected with a SMTP 554 reply.
 Non-virus mails are accepted.
@@ -46,8 +63,8 @@ configuration of the daemon.
 .Sh SEE ALSO
 .Xr filter_api 3 ,
 .Xr smtpd.conf 5 ,
-.Xr smtpd 8 ,
-.Xr clamd 8
+.Xr clamd 8 ,
+.Xr smtpd 8
 .Sh HISTORY
 The first version of
 .Nm

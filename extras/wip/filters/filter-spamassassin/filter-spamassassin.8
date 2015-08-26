@@ -22,6 +22,7 @@
 .Nd smtpd filter for SpamAssassin spamd
 .Sh SYNOPSIS
 .Nm
+.Op Fl dv
 .Op Fl s Ar strategy
 .Sh DESCRIPTION
 .Nm
@@ -35,6 +36,11 @@ according to its own configuration.
 .Pp
 The options are as follows:
 .Bl -tag -width "-s strategy"
+.It Fl d
+Debug mode, if this option is specified,
+.Nm
+will run in the foreground and log to
+.Em stderr .
 .It Fl s Ar strategy
 Set the
 .Ar strategy
@@ -53,7 +59,14 @@ Spam mails are rejected.
 The default
 .Ar strategy
 value is accept.
+.It Fl v
+Produce more verbose output.
 .El
+.Pp
+The debug and verbose options given with the
+.Xr smtpd 8
+invocation are intially passed to
+.Nm .
 .Pp
 Depending on the chosen
 .Ar strategy
@@ -69,10 +82,10 @@ expects that SpamAssassin's
 to listen on 127.0.0.1 port 783 for incoming requests.
 This matches to the default configuration of the daemon.
 .Sh SEE ALSO
+.Xr spamd 1 ,
 .Xr filter_api 3 ,
 .Xr smtpd.conf 5 ,
-.Xr smtpd 8 ,
-.Xr spamd 1
+.Xr smtpd 8
 .Sh HISTORY
 The first version of
 .Nm

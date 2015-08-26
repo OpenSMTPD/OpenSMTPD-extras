@@ -22,6 +22,7 @@
 .Nd smtpd filter to pause on new connections
 .Sh SYNOPSIS
 .Nm
+.Op Fl dv
 .Op Fl s Ar seconds
 .Sh DESCRIPTION
 .Nm
@@ -35,6 +36,11 @@ technique used by some senders of spam mails.
 .Pp
 The options are as follows:
 .Bl -tag -width "-s seconds"
+.It Fl d
+Debug mode, if this option is specified,
+.Nm
+will run in the foreground and log to
+.Em stderr .
 .It Fl s Ar seconds
 Set the number of
 .Ar seconds
@@ -44,11 +50,20 @@ The accepted values are withing the range of 1s and 300s.
 The default
 .Ar seconds
 value is 5s.
+.It Fl v
+Produce more verbose output.
 .El
+.Pp
+The debug and verbose options given with the
+.Xr smtpd 8
+invocation are intially passed to
+.Nm .
 .Pp
 With
 .Nm
-enabled, smtpd simply waits the specified amount of
+enabled,
+.Xr smtpd 8
+simply waits the specified amount of
 .Ar seconds
 on each new connection.
 If the remote server starts sending SMTP commands before the greeting, the

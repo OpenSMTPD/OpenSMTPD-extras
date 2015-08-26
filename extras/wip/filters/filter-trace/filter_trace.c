@@ -115,12 +115,18 @@ on_dataline(uint64_t id, const char *line)
 int
 main(int argc, char **argv)
 {
-	int	ch;
+	int	ch, d = 0, v = 0;
 
-	log_init(-1);
+	log_init(1);
 
-	while ((ch = getopt(argc, argv, "")) != -1) {
+	while ((ch = getopt(argc, argv, "dv")) != -1) {
 		switch (ch) {
+		case 'd':
+			d = 1;
+			break;
+		case 'v':
+			v |= TRACE_DEBUG;
+			break;
 		default:
 			log_warnx("warn: filter-trace: bad option");
 			return (1);
@@ -129,6 +135,9 @@ main(int argc, char **argv)
 	}
 	argc -= optind;
 	argv += optind;
+
+	log_init(d);
+	log_verbose(v);
 
 	log_debug("debug: filter-trace: starting...");
 

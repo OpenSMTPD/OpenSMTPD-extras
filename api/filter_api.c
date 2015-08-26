@@ -757,9 +757,6 @@ filter_api_init(void)
 
 	init = 1;
 
-	log_init(-1);
-	log_verbose(1);
-
 	smtpd_process = PROC_FILTER;
 	filter_name = __progname;
 

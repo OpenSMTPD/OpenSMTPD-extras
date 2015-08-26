@@ -22,12 +22,29 @@
 .Nd smtpd filter stub
 .Sh SYNOPSIS
 .Nm
+.Op Fl dv
 .Sh DESCRIPTION
 .Nm
 is a stub filter for
 .Xr smtpd 8
 which accepts all mails.
 The purpose of this filter is to provide a code template for other filters.
+.Pp
+The options are as follows:
+.Bl -tag -width "-d"
+.It Fl d
+Debug mode, if this option is specified,
+.Nm
+will run in the foreground and log to
+.Em stderr .
+.It Fl v
+Produce more verbose output.
+.El
+.Pp
+The debug and verbose options given with the
+.Xr smtpd 8
+invocation are intially passed to
+.Nm .
 .Sh SEE ALSO
 .Xr filter_api 3 ,
 .Xr smtpd.conf 5 ,

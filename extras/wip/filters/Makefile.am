@@ -51,3 +51,5 @@ endif
 if HAVE_FILTER_VOID
 SUBDIRS	+=	filter-void
 endif
+
+man_MANS =	filter_api.3

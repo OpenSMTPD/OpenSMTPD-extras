@@ -267,23 +267,29 @@ on_disconnect(uint64_t id)
 int
 main(int argc, char **argv)
 {
-	int		 ch;
+	int		 ch, d = 0, v = 0;
 	const char	*p = NULL;
 	FILE		*fp;
 	static char	 hostname[SMTPD_MAXHOSTNAMELEN];
 
-	log_init(-1);
+	log_init(1);
 
-	while ((ch = getopt(argc, argv, "d:p:s:")) != -1) {
+	while ((ch = getopt(argc, argv, "Dd:p:s:v")) != -1) {
 		switch (ch) {
-		case 'd':
+		case 'D':
 			domain = optarg;
+			break;
+		case 'd':
+			d = 1;
 			break;
 		case 'p':
 			p = optarg;
 			break;
 		case 's':
 			selector = optarg;
+			break;
+		case 'v':
+			v |= TRACE_DEBUG;
 			break;
 		default:
 			log_warnx("warn: filter-dkim-signer: bad option");
@@ -298,7 +304,6 @@ main(int argc, char **argv)
 	if (domain == NULL) {
 		if (gethostname(hostname, sizeof(hostname)) == -1)
 			fatal("dkim_signer: main: gethostname");
-
 		domain = hostname;
 	}
 
@@ -307,6 +312,9 @@ main(int argc, char **argv)
 
 	if (p == NULL)
 		p = PRIVATE_KEY;
+
+	log_init(d);
+	log_verbose(v);
 
 	log_debug("debug: filter-dkim-signer: starting...");
 

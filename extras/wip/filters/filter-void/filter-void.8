@@ -22,11 +22,28 @@
 .Nd smtpd filter that does nothing
 .Sh SYNOPSIS
 .Nm
+.Op Fl dv
 .Sh DESCRIPTION
 .Nm
 is a void filter for
 .Xr smtpd 8
 which accepts all mails, without doing anything.
+.Pp
+The options are as follows:
+.Bl -tag -width "-d"
+.It Fl d
+Debug mode, if this option is specified,
+.Nm
+will run in the foreground and log to
+.Em stderr .
+.It Fl v
+Produce more verbose output.
+.El
+.Pp
+The debug and verbose options given with the
+.Xr smtpd 8
+invocation are intially passed to
+.Nm .
 .Sh SEE ALSO
 .Xr filter_api 3 ,
 .Xr smtpd.conf 5 ,
