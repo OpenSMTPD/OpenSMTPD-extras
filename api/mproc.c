@@ -180,6 +180,8 @@ mproc_dispatch(int fd, short event, void *arg)
 		if ((n = imsg_read(&p->imsgbuf)) == -1) {
 			log_warn("warn: %s -> %s: imsg_read",
 			    proc_name(smtpd_process),  p->name);
+			if (errno == EAGAIN)
+				return;
 			fatal("exiting");
 		}
 		if (n == 0) {
