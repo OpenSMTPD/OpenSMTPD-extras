@@ -274,7 +274,7 @@ main(int argc, char **argv)
 
 	log_init(1);
 
-	while ((ch = getopt(argc, argv, "Dd:p:s:v")) != -1) {
+	while ((ch = getopt(argc, argv, "D:dp:s:v")) != -1) {
 		switch (ch) {
 		case 'D':
 			domain = optarg;
