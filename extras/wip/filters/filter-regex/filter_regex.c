@@ -30,7 +30,6 @@
 #include <limits.h>
 #include <regex.h>
 #include <unistd.h>
-#include <util.h>
 
 #include "smtpd-defines.h"
 #include "smtpd-api.h"
@@ -72,8 +71,8 @@ regex_parse(char *l, size_t no)
 	int i, r;
 
 	l = regex_skip(l);
-	if ((k = strsep(&l, " \t")) == NULL || strlen(k) == 0)
-		return 0; /* skip empty line */
+	if ((k = strsep(&l, " \t")) == NULL || strlen(k) == 0 || *k == '#')
+		return 0; /* skip empty or commented line */
 	for (i = 0; regex_s[i].s != NULL && rq == NULL; i++)
 		if (strcmp(k, regex_s[i].s) == 0)
 			rq = regex_s[i].rq;
@@ -81,7 +80,7 @@ regex_parse(char *l, size_t no)
 		log_warnx("warn: filter-regex: parse: unknown keyword %s line %lu", k, no);
 		return -1;
 	}
-	if (strlen((l = regex_skip(l))) == 0) {
+	if (strlen((l = regex_skip(l))) == 0 || *l == '#') {
 		log_warnx("warn: filter-regex: parse: missing value line %lu", no);
 		return -1;
 	}
@@ -104,21 +103,28 @@ static int
 regex_load(const char *c)
 {
 	FILE *f;
-	char *l;
-	size_t no = 0;
+	char *l = NULL;
+	size_t sz = 0, no = 0;
+	ssize_t len;
 
 	if ((f = fopen(c, "r")) == NULL) {
 		log_warn("warn: filter-regex: load: fopen %s", c);
 		return -1;
 	}
-	while ((l = fparseln(f, NULL, &no, NULL, 0)) != NULL) {
-		if (regex_parse(l, no) == -1) {
+	while ((len = getline(&l, &sz, f)) != -1) {
+		if (l[len - 1] == '\n')
+			l[len - 1] = '\0';
+		if (regex_parse(l, ++no) == -1) {
 			free(l), fclose(f);
 			return -1;
 		}
-		free(l);
 	}
-	fclose(f);
+	if (ferror(f)) {
+		log_warn("warn: filter-regex: load: getline");
+		free(l), fclose(f);
+		return -1;
+	}
+	free(l); fclose(f);
 	return 0;
 }
 

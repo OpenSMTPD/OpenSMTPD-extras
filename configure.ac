@@ -290,7 +290,6 @@ AC_CHECK_HEADERS([ \
 	sys/un.h \
 	time.h \
 	ucred.h \
-	util.h \
 	utime.h \
 	vis.h
 ])
@@ -461,6 +460,7 @@ AC_CHECK_FUNCS([ \
 	fgetln \
 	freeaddrinfo \
 	getaddrinfo \
+	getline \
 	getnameinfo \
 	getopt \
 	getpeereid \
@@ -471,7 +471,6 @@ AC_CHECK_FUNCS([ \
 	isblank \
 	memmove \
 	nsleep \
-	pidfile \
 	pw_dup \
 	reallocarray \
 	setenv \
@@ -628,13 +627,6 @@ AC_CHECK_FUNC([daemon],
 		[LIBS="$LIBS -lbsd"; AC_DEFINE([HAVE_DAEMON])])]
 )
 #l1864
-
-##chl
-AC_CHECK_FUNC([fparseln],
-	[AC_DEFINE([HAVE_FPARSELN], [1], [Define if your libraries define fparseln()])],
-	[AC_CHECK_LIB([util], [fparseln],
-		[LIBS="$LIBS -lutil"; AC_DEFINE([HAVE_FPARSELN])])]
-)
 
 #l1873
 # Check for broken snprintf

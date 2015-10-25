@@ -78,6 +78,4 @@
 
 #include "entropy.h"
 
-#include "util.h"
-
 #endif /* INCLUDES_H */
