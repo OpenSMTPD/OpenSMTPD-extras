@@ -13,7 +13,6 @@ defines.h		portable openssh
 dirname.c		portable openssh
 entropy.{c,h}		portable openssh
 event_asr_run.c		end of /usr/src/lib/libevent/event.c
-fgetln.c		part of /usr/src/usr.bin/make/util.c
 fmt_scaled.c		portable openssh
 getopt.c	  	portable openssh
 imsg-buffer.c		part of /usr/src/libutil/imsg-buffer.c

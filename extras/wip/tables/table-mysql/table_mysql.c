@@ -179,15 +179,13 @@ config_load(const char *path)
 {
 	struct config	*conf;
 	FILE		*fp;
-	size_t		 flen;
-	char		*key, *value, *buf, *lbuf;
+	size_t		 sz = 0;
+	ssize_t		 flen;
+	char		*key, *value, *buf = NULL;
 	const char	*e;
 	long long	 ll;
 
-	lbuf = NULL;
-
-	conf = calloc(1, sizeof(*conf));
-	if (conf == NULL) {
+	if ((conf = calloc(1, sizeof(*conf))) == NULL) {
 		log_warn("warn: table-mysql: calloc");
 		return (NULL);
 	}
@@ -198,25 +196,14 @@ config_load(const char *path)
 	conf->source_refresh = DEFAULT_REFRESH;
 	conf->source_expire = DEFAULT_EXPIRE;
 
-	fp = fopen(path, "r");
-	if (fp == NULL) {
+	if ((fp = fopen(path, "r")) == NULL) {
 		log_warn("warn: table-mysql: fopen");
 		goto end;
 	}
 
-	while ((buf = fgetln(fp, &flen))) {
+	while ((flen = getline(&buf, &sz, fp)) != -1) {
 		if (buf[flen - 1] == '\n')
 			buf[flen - 1] = '\0';
-		else {
-			lbuf = malloc(flen + 1);
-			if (lbuf == NULL) {
-				log_warn("warn: table-mysql: malloc");
-				goto end;
-			}
-			memcpy(lbuf, buf, flen);
-			lbuf[flen] = '\0';
-			buf = lbuf;
-		}
 
 		key = buf;
 		while (isspace((unsigned char)*key))
@@ -274,14 +261,13 @@ config_load(const char *path)
 		conf->source_refresh = ll;
 	}
 
-	free(lbuf);
+	free(buf);
 	fclose(fp);
 	return (conf);
 
     end:
-	free(lbuf);
-	if (fp)
-		fclose(fp);
+	free(buf);
+	fclose(fp);
 	config_free(conf);
 	return (NULL);
 }

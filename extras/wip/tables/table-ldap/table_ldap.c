@@ -183,10 +183,10 @@ ldap_connect(const char *addr)
 	if ((buf = strdup(addr)) == NULL)
 		return (NULL);
 
-	/* XXX buf leak */
-
+	/* aldap_parse_url frees buf on success */
 	if (aldap_parse_url(buf, &lu) != 1) {
 		log_warnx("warn: table-ldap: ldap_parse_url fail");
+		free(buf);
 		return (NULL);
 	}
 
@@ -291,28 +291,17 @@ ldap_parse_attributes(struct query *query, const char *key, const char *line,
 static int
 ldap_config(void)
 {
-	size_t		 flen;
+	size_t		 sz = 0;
+	ssize_t		 flen;
 	FILE		*fp;
-	char		*key, *value, *buf, *lbuf;
+	char		*key, *value, *buf = NULL;
 
-	fp = fopen(config, "r");
-	if (fp == NULL)
+	if ((fp = fopen(config, "r")) == NULL)
 		return (0);
 
-	lbuf = NULL;
-	while ((buf = fgetln(fp, &flen))) {
+	while ((flen = getline(&buf, &sz, fp)) != -1) {
 		if (buf[flen - 1] == '\n')
 			buf[flen - 1] = '\0';
-		else {
-			lbuf = malloc(flen + 1);
-			if (lbuf == NULL) {
-				log_warn("warn: table-ldap: malloc");
-				return (0);
-			}
-			memcpy(lbuf, buf, flen);
-			lbuf[flen] = '\0';
-			buf = lbuf;
-		}
 
 		key = buf;
 		while (isspace((unsigned char)*key))
@@ -384,7 +373,7 @@ ldap_config(void)
 			log_warnx("warn: table-ldap: bogus entry \"%s\"", key);
 	}
 
-	free(lbuf);
+	free(buf);
 	fclose(fp);
 	return (1);
 }
@@ -553,7 +542,7 @@ ldap_run_query(int type, const char *key, char *dst, size_t sz)
 		break;
 	case K_USERINFO:
 		if (snprintf(dst, sz, "%s:%s:%s", res[0][0], res[1][0],
-			res[2][0]) >= (int)sz)
+		    res[2][0]) >= (int)sz)
 			ret = -1;
 		break;
 	default:

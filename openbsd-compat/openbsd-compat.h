@@ -186,12 +186,6 @@ void explicit_bzero(void *p, size_t n);
 
 /* OpenSMTPD-portable specific entries */
 
-#ifndef HAVE_FGETLN
-#include <stdio.h>
-#include <string.h>
-char * fgetln(FILE *stream, size_t *len);
-#endif
-
 #ifndef HAVE_PW_DUP
 struct passwd *pw_dup(const struct passwd *);
 #endif

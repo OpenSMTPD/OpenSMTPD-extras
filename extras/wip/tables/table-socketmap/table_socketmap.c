@@ -137,16 +137,16 @@ err:
 static enum socketmap_reply
 table_socketmap_query(const char *name, const char *key)
 {
-	char   *buf, *lbuf = NULL;
-	size_t	len;
+	char   *buf = NULL;
+	size_t	sz = 0;
+	ssize_t	len;
 	int	ret = SM_PERM;
 
 	memset(repbuffer, 0, sizeof repbuffer);
 	fprintf(sockstream, "%s %s\n", name, key);
 	fflush(sockstream);
 
-	buf = fgetln(sockstream, &len);
-	if (buf == NULL) {
+	if ((len = getline(&buf, &sz, sockstream)) != -1) {
 		log_warnx("warn: table-socketmap: socketmap has lost its socket");
 		(void)strlcpy(repbuffer, "lost connection to socket", sizeof repbuffer);
 		ret = SM_PERM;
@@ -154,19 +154,6 @@ table_socketmap_query(const char *name, const char *key)
 	}
 	if (buf[len - 1] == '\n')
 		buf[len - 1] = '\0';
-	else {
-		if ((lbuf = malloc(len + 1)) == NULL) {
-			log_warnx("warn: table-socketmap: memory exhaustion");
-			(void)strlcpy(repbuffer, "memory exhaustion", sizeof repbuffer);
-			ret = SM_PERM;
-			goto err;
-		}
-		memcpy(lbuf, buf, len);
-		lbuf[len] = '\0';
-		buf = lbuf;
-	}
-	free(lbuf);
-	lbuf = NULL;
 
 	if (strlcpy(repbuffer, buf, sizeof repbuffer) >= sizeof repbuffer) {
 		log_warnx("warn: table-socketmap: socketmap reply too large (>%zu bytes)",
@@ -202,8 +189,7 @@ table_socketmap_query(const char *name, const char *key)
 	}
 
 err:
-	if (lbuf)
-		free(lbuf);
+	free(buf);
 	return ret;
 }
 

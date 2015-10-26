@@ -85,36 +85,27 @@ static int
 table_passwd_update(void)
 {
 	FILE	       *fp;
-	char	       *buf, *lbuf = NULL;
+	char	       *buf = NULL, *p;
 	char		tmp[LINE_MAX];
-	size_t		len;
+	size_t		sz = 0;
+	ssize_t		len;
 	char	       *line;
 	struct passwd	pw;
 	struct dict    *npasswd;
 	char	       *skip;
 
 	/* Parse configuration */
-	fp = fopen(config, "r");
-	if (fp == NULL)
+	if ((fp = fopen(config, "r")) == NULL)
 		return (0);
 
-	npasswd = calloc(1, sizeof *passwd);
-	if (npasswd == NULL)
+	if ((npasswd = calloc(1, sizeof *passwd)) == NULL)
 		goto err;
 
 	dict_init(npasswd);
 
-	while ((buf = fgetln(fp, &len))) {
+	while ((len = getline(&buf, &sz, fp)) != -1) {
 		if (buf[len - 1] == '\n')
 			buf[len - 1] = '\0';
-		else {
-			/* EOF without EOL, copy and add the NUL */
-			if ((lbuf = malloc(len + 1)) == NULL)
-				err(1, NULL);
-			memcpy(lbuf, buf, len);
-			lbuf[len] = '\0';
-			buf = lbuf;
-		}
 
 		/* skip commented entries */
 		for (skip = buf; *skip; ++skip)
@@ -139,26 +130,24 @@ table_passwd_update(void)
 			err(1, NULL);
 		dict_set(npasswd, pw.pw_name, line);
 	}
-	free(lbuf);
 	fclose(fp);
 
 	/* swap passwd table and release old one*/
 	if (passwd)
-		while (dict_poproot(passwd, (void**)&buf))
-			free(buf);
+		while (dict_poproot(passwd, (void**)&p))
+			free(p);
 	passwd = npasswd;
 
 	return (1);
 
 err:
-	if (fp)
-		fclose(fp);
-	free(lbuf);
+	fclose(fp);
+	free(buf);
 
 	/* release passwd table */
 	if (npasswd) {
-		while (dict_poproot(npasswd, (void**)&buf))
-			free(buf);
+		while (dict_poproot(npasswd, (void**)&p))
+			free(p);
 		free(npasswd);
 	}
 	return (0);

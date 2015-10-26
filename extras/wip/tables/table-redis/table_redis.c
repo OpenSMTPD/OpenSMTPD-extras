@@ -121,38 +121,25 @@ config_load(const char *path)
 {
 	struct config	*config;
 	FILE		*fp;
-	size_t		 flen;
-	char		*key, *value, *buf, *lbuf;
+	size_t		 sz = 0;
+	ssize_t		 flen;
+	char		*key, *value, *buf = NULL;
 
-	lbuf = NULL;
-
-	config = calloc(1, sizeof(*config));
-	if (config == NULL) {
+	if ((config = calloc(1, sizeof(*config))) == NULL) {
 		log_warn("warn: table-redis: calloc");
 		return (NULL);
 	}
 
 	dict_init(&config->conf);
 
-	fp = fopen(path, "r");
-	if (fp == NULL) {
+	if ((fp = fopen(path, "r")) == NULL) {
 		log_warn("warn: table-redis: fopen");
 		goto end;
 	}
 
-	while ((buf = fgetln(fp, &flen))) {
+	while ((flen = getline(&buf, &sz, fp)) == -1) {
 		if (buf[flen - 1] == '\n')
 			buf[flen - 1] = '\0';
-		else {
-			lbuf = malloc(flen + 1);
-			if (lbuf == NULL) {
-				log_warn("warn: table-redis: malloc");
-				goto end;
-			}
-			memcpy(lbuf, buf, flen);
-			lbuf[flen] = '\0';
-			buf = lbuf;
-		}
 
 		key = buf;
 		while (isspace((unsigned char)*key))
@@ -191,14 +178,13 @@ config_load(const char *path)
 		dict_set(&config->conf, key, value);
 	}
 
-	free(lbuf);
+	free(buf);
 	fclose(fp);
 	return (config);
 
 end:
-	free(lbuf);
-	if (fp)
-		fclose(fp);
+	free(buf);
+	fclose(fp);
 	config_free(config);
 	return (NULL);
 }

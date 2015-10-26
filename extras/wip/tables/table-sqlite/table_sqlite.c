@@ -167,11 +167,11 @@ table_sqlite_update(void)
 	sqlite3_stmt	*_stmt_fetch_source;
 	char		*_query_fetch_source;
 	char		*queries[SQL_MAX];
-	size_t		 flen;
-	size_t		 _source_refresh;
+	ssize_t		 flen;
+	size_t		 sz = 0, _source_refresh;
 	int		 _source_expire;
 	FILE		*fp;
-	char		*key, *value, *buf, *lbuf, *dbpath;
+	char		*key, *value, *buf = NULL, *dbpath;
 	const char	*e;
 	int		 i, ret;
 	long long	 ll;
@@ -190,24 +190,12 @@ table_sqlite_update(void)
 
 	/* Parse configuration */
 
-	fp = fopen(config, "r");
-	if (fp == NULL)
+	if ((fp = fopen(config, "r")) == NULL)
 		return (0);
 
-	lbuf = NULL;
-	while ((buf = fgetln(fp, &flen))) {
+	while ((flen = getline(&buf, &sz, fp)) != -1) {
 		if (buf[flen - 1] == '\n')
 			buf[flen - 1] = '\0';
-		else {
-			lbuf = malloc(flen + 1);
-			if (lbuf == NULL) {
-				log_warn("warn: table-sqlite: malloc");
-				return (0);
-			}
-			memcpy(lbuf, buf, flen);
-			lbuf[flen] = '\0';
-			buf = lbuf;
-		}
 
 		key = buf;
 		while (isspace((unsigned char)*key))
@@ -343,7 +331,7 @@ table_sqlite_update(void)
 	free(dbpath);
 	free(_query_fetch_source);
 
-	free(lbuf);
+	free(buf);
 	fclose(fp);
 	return (ret);
 }
