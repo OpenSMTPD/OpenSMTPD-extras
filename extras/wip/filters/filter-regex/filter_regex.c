@@ -91,7 +91,8 @@ regex_parse(char *l, size_t no)
 	if ((r = regcomp(&re->p, l, REG_EXTENDED|REG_NOSUB)) != 0) {
 		regerror(r, &re->p, buf, sizeof(buf));
 		log_warnx("warn: filter-regex: parse: regcomp %s line %lu", buf, no);
-		free(re->s), free(re);
+		free(re->s);
+		free(re);
 		return -1;
 	}
 	SIMPLEQ_INSERT_TAIL(rq, re, el);
@@ -115,16 +116,19 @@ regex_load(const char *c)
 		if (l[len - 1] == '\n')
 			l[len - 1] = '\0';
 		if (regex_parse(l, ++no) == -1) {
-			free(l), fclose(f);
+			free(l);
+			fclose(f);
 			return -1;
 		}
 	}
 	if (ferror(f)) {
 		log_warn("warn: filter-regex: load: getline");
-		free(l), fclose(f);
+		free(l);
+		fclose(f);
 		return -1;
 	}
-	free(l); fclose(f);
+	free(l);
+	fclose(f);
 	return 0;
 }
 
@@ -158,7 +162,9 @@ regex_clear(void)
 	for (i = 0; regex_s[i].rq != NULL; i++) {
 		while((re = SIMPLEQ_FIRST(regex_s[i].rq)) != NULL) {
 			SIMPLEQ_REMOVE_HEAD(regex_s[i].rq, el);
-			regfree(&re->p), free(re->s), free(re);
+			regfree(&re->p);
+			free(re->s);
+			free(re);
 		}
 	}
 }
