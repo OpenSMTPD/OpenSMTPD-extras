@@ -102,6 +102,7 @@ int
 main(int argc, char **argv)
 {
 	int	ch, d = 0, v = 0;
+	const char *h = NULL;
 
 	log_init(1);
 
@@ -111,7 +112,7 @@ main(int argc, char **argv)
 			d = 1;
 			break;
 		case 'h':
-			dnsbl_host = optarg;
+			h = optarg;
 			break;
 		case 'v':
 			v |= TRACE_DEBUG;
@@ -124,6 +125,12 @@ main(int argc, char **argv)
 	}
 	argc -= optind;
 	argv += optind;
+
+	if (h) {
+		while (isspace((unsigned char)*h))
+			h++;
+		dnsbl_host = h;
+	}
 
 	log_init(d);
 	log_verbose(v);
