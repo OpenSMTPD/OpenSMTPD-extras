@@ -47,7 +47,7 @@
 #define inline
 #endif				/* !__GNUC__ */
 
-/* OpenSSH isn't multithreaded */
+/* OpenSMTPD isn't multithreaded */
 #define _ARC4_LOCK()
 #define _ARC4_UNLOCK()
 

@@ -366,10 +366,6 @@ dnl Checks for header files.
 # Checks for libraries.
 AC_CHECK_FUNC([setsockopt], , [AC_CHECK_LIB([socket], [setsockopt])])
 
-dnl    Checks for libutil functions
-AC_CHECK_HEADERS([bsd/libutil.h libutil.h])
-#l1242
-
 #l1525
 AC_ARG_WITH([pie],
     [  --with-pie             Build Position Independent Executables if possible], [
@@ -437,7 +433,6 @@ AC_CHECK_FUNCS([ \
 	memchr \
 	memset \
 	regcomp \
-	setsid \
 	socketpair \
 	strdup \
 	strerror \
@@ -1286,18 +1281,6 @@ fi
 
 TYPE_SOCKLEN_T
 
-AC_CHECK_TYPES([sig_atomic_t], , , [#include <signal.h>])
-
-AC_CACHE_CHECK([for clock_t], ac_cv_have_clock_t, [
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <time.h> ]],
-	[[ clock_t foo; foo = 1235; ]])],
-	[ ac_cv_have_clock_t="yes" ], [ ac_cv_have_clock_t="no" 
-	])
-])
-if test "x$ac_cv_have_clock_t" = "xyes" ; then
-	AC_DEFINE([HAVE_CLOCK_T], [1], [define if you have clock_t data type])
-fi
-
 AC_CACHE_CHECK([for sa_family_t], ac_cv_have_sa_family_t, [
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #include <sys/types.h>
@@ -1479,31 +1462,6 @@ if test "x$ac_cv_have___ss_family_in_struct_ss" = "xyes" ; then
 fi
 
 dnl make sure we're using the real structure members and not defines
-AC_CACHE_CHECK([for msg_accrights field in struct msghdr],
-		ac_cv_have_accrights_in_msghdr, [
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/uio.h>
-		]], [[
-#ifdef msg_accrights
-#error "msg_accrights is a macro"
-exit(1);
-#endif
-struct msghdr m;
-m.msg_accrights = 0;
-exit(0);
-		]])],
-		[ ac_cv_have_accrights_in_msghdr="yes" ],
-		[ ac_cv_have_accrights_in_msghdr="no" ]
-	)
-])
-if test "x$ac_cv_have_accrights_in_msghdr" = "xyes" ; then
-	AC_DEFINE([HAVE_ACCRIGHTS_IN_MSGHDR], [1],
-		[Define if your system uses access rights style
-		file descriptor passing])
-fi
-
 AC_CACHE_CHECK([for msg_control field in struct msghdr],
 		ac_cv_have_control_in_msghdr, [
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
@@ -1539,68 +1497,6 @@ AC_CACHE_CHECK([if libc defines __progname], ac_cv_libc_defines___progname, [
 if test "x$ac_cv_libc_defines___progname" = "xyes" ; then
 	AC_DEFINE([HAVE___PROGNAME], [1], [Define if libc defines __progname])
 fi
-
-AC_CACHE_CHECK([whether $CC implements __FUNCTION__], ac_cv_cc_implements___FUNCTION__, [
-	AC_LINK_IFELSE([AC_LANG_PROGRAM([[ #include <stdio.h> ]],
-		[[ printf("%s", __FUNCTION__); ]])],
-	[ ac_cv_cc_implements___FUNCTION__="yes" ],
-	[ ac_cv_cc_implements___FUNCTION__="no" 
-	])
-])
-if test "x$ac_cv_cc_implements___FUNCTION__" = "xyes" ; then
-	AC_DEFINE([HAVE___FUNCTION__], [1],
-		[Define if compiler implements __FUNCTION__])
-fi
-
-AC_CACHE_CHECK([whether $CC implements __func__], ac_cv_cc_implements___func__, [
-	AC_LINK_IFELSE([AC_LANG_PROGRAM([[ #include <stdio.h> ]],
-		[[ printf("%s", __func__); ]])],
-	[ ac_cv_cc_implements___func__="yes" ],
-	[ ac_cv_cc_implements___func__="no" 
-	])
-])
-if test "x$ac_cv_cc_implements___func__" = "xyes" ; then
-	AC_DEFINE([HAVE___func__], [1], [Define if compiler implements __func__])
-fi
-
-AC_CACHE_CHECK([whether va_copy exists], ac_cv_have_va_copy, [
-	AC_LINK_IFELSE([AC_LANG_PROGRAM([[
-#include <stdarg.h>
-va_list x,y;
-		]], [[ va_copy(x,y); ]])],
-	[ ac_cv_have_va_copy="yes" ],
-	[ ac_cv_have_va_copy="no" 
-	])
-])
-if test "x$ac_cv_have_va_copy" = "xyes" ; then
-	AC_DEFINE([HAVE_VA_COPY], [1], [Define if va_copy exists])
-fi
-
-AC_CACHE_CHECK([whether __va_copy exists], ac_cv_have___va_copy, [
-	AC_LINK_IFELSE([AC_LANG_PROGRAM([[
-#include <stdarg.h>
-va_list x,y;
-		]], [[ __va_copy(x,y); ]])],
-	[ ac_cv_have___va_copy="yes" ], [ ac_cv_have___va_copy="no" 
-	])
-])
-if test "x$ac_cv_have___va_copy" = "xyes" ; then
-	AC_DEFINE([HAVE___VA_COPY], [1], [Define if __va_copy exists])
-fi
-
-AC_CACHE_CHECK([whether getopt has optreset support],
-		ac_cv_have_getopt_optreset, [
-	AC_LINK_IFELSE([AC_LANG_PROGRAM([[ #include <getopt.h> ]],
-		[[ extern int optreset; optreset = 0; ]])],
-	[ ac_cv_have_getopt_optreset="yes" ],
-	[ ac_cv_have_getopt_optreset="no" 
-	])
-])
-if test "x$ac_cv_have_getopt_optreset" = "xyes" ; then
-	AC_DEFINE([HAVE_GETOPT_OPTRESET], [1],
-		[Define if your getopt(3) defines and uses optreset])
-fi
-#l3765
 
 #l4010
 # Looking for programs, paths and files

@@ -153,20 +153,10 @@ typedef unsigned char u_char;
 #define SIZE_MAX SIZE_T_MAX
 #endif
 
-#ifndef HAVE_CLOCK_T
-typedef long clock_t;
-# define HAVE_CLOCK_T
-#endif /* HAVE_CLOCK_T */
-
 #ifndef HAVE_SA_FAMILY_T
 typedef int sa_family_t;
 # define HAVE_SA_FAMILY_T
 #endif /* HAVE_SA_FAMILY_T */
-
-#ifndef HAVE_SIG_ATOMIC_T
-typedef int sig_atomic_t;
-# define HAVE_SIG_ATOMIC_T
-#endif /* HAVE_SIG_ATOMIC_T */
 
 #if !defined(HAVE_SS_FAMILY_IN_SS) && defined(HAVE___SS_FAMILY_IN_SS)
 # define ss_family __ss_family
@@ -187,44 +177,7 @@ typedef u_int32_t	in_addr_t;
 typedef u_int16_t	in_port_t;
 #endif
 
-#if defined(BROKEN_SYS_TERMIO_H) && !defined(_STRUCT_WINSIZE)
-#define _STRUCT_WINSIZE
-struct winsize {
-      unsigned short ws_row;          /* rows, in characters */
-      unsigned short ws_col;          /* columns, in character */
-      unsigned short ws_xpixel;       /* horizontal size, pixels */
-      unsigned short ws_ypixel;       /* vertical size, pixels */
-};
-#endif
-
 /* Paths */
-
-#ifdef USER_PATH
-# ifdef _PATH_STDPATH
-#  undef _PATH_STDPATH
-# endif
-# define _PATH_STDPATH USER_PATH
-#endif
-
-#ifndef _PATH_STDPATH
-# define _PATH_STDPATH "/usr/bin:/bin:/usr/sbin:/sbin"
-#endif
-
-#ifndef SUPERUSER_PATH
-# define SUPERUSER_PATH	_PATH_STDPATH
-#endif
-
-#ifndef _PATH_DEVNULL
-# define _PATH_DEVNULL "/dev/null"
-#endif
-
-#ifdef MAILDIR
-# undef MAILDIR
-#endif
-
-#ifndef _PATH_NOLOGIN
-# define _PATH_NOLOGIN "/etc/nologin"
-#endif
 
 /* Define this to be the path of the xauth program. */
 #ifdef XAUTH_PATH
@@ -241,15 +194,7 @@ struct winsize {
 #endif /* X_UNIX_PATH */
 #define _PATH_UNIX_X X_UNIX_PATH
 
-#ifndef _PATH_TTY
-# define _PATH_TTY "/dev/tty"
-#endif
-
 /* Macros */
-
-#if defined(HAVE_LOGIN_GETCAPBOOL) && defined(HAVE_LOGIN_CAP_H)
-# define HAVE_LOGIN_CAP
-#endif
 
 #ifndef MAX
 # define MAX(a,b) (((a)>(b))?(a):(b))
@@ -390,21 +335,6 @@ struct winsize {
 # define HAVE_GETADDRINFO
 #endif
 
-#ifndef HAVE_GETOPT_OPTRESET
-# undef getopt
-# undef opterr
-# undef optind
-# undef optopt
-# undef optreset
-# undef optarg
-# define getopt(ac, av, o)  BSDgetopt(ac, av, o)
-# define opterr             BSDopterr
-# define optind             BSDoptind
-# define optopt             BSDoptopt
-# define optreset           BSDoptreset
-# define optarg             BSDoptarg
-#endif
-
 #if defined(BROKEN_GETADDRINFO) && defined(HAVE_GETADDRINFO)
 # undef HAVE_GETADDRINFO
 #endif
@@ -431,12 +361,6 @@ struct winsize {
 #ifdef USE_BSM_AUDIT
 # define SSH_AUDIT_EVENTS
 # define CUSTOM_SSH_AUDIT_EVENTS
-#endif
-
-#if !defined(HAVE___func__) && defined(HAVE___FUNCTION__)
-#  define __func__ __FUNCTION__
-#elif !defined(HAVE___func__)
-#  define __func__ ""
 #endif
 
 #if defined(KRB5) && !defined(HEIMDAL)
@@ -581,14 +505,6 @@ struct winsize {
 
 #ifndef INET6_ADDRSTRLEN	/* for non IPv6 machines */
 #define INET6_ADDRSTRLEN 46
-#endif
-
-#ifndef HAVE_VA_COPY
-# ifdef HAVE___VA_COPY
-#  define va_copy(dest, src) __va_copy(dest, src)
-# else
-#  define va_copy(dest, src) (dest) = (src)
-# endif
 #endif
 
 /* ASR specific entries */

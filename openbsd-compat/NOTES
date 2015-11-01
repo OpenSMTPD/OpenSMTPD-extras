@@ -3,16 +3,13 @@ List of files and where they come from
 asr.h	      	  	/usr/src/include/asr.h
 arc4random.c		portable openssh
 base64.{c,h}  	  	portable openssh
-basename.c		portable openssh
 bsd-closefrom.c		portable openssh
 defines.h		portable openssh
-entropy.{c,h}		portable openssh
 event_asr_run.c		end of /usr/src/lib/libevent/event.c
 getopt.c	  	portable openssh
 imsg-buffer.c		part of /usr/src/libutil/imsg-buffer.c
 imsg.{c,h}		part of /usr/src/libutil/imsg.c
 includes.h		portable openssh
-log.h			portable openssh
 mktemp.c		portable openssh
 openbsd-compat.h	portable openssh
 strlcat.c		portable openssh
@@ -21,4 +18,3 @@ strsep.c		portable openssh
 strtonum.c		portable openssh
 sys/queue.h		portable openssh
 sys/tree.h		portable openssh
-xmalloc.{c,h}		portable openssh

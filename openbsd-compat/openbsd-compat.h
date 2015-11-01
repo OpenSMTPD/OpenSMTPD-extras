@@ -41,7 +41,6 @@
 
 #include <sys/queue.h>
 #include <sys/tree.h>
-#include "xmalloc.h"
 
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
@@ -67,7 +66,7 @@ int mkstemp(char *path);
 char *strsep(char **stringp, const char *delim);
 #endif
 
-#if !defined(HAVE_GETOPT) || !defined(HAVE_GETOPT_OPTRESET)
+#if !defined(HAVE_GETOPT)
 int BSDgetopt(int argc, char * const *argv, const char *opts);
 char	*BSDoptarg;		/* argument associated with option */
 int	BSDoptind;		/* index into parent argv vector */

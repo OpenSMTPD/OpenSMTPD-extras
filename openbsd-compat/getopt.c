@@ -30,7 +30,7 @@
 /* OPENBSD ORIGINAL: lib/libc/stdlib/getopt.c */
 
 #include "includes.h"
-#if !defined(HAVE_GETOPT) || !defined(HAVE_GETOPT_OPTRESET)
+#if !defined(HAVE_GETOPT)
 
 #if defined(LIBC_SCCS) && !defined(lint)
 static char *rcsid = "$OpenBSD: getopt.c,v 1.5 2003/06/02 20:18:37 millert Exp $";
@@ -119,5 +119,4 @@ BSDgetopt(nargc, nargv, ostr)
 	}
 	return (BSDoptopt);			/* dump back option letter */
 }
-
-#endif /* !defined(HAVE_GETOPT) || !defined(HAVE_OPTRESET) */
+#endif /* !defined(HAVE_GETOPT) */
