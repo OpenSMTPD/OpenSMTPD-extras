@@ -40,13 +40,10 @@
 #endif
 
 /*
- *-*-nto-qnx needs these headers for strcasecmp and LASTLOG_FILE respectively
+ *-*-nto-qnx needs this header for strcasecmp
  */
 #ifdef HAVE_STRINGS_H
 # include <strings.h>
-#endif
-#ifdef HAVE_LOGIN_H
-# include <login.h>
 #endif
 
 #ifdef USE_PAM

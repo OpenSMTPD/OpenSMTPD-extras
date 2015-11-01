@@ -1208,30 +1208,6 @@ if test -z "$have_u_intxx_t" ; then
 	])
 fi
 
-AC_CACHE_CHECK([for u_int64_t types], ac_cv_have_u_int64_t, [
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <sys/types.h> ]],
-	[[ u_int64_t a; a = 1;]])],
-	[ ac_cv_have_u_int64_t="yes" ], [ ac_cv_have_u_int64_t="no" 
-	])
-])
-if test "x$ac_cv_have_u_int64_t" = "xyes" ; then
-	AC_DEFINE([HAVE_U_INT64_T], [1], [define if you have u_int64_t data type])
-	have_u_int64_t=1
-fi
-
-if (test -z "$have_u_int64_t" && \
-	   test "x$ac_cv_header_sys_bitypes_h" = "xyes")
-then
-    AC_MSG_CHECKING([for u_int64_t type in sys/bitypes.h])
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <sys/bitypes.h> ]],
-	[[ u_int64_t a; a = 1]])],
-		[
-			AC_DEFINE([HAVE_U_INT64_T])
-			AC_MSG_RESULT([yes])
-		], [ AC_MSG_RESULT([no]) 
-	])
-fi
-
 if test -z "$have_u_intxx_t" ; then
 	AC_CACHE_CHECK([for uintXX_t types], ac_cv_have_uintxx_t, [
 		AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
@@ -1280,27 +1256,6 @@ if test "x$ac_cv_have_u_char" = "xyes" ; then
 fi
 
 TYPE_SOCKLEN_T
-
-AC_CACHE_CHECK([for sa_family_t], ac_cv_have_sa_family_t, [
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-#include <sys/types.h>
-#include <sys/socket.h>
-		]], [[ sa_family_t foo; foo = 1235; ]])],
-	[ ac_cv_have_sa_family_t="yes" ],
-	[ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-		]], [[ sa_family_t foo; foo = 1235; ]])],
-		[ ac_cv_have_sa_family_t="yes" ],
-		[ ac_cv_have_sa_family_t="no" ]
-	)
-	])
-])
-if test "x$ac_cv_have_sa_family_t" = "xyes" ; then
-	AC_DEFINE([HAVE_SA_FAMILY_T], [1],
-		[define if you have sa_family_t data type])
-fi
 
 
 AC_CACHE_CHECK([for struct sockaddr_storage], ac_cv_have_struct_sockaddr_storage, [
@@ -1381,56 +1336,10 @@ if test "x$ac_cv_have_struct_timeval" = "xyes" ; then
 	have_struct_timeval=1
 fi
 
-AC_CHECK_TYPES([struct timespec])
-
-dnl test snprintf (broken on SCO w/gcc)
-	AC_RUN_IFELSE(
-		[AC_LANG_SOURCE([[
-#include <stdio.h>
-#include <string.h>
-#ifdef HAVE_SNPRINTF
-main()
-{
-	char buf[50];
-	char expected_out[50];
-	int mazsize = 50 ;
-#if (SIZEOF_LONG_INT == 8)
-	long int num = 0x7fffffffffffffff;
-#else
-	long long num = 0x7fffffffffffffffll;
-#endif
-	strcpy(expected_out, "9223372036854775807");
-	snprintf(buf, mazsize, "%lld", num);
-	if(strcmp(buf, expected_out) != 0)
-		exit(1);
-	exit(0);
-}
-#else
-main() { exit(0); }
-#endif
-		]])], [ true ], [ AC_DEFINE([BROKEN_SNPRINTF]) ],
-		AC_MSG_WARN([cross compiling: Assuming working snprintf()])
-	)
-#l3539
-
 #l3561
-AC_CHECK_MEMBERS([struct passwd.pw_gecos, struct passwd.pw_class,
-struct passwd.pw_change, struct passwd.pw_expire],
-[], [], [[
+AC_CHECK_MEMBERS([struct passwd.pw_gecos], [], [], [[
 #include <sys/types.h>
 #include <pwd.h>
-]])
-
-AC_CHECK_MEMBER([struct __res_state.retrans], [], [AC_DEFINE([__res_state], [state],
-	[Define if we don't have struct __res_state in resolv.h])],
-[[
-#include <stdio.h>
-#if HAVE_SYS_TYPES_H
-# include <sys/types.h>
-#endif
-#include <netinet/in.h>
-#include <arpa/nameser.h>
-#include <resolv.h>
 ]])
 
 AC_CACHE_CHECK([for ss_family field in struct sockaddr_storage],

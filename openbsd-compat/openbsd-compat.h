@@ -66,12 +66,6 @@ int mkstemp(char *path);
 char *strsep(char **stringp, const char *delim);
 #endif
 
-#if !defined(HAVE_GETOPT)
-int BSDgetopt(int argc, char * const *argv, const char *opts);
-char	*BSDoptarg;		/* argument associated with option */
-int	BSDoptind;		/* index into parent argv vector */
-#endif
-
 /* Home grown routines */
 #include "bsd-misc.h"
 
@@ -116,11 +110,3 @@ int vasprintf(char **, const char *, va_list);
 #ifndef HAVE_VSNPRINTF
 int vsnprintf(char *, size_t, const char *, va_list);
 #endif
-
-/* OpenSMTPD-extras specific entries */
-
-#ifndef HAVE_REALLOCARRAY
-void *reallocarray(void *, size_t, size_t);
-#endif
-
-#endif /* _OPENBSD_COMPAT_H */

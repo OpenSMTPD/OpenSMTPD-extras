@@ -125,17 +125,6 @@ typedef unsigned long  u_int32_t;
 #define __BIT_TYPES_DEFINED__
 #endif
 
-/* 64-bit types */
-#ifndef HAVE_U_INT64_T
-# if (SIZEOF_LONG_INT == 8)
-typedef unsigned long int u_int64_t;
-# else
-#  if (SIZEOF_LONG_LONG_INT == 8)
-typedef unsigned long long int u_int64_t;
-#  endif
-# endif
-#endif
-
 #ifndef HAVE_U_CHAR
 typedef unsigned char u_char;
 # define HAVE_U_CHAR
@@ -152,11 +141,6 @@ typedef unsigned char u_char;
 #ifndef SIZE_MAX
 #define SIZE_MAX SIZE_T_MAX
 #endif
-
-#ifndef HAVE_SA_FAMILY_T
-typedef int sa_family_t;
-# define HAVE_SA_FAMILY_T
-#endif /* HAVE_SA_FAMILY_T */
 
 #if !defined(HAVE_SS_FAMILY_IN_SS) && defined(HAVE___SS_FAMILY_IN_SS)
 # define ss_family __ss_family
@@ -177,23 +161,6 @@ typedef u_int32_t	in_addr_t;
 typedef u_int16_t	in_port_t;
 #endif
 
-/* Paths */
-
-/* Define this to be the path of the xauth program. */
-#ifdef XAUTH_PATH
-#define _PATH_XAUTH XAUTH_PATH
-#endif /* XAUTH_PATH */
-
-/* derived from XF4/xc/lib/dps/Xlibnet.h */
-#ifndef X_UNIX_PATH
-#  ifdef __hpux
-#    define X_UNIX_PATH "/var/spool/sockets/X11/%u"
-#  else
-#    define X_UNIX_PATH "/tmp/.X11-unix/X%u"
-#  endif
-#endif /* X_UNIX_PATH */
-#define _PATH_UNIX_X X_UNIX_PATH
-
 /* Macros */
 
 #ifndef MAX
@@ -201,84 +168,9 @@ typedef u_int16_t	in_port_t;
 # define MIN(a,b) (((a)<(b))?(a):(b))
 #endif
 
-#ifndef roundup
-# define roundup(x, y)   ((((x)+((y)-1))/(y))*(y))
-#endif
-
-#ifndef timersub
-#define timersub(a, b, result)					\
-   do {								\
-      (result)->tv_sec = (a)->tv_sec - (b)->tv_sec;		\
-      (result)->tv_usec = (a)->tv_usec - (b)->tv_usec;		\
-      if ((result)->tv_usec < 0) {				\
-	 --(result)->tv_sec;					\
-	 (result)->tv_usec += 1000000;				\
-      }								\
-   } while (0)
-#endif
-
-#ifndef timespeccmp
-#define timespeccmp(a, b, cmp)			       		\
-	(((a)->tv_sec == (b)->tv_sec) ?			       	\
-	 ((a)->tv_nsec cmp (b)->tv_nsec) :	       		\
-	 ((a)->tv_sec cmp (b)->tv_sec))
-#endif
-
-#ifndef timespecsub
-#define timespecsub(a, b, result)				\
-   do {								\
-      (result)->tv_sec = (a)->tv_sec - (b)->tv_sec;		\
-      (result)->tv_nsec = (a)->tv_nsec - (b)->tv_nsec;		\
-      if ((result)->tv_nsec < 0) {				\
-	 --(result)->tv_sec;					\
-	 (result)->tv_nsec += 1000000000L;			\
-      }								\
-   } while (0)
-#endif
-
-#ifndef TIMEVAL_TO_TIMESPEC
-#define	TIMEVAL_TO_TIMESPEC(tv, ts) {					\
-	(ts)->tv_sec = (tv)->tv_sec;					\
-	(ts)->tv_nsec = (tv)->tv_usec * 1000;				\
-}
-#endif
-
-#ifndef TIMESPEC_TO_TIMEVAL
-#define	TIMESPEC_TO_TIMEVAL(tv, ts) {					\
-	(tv)->tv_sec = (ts)->tv_sec;					\
-	(tv)->tv_usec = (ts)->tv_nsec / 1000;				\
-}
-#endif
-
-#ifndef __P
-# define __P(x) x
-#endif
-
-#if !defined(IN6_IS_ADDR_V4MAPPED)
-# define IN6_IS_ADDR_V4MAPPED(a) \
-	((((u_int32_t *) (a))[0] == 0) && (((u_int32_t *) (a))[1] == 0) && \
-	 (((u_int32_t *) (a))[2] == htonl (0xffff)))
-#endif /* !defined(IN6_IS_ADDR_V4MAPPED) */
-
 #if !defined(__GNUC__) || (__GNUC__ < 2)
 # define __attribute__(x)
 #endif /* !defined(__GNUC__) || (__GNUC__ < 2) */
-
-#ifndef __dead
-# define __dead	__attribute__((noreturn))
-#endif
-
-#if !defined(HAVE_ATTRIBUTE__SENTINEL__) && !defined(__sentinel__)
-# define __sentinel__
-#endif
-
-#if !defined(HAVE_ATTRIBUTE__BOUNDED__) && !defined(__bounded__)
-# define __bounded__(x, y, z)
-#endif
-
-#if !defined(HAVE_ATTRIBUTE__NONNULL__) && !defined(__nonnull__)
-# define __nonnull__(x)
-#endif
 
 #ifndef OSSH_ALIGNBYTES
 #define OSSH_ALIGNBYTES	(sizeof(int) - 1)
@@ -345,148 +237,9 @@ typedef u_int16_t	in_port_t;
 # undef HAVE_GAI_STRERROR
 #endif
 
-#if defined(BROKEN_UPDWTMPX) && defined(HAVE_UPDWTMPX)
-# undef HAVE_UPDWTMPX
-#endif
-
-#if defined(BROKEN_SHADOW_EXPIRE) && defined(HAS_SHADOW_EXPIRE)
-# undef HAS_SHADOW_EXPIRE
-#endif
-
 #if defined(HAVE_OPENLOG_R) && defined(SYSLOG_DATA_INIT) && \
     defined(SYSLOG_R_SAFE_IN_SIGHAND)
 # define DO_LOG_SAFE_IN_SIGHAND
-#endif
-
-#ifdef USE_BSM_AUDIT
-# define SSH_AUDIT_EVENTS
-# define CUSTOM_SSH_AUDIT_EVENTS
-#endif
-
-#if defined(KRB5) && !defined(HEIMDAL)
-#  define krb5_get_err_text(context,code) error_message(code)
-#endif
-
-#if defined(SKEYCHALLENGE_4ARG)
-# define _compat_skeychallenge(a,b,c,d) skeychallenge(a,b,c,d)
-#else
-# define _compat_skeychallenge(a,b,c,d) skeychallenge(a,b,c)
-#endif
-
-/* Maximum number of file descriptors available */
-#ifndef OPEN_MAX
-# ifdef HAVE_SYSCONF
-#  define OPEN_MAX	sysconf(_SC_OPEN_MAX)
-# else
-#  define OPEN_MAX	256
-# endif
-#endif
-
-/*
- * Define this to use pipes instead of socketpairs for communicating with the
- * client program.  Socketpairs do not seem to work on all systems.
- *
- * configure.ac sets this for a few OS's which are known to have problems
- * but you may need to set it yourself
- */
-/* #define USE_PIPES 1 */
-
-/**
- ** login recorder definitions
- **/
-
-/* FIXME: put default paths back in */
-#ifndef UTMP_FILE
-#  ifdef _PATH_UTMP
-#    define UTMP_FILE _PATH_UTMP
-#  else
-#    ifdef CONF_UTMP_FILE
-#      define UTMP_FILE CONF_UTMP_FILE
-#    endif
-#  endif
-#endif
-#ifndef WTMP_FILE
-#  ifdef _PATH_WTMP
-#    define WTMP_FILE _PATH_WTMP
-#  else
-#    ifdef CONF_WTMP_FILE
-#      define WTMP_FILE CONF_WTMP_FILE
-#    endif
-#  endif
-#endif
-/* pick up the user's location for lastlog if given */
-#ifndef LASTLOG_FILE
-#  ifdef _PATH_LASTLOG
-#    define LASTLOG_FILE _PATH_LASTLOG
-#  else
-#    ifdef CONF_LASTLOG_FILE
-#      define LASTLOG_FILE CONF_LASTLOG_FILE
-#    endif
-#  endif
-#endif
-
-#if defined(HAVE_SHADOW_H) && !defined(DISABLE_SHADOW)
-# define USE_SHADOW
-#endif
-
-/* The login() library function in libutil is first choice */
-#if defined(HAVE_LOGIN) && !defined(DISABLE_LOGIN)
-#  define USE_LOGIN
-
-#else
-/* Simply select your favourite login types. */
-/* Can't do if-else because some systems use several... <sigh> */
-#  if defined(UTMPX_FILE) && !defined(DISABLE_UTMPX)
-#    define USE_UTMPX
-#  endif
-#  if defined(UTMP_FILE) && !defined(DISABLE_UTMP)
-#    define USE_UTMP
-#  endif
-#  if defined(WTMPX_FILE) && !defined(DISABLE_WTMPX)
-#    define USE_WTMPX
-#  endif
-#  if defined(WTMP_FILE) && !defined(DISABLE_WTMP)
-#    define USE_WTMP
-#  endif
-
-#endif
-
-#ifndef UT_LINESIZE
-# define UT_LINESIZE 8
-#endif
-
-/* I hope that the presence of LASTLOG_FILE is enough to detect this */
-#if defined(LASTLOG_FILE) && !defined(DISABLE_LASTLOG)
-#  define USE_LASTLOG
-#endif
-
-#ifdef HAVE_OSF_SIA
-# ifdef USE_SHADOW
-#  undef USE_SHADOW
-# endif
-# define CUSTOM_SYS_AUTH_PASSWD 1
-#endif
-
-#if defined(HAVE_LIBIAF) && defined(HAVE_SET_ID) && !defined(HAVE_SECUREWARE)
-# define CUSTOM_SYS_AUTH_PASSWD 1
-#endif
-#if defined(HAVE_LIBIAF) && defined(HAVE_SET_ID) && !defined(BROKEN_LIBIAF)
-# define USE_LIBIAF
-#endif
-
-/* HP-UX 11.11 */
-#ifdef BTMP_FILE
-# define _PATH_BTMP BTMP_FILE
-#endif
-
-#if defined(USE_BTMP) && defined(_PATH_BTMP)
-# define CUSTOM_FAILED_LOGIN
-#endif
-
-/** end of login recorder definitions */
-
-#if defined(HAVE_MMAP) && defined(BROKEN_MMAP)
-# undef HAVE_MMAP
 #endif
 
 #ifndef IOV_MAX
@@ -497,29 +250,6 @@ typedef u_int16_t	in_port_t;
 # else
 #  define	IOV_MAX		16
 # endif
-#endif
-
-#ifndef EWOULDBLOCK
-# define EWOULDBLOCK EAGAIN
-#endif
-
-#ifndef INET6_ADDRSTRLEN	/* for non IPv6 machines */
-#define INET6_ADDRSTRLEN 46
-#endif
-
-/* ASR specific entries */
-
-#ifndef AI_MASK
-/* valid flags for addrinfo */
-#define AI_MASK \
-	    (AI_PASSIVE | AI_CANONNAME | AI_NUMERICHOST | AI_NUMERICSERV)
-#ifdef AI_FQDN
-#define AI_MASK (AI_MASK | AI_FQDN)
-#endif
-#endif
-
-#ifndef AI_FQDN
-#define AI_FQDN AI_CANONNAME
 #endif
 
 /* OpenSMTPD-portable specific entries */
@@ -533,26 +263,6 @@ typedef u_int16_t	in_port_t;
 			sizeof(struct sockaddr_in6) : \
 			sizeof(struct sockaddr_in))
 # endif
-#endif
-
-/* From OpenBGPD portable */
-#if !defined(SS_LEN)
-# if defined(HAVE_STRUCT_SOCKADDR_STORAGE_SS_LEN)
-#  define SS_LEN(x)  ((x)->ss_len)
-# else
-#  define SS_LEN(x)  SA_LEN((struct sockaddr *)(x))
-# endif
-#endif
-
-#ifdef HAVE_SS_LEN
-# define STORAGE_LEN(X) ((X).ss_len)
-# define SET_STORAGE_LEN(X, Y) do { STORAGE_LEN(X) = (Y); } while(0)
-#elif defined(HAVE___SS_LEN)
-# define STORAGE_LEN(X) ((X).__ss_len)
-# define SET_STORAGE_LEN(X, Y) do { STORAGE_LEN(X) = (Y); } while(0)
-#else
-# define STORAGE_LEN(X) (STORAGE_FAMILY(X) == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6))
-# define SET_STORAGE_LEN(X, Y) (void) 0
 #endif
 
 /* chl parts */
