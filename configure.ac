@@ -437,43 +437,6 @@ AC_CHECK_DECLS([writev], , , [
 #include <unistd.h>
 	])
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-AC_CHECK_DECLS([MAXSYMLINKS], , , [
-#include <sys/param.h>
-	])
-
-# extra bits for select(2)
-AC_CHECK_DECLS([howmany, NFDBITS], [], [], [[
-#include <sys/param.h>
-#include <sys/types.h>
-#ifdef HAVE_SYS_SYSMACROS_H
-#include <sys/sysmacros.h>
-#endif
-#ifdef HAVE_SYS_SELECT_H
-#include <sys/select.h>
-#endif
-#ifdef HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-	]])
-AC_CHECK_TYPES([fd_mask], [], [], [[
-#include <sys/param.h>
-#include <sys/types.h>
-#ifdef HAVE_SYS_SELECT_H
-#include <sys/select.h>
-#endif
-#ifdef HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-	]])
-
 #l1873
 # Check for broken snprintf
 if test "x$ac_cv_func_snprintf" = "xyes" ; then
