@@ -74,7 +74,7 @@ unsigned int arc4random(void);
 #endif /* !HAVE_ARC4RANDOM */
 
 #ifndef HAVE_ARC4RANDOM_UNIFORM
-u_int32_t arc4random_uniform(u_int32_t);
+uint32_t arc4random_uniform(uint32_t);
 #endif
 
 #ifndef HAVE_ASPRINTF
@@ -110,3 +110,5 @@ int vasprintf(char **, const char *, va_list);
 #ifndef HAVE_VSNPRINTF
 int vsnprintf(char *, size_t, const char *, va_list);
 #endif
+
+#endif /* _OPENBSD_COMPAT_H */

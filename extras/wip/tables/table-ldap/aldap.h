@@ -29,7 +29,7 @@ struct aldap {
 #define ALDAP_ERR_PARSER_ERROR		1
 #define ALDAP_ERR_INVALID_FILTER	2
 #define ALDAP_ERR_OPERATION_FAILED	3
-	u_int8_t	err;
+	uint8_t		err;
 	int		msgid;
 	struct ber	ber;
 };

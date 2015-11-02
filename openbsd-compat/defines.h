@@ -83,53 +83,6 @@
 
 /* Types */
 
-/* If sys/types.h does not supply intXX_t, supply them ourselves */
-/* (or die trying) */
-
-#ifndef HAVE_U_INT
-typedef unsigned int u_int;
-#endif
-
-/* If sys/types.h does not supply u_intXX_t, supply them ourselves */
-#ifndef HAVE_U_INTXX_T
-# ifdef HAVE_UINTXX_T
-typedef uint8_t u_int8_t;
-typedef uint16_t u_int16_t;
-typedef uint32_t u_int32_t;
-# define HAVE_U_INTXX_T 1
-# else
-typedef unsigned char u_int8_t;
-#  if (SIZEOF_SHORT_INT == 2)
-typedef unsigned short int u_int16_t;
-#  else
-#   ifdef _UNICOS
-#    if (SIZEOF_SHORT_INT == 4)
-typedef unsigned short u_int16_t;
-#    else
-typedef unsigned long  u_int16_t;
-#    endif
-#   else
-#    error "16 bit int type not found."
-#   endif
-#  endif
-#  if (SIZEOF_INT == 4)
-typedef unsigned int u_int32_t;
-#  else
-#   ifdef _UNICOS
-typedef unsigned long  u_int32_t;
-#   else
-#    error "32 bit int type not found."
-#   endif
-#  endif
-# endif
-#define __BIT_TYPES_DEFINED__
-#endif
-
-#ifndef HAVE_U_CHAR
-typedef unsigned char u_char;
-# define HAVE_U_CHAR
-#endif /* HAVE_U_CHAR */
-
 #ifndef ULLONG_MAX
 # define ULLONG_MAX ((unsigned long long)-1)
 #endif
@@ -154,11 +107,11 @@ struct	sockaddr_un {
 #endif /* HAVE_SYS_UN_H */
 
 #ifndef HAVE_IN_ADDR_T
-typedef u_int32_t	in_addr_t;
+typedef uint32_t	in_addr_t;
 #endif
 
 #ifndef HAVE_IN_PORT_T
-typedef u_int16_t	in_port_t;
+typedef uint16_t	in_port_t;
 #endif
 
 /* Macros */
@@ -176,7 +129,7 @@ typedef u_int16_t	in_port_t;
 #define OSSH_ALIGNBYTES	(sizeof(int) - 1)
 #endif
 #ifndef __CMSG_ALIGN
-#define	__CMSG_ALIGN(p) (((u_int)(p) + OSSH_ALIGNBYTES) &~ OSSH_ALIGNBYTES)
+#define	__CMSG_ALIGN(p) (((unsigned int)(p) + OSSH_ALIGNBYTES) &~ OSSH_ALIGNBYTES)
 #endif
 
 /* Length of the contents of a control message of length len */
@@ -191,7 +144,7 @@ typedef u_int16_t	in_port_t;
 
 /* given pointer to struct cmsghdr, return pointer to data */
 #ifndef CMSG_DATA
-#define CMSG_DATA(cmsg) ((u_char *)(cmsg) + __CMSG_ALIGN(sizeof(struct cmsghdr)))
+#define CMSG_DATA(cmsg) ((unsigned char *)(cmsg) + __CMSG_ALIGN(sizeof(struct cmsghdr)))
 #endif /* CMSG_DATA */
 
 /*
@@ -220,22 +173,6 @@ typedef u_int16_t	in_port_t;
 #  define BYTE_ORDER LITTLE_ENDIAN
 # endif /* WORDS_BIGENDIAN */
 #endif /* BYTE_ORDER */
-
-/* Function replacement / compatibility hacks */
-
-#if !defined(HAVE_GETADDRINFO) && (defined(HAVE_OGETADDRINFO) || defined(HAVE_NGETADDRINFO))
-# define HAVE_GETADDRINFO
-#endif
-
-#if defined(BROKEN_GETADDRINFO) && defined(HAVE_GETADDRINFO)
-# undef HAVE_GETADDRINFO
-#endif
-#if defined(BROKEN_GETADDRINFO) && defined(HAVE_FREEADDRINFO)
-# undef HAVE_FREEADDRINFO
-#endif
-#if defined(BROKEN_GETADDRINFO) && defined(HAVE_GAI_STRERROR)
-# undef HAVE_GAI_STRERROR
-#endif
 
 #if defined(HAVE_OPENLOG_R) && defined(SYSLOG_DATA_INIT) && \
     defined(SYSLOG_R_SAFE_IN_SIGHAND)
