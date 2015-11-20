@@ -31,76 +31,75 @@
 static int
 on_connect(uint64_t id, struct filter_connect *conn)
 {
-	log_debug("ON CONNECT");
+	log_debug("debug: filter-stub: on_connect");
 	return filter_api_accept(id);
 }
 
 static int
 on_helo(uint64_t id, const char *helo)
 {
-	log_debug("ON HELO");
+	log_debug("debug: filter-stub: on_helo");
 	return filter_api_accept(id);
 }
 
 static int
 on_mail(uint64_t id, struct mailaddr *mail)
 {
-	log_debug("ON MAIL");
+	log_debug("debug: filter-stub: on_mail");
 	return filter_api_accept(id);
 }
 
 static int
 on_rcpt(uint64_t id, struct mailaddr *rcpt)
 {
-	log_debug("ON RCPT");
+	log_debug("debug: filter-stub: on_rcpt");
 	return filter_api_accept(id);
 }
 
 static int
 on_data(uint64_t id)
 {
-	log_debug("ON DATA");
+	log_debug("debug: filter-stub: on_data");
 	return filter_api_accept(id);
 }
 
 static int
 on_eom(uint64_t id, size_t size)
 {
-	log_debug("ON EOM");
+	log_debug("debug: filter-stub: on_eom");
 	return filter_api_accept(id);
 }
 
 static void
 on_dataline(uint64_t id, const char *line)
 {
-	log_debug("ON DATALINE");
+	log_debug("debug: filter-stub: on_dataline");
 	filter_api_writeln(id, line);
 }
 
 static void
 on_reset(uint64_t id)
 {
-	log_debug("ON RESET");
+	log_debug("debug: filter-stub: on_reset");
 }
 
 static void
 on_commit(uint64_t id)
 {
-	log_debug("ON COMMIT");
+	log_debug("debug: filter-stub: on_commit");
 }
 
 static void
 on_rollback(uint64_t id)
 {
-	log_debug("ON ROLLBACK");
+	log_debug("debug: filter-stub: on_rollback");
 }
 
 static void
 on_disconnect(uint64_t id)
 {
-	log_debug("ON DISCONNECT");
+	log_debug("debug: filter-stub: on_disconnect");
 }
-
 
 int
 main(int argc, char **argv)

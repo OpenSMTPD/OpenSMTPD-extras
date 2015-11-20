@@ -147,7 +147,7 @@ on_connect(uint64_t id, struct filter_connect *conn)
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: call to on_connect handler failed");
+		log_warnx("warn: filter-python: on_connect: handler failed");
 		exit(1);
 	}
 
@@ -173,7 +173,7 @@ on_helo(uint64_t id, const char *helo)
 	Py_DECREF(py_args);
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: call to on_helo handler failed");
+		log_warnx("warn: filter-python: on_helo: handler failed");
 		exit(1);
 	}
 	return 1;
@@ -199,7 +199,7 @@ on_mail(uint64_t id, struct mailaddr *mail)
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: call to on_mail handler failed");
+		log_warnx("warn: filter-python: on_mail: handler failed");
 		exit(1);
 	}
 
@@ -226,7 +226,7 @@ on_rcpt(uint64_t id, struct mailaddr *rcpt)
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: call to on_rcpt handler failed");
+		log_warnx("warn: filter-python: on_rcpt: handler failed");
 		exit(1);
 	}
 
@@ -248,7 +248,7 @@ on_data(uint64_t id)
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: call to on_datra handler failed");
+		log_warnx("warn: filter-python: on_data: handler failed");
 		exit(1);
 	}
 
@@ -273,7 +273,7 @@ on_eom(uint64_t id, size_t sz)
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: call to on_eom handler failed");
+		log_warnx("warn: filter-python: on_eom: handler failed");
 		exit(1);
 	}
 
@@ -295,7 +295,7 @@ on_commit(uint64_t id)
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: call to on_commit handler failed");
+		log_warnx("warn: filter-python: on_commit: handler failed");
 		exit(1);
 	}
 }
@@ -315,7 +315,7 @@ on_rollback(uint64_t id)
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: call to on_rollback handler failed");
+		log_warnx("warn: filter-python: on_rollback: handler failed");
 		exit(1);
 	}
 }
@@ -335,7 +335,7 @@ on_disconnect(uint64_t id)
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: call to on_disconnect handler failed");
+		log_warnx("warn: filter-python: on_disconnect: handler failed");
 		exit(1);
 	}
 }
@@ -360,7 +360,7 @@ on_dataline(uint64_t id, const char *line)
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: call to on_dataline handler failed");
+		log_warnx("warn: filter-python: on_dataline: handler failed");
 		exit(1);
 	}
 }
