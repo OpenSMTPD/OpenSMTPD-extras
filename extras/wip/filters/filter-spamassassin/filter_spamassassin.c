@@ -47,7 +47,7 @@ spamassassin_init(struct spamassassin *sa)
 {
 	sa->fd = sa->r = -1;
 	if (iobuf_init(&sa->iobuf, LINE_MAX, LINE_MAX) == -1) {
-		log_warnx("filter-spamassassin: init iobuf_init");
+		log_warnx("warn: filter-spamassassin: init: iobuf_init");
 		return -1;
 	}
 	return 0;
@@ -65,7 +65,7 @@ spamassassin_open(struct spamassassin *sa)
 	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
 	if ((r = getaddrinfo(SPAMASSASSIN_HOST, SPAMASSASSIN_PORT, &hints, &addresses))) {
-		log_warnx("warn: filer-spamassassin: open: getaddrinfo %s", gai_strerror(r));
+		log_warnx("warn: filter-spamassassin: open: getaddrinfo %s", gai_strerror(r));
 		return -1;
 	}
 	for (ai = addresses; ai; ai = ai->ai_next) {
@@ -80,7 +80,7 @@ spamassassin_open(struct spamassassin *sa)
 	}
 	freeaddrinfo(addresses);
 	if (!ai) {
-		log_warnx("warn: filer-spamassassin: open: failed");
+		log_warnx("warn: filter-spamassassin: open: failed");
 		return -1;
 	}
 	return 0;
@@ -91,11 +91,11 @@ spamassassin_write(struct spamassassin *sa, const char *l) {
 	size_t len = strlen(l) + 1;
 
 	if (iobuf_fqueue(&sa->iobuf, "%s\n", l) != (int)len) {
-		log_warn("warn: filer-spamassassin: write iobuf_fqueue");
+		log_warn("warn: filter-spamassassin: write: iobuf_fqueue");
 		return -1;
 	}
 	if (iobuf_flush(&sa->iobuf, sa->fd) < 0) {
-		log_warn("warn: filer-spamassassin: write iobuf_flush");
+		log_warn("warn: filter-spamassassin: write: iobuf_flush");
 		return -1;
 	}
 	return 0;
@@ -112,13 +112,13 @@ spamassassin_read(struct spamassassin *sa, char **l) {
 
 	while ((*l = iobuf_getline(&sa->iobuf, NULL)) == NULL) {
 		if (iobuf_len(&sa->iobuf) >= LINE_MAX) {
-			log_warnx("warn: filer-spamassassin: read iobuf_getline");
+			log_warnx("warn: filter-spamassassin: read: iobuf_getline");
 			return -1;
 		}
 		iobuf_normalize(&sa->iobuf);
 		if ((r = iobuf_read(&sa->iobuf, sa->fd)) < 0) {
 			if (r != IOBUF_CLOSED)
-				log_warn("warn: filer-spamassassin: read iobuf_read r=%d", r);
+				log_warn("warn: filter-spamassassin: read: iobuf_read r=%d", r);
 			return r;
 		}
 	}
@@ -135,11 +135,11 @@ spamassassin_status(struct spamassassin *sa, const char *l) {
 	int r;
 
 	if (sscanf(l, "SPAMD/%*d.%*d %d %"SPAMASSASSIN_QUOTE(SPAMASSASSIN_EX_MAX)"s", &r, s) != 2) {
-		(errno ? log_warn : log_warnx)("warn: filer-spamassassin: status sscanf");
+		(errno ? log_warn : log_warnx)("warn: filter-spamassassin: status: sscanf");
 		return -1;
 	}
 	if (r != 0 || strcmp(s, "EX_OK") != 0) {
-		log_warnx("warn: filer-spamassassin: status r=%d, s=%s", r, s);
+		log_warnx("warn: filter-spamassassin: status: r=%d, s=%s", r, s);
 		return -1;
 	}
 	return 0;
@@ -150,10 +150,10 @@ spamassassin_result(struct spamassassin *sa, const char *l) {
 	char s[SPAMASSASSIN_EX_MAX + 1];
 
 	if (sscanf(l, "Spam: %"SPAMASSASSIN_QUOTE(SPAMASSASSIN_EX_MAX)"s ; %*f / %*f", s) != 1) {
-		(errno ? log_warn : log_warnx)("warn: filer-spamassassin: result sscanf");
+		(errno ? log_warn : log_warnx)("warn: filter-spamassassin: result: sscanf");
 		return -1;
 	}
-	log_info("info: filter-spamassassin: result %s", l);
+	log_info("info: filter-spamassassin: result: %s", l);
 	sa->r = (strcmp(s, "True") == 0);
 	return 0;
 }
@@ -176,7 +176,7 @@ spamassassin_header(struct spamassassin *sa) {
 			break; /* end of spamd response headers */
 	}
 	if (sa->r == -1) {
-		log_warnx("warn: filer-spamassassin: header result failed");
+		log_warnx("warn: filter-spamassassin: header: result failed");
 		return -1;
 	}
 	return 0;
@@ -197,7 +197,7 @@ spamassassin_message(struct spamassassin *sa, uint64_t id) {
 			filter_api_writeln(id, l);
 	}
 	if (iobuf_len(&sa->iobuf)) {
-		log_warnx("warn: filer-spamassassin: message incomplete");
+		log_warnx("warn: filter-spamassassin: message: incomplete");
 		return -1;
 	}
 	return 0;
@@ -206,7 +206,7 @@ spamassassin_message(struct spamassassin *sa, uint64_t id) {
 static int
 spamassassin_response(struct spamassassin *sa, uint64_t id) {
 	if (shutdown(sa->fd, SHUT_WR) == -1) {
-		log_warn("warn: filer-spamassassin: shutdown");
+		log_warn("warn: filter-spamassassin: response: shutdown");
 		return -1;
 	}
 	if (spamassassin_header(sa) == -1)
@@ -287,11 +287,11 @@ spamassassin_on_eom(uint64_t id, size_t size)
 	filter_api_set_udata(id, NULL);
 	if (r) {
 		if (spamassassin_strategy == SPAMASSASSIN_ACCEPT) {
-			log_warnx("warn: spamassassin_filter: on_eom: ACCEPT spam id=%016"PRIx64, id);
+			log_warnx("warn: filter-spamassassin: session %016"PRIx64": on_eom: ACCEPT spam", id);
 			return filter_api_accept(id);
 		}
 		if (spamassassin_strategy == SPAMASSASSIN_REJECT) {
-			log_warnx("warn: spamassassin_filter: on_eom: REJECT spam id=%016"PRIx64, id);
+			log_warnx("warn: filter-spamassassin: session %016"PRIx64": on_eom: REJECT spam", id);
 			return filter_api_reject_code(id, FILTER_CLOSE, 554, "5.7.1 Message considered spam");
 		}
 	}

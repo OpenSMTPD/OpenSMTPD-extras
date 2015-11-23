@@ -163,7 +163,7 @@ on_connect(uint64_t id, struct filter_connect *conn)
 	lua_pushstring(L, conn->hostname);
 
 	if (lua_pcall(L, 4, 0, 0)) {
-		log_warnx("warn: filter-lua: on_connect() failed: %s",
+		log_warnx("warn: filter-lua: on_connect: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -182,7 +182,7 @@ on_helo(uint64_t id, const char *helo)
 	lua_pushstring(L, helo);
 
 	if (lua_pcall(L, 2, 0, 0)) {
-		log_warnx("warn: filter-lua: on_helo() failed: %s",
+		log_warnx("warn: filter-lua: on_helo: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -201,7 +201,7 @@ on_mail(uint64_t id, struct mailaddr *mail)
 	lua_pushstring(L, filter_api_mailaddr_to_text(mail));
 
 	if (lua_pcall(L, 2, 0, 0)) {
-		log_warnx("warn: filter-lua: on_mail() failed: %s",
+		log_warnx("warn: filter-lua: on_mail: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -220,7 +220,7 @@ on_rcpt(uint64_t id, struct mailaddr *rcpt)
 	lua_pushstring(L, filter_api_mailaddr_to_text(rcpt));
 
 	if (lua_pcall(L, 2, 0, 0)) {
-		log_warnx("warn: filter-lua: on_rcpt() failed: %s",
+		log_warnx("warn: filter-lua: on_rcpt: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -238,7 +238,7 @@ on_data(uint64_t id)
 	lua_pushstring(L, s_id);
 
 	if (lua_pcall(L, 1, 0, 0)) {
-		log_warnx("warn: filter-lua: on_data() failed: %s",
+		log_warnx("warn: filter-lua: on_data: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -257,7 +257,7 @@ on_dataline(uint64_t id, const char *line)
 	lua_pushstring(L, line);
 
 	if (lua_pcall(L, 2, 0, 0)) {
-		log_warnx("warn: filter-lua: on_dataline() failed: %s",
+		log_warnx("warn: filter-lua: on_dataline: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -273,8 +273,7 @@ on_eom(uint64_t id, size_t size)
 	lua_pushstring(L, s_id);
 
 	if (lua_pcall(L, 1, 0, 0)) {
-		log_warnx("warn: filter-lua: on_eom() failed: %s",
-		    lua_tostring(L, -1));
+		log_warnx("warn: filter-lua: on_eom: %s", lua_tostring(L, -1));
 		exit(1);
 	}
 
@@ -291,7 +290,7 @@ on_commit(uint64_t id)
 	lua_pushstring(L, s_id);
 
 	if (lua_pcall(L, 1, 0, 0)) {
-		log_warnx("warn: filter-lua: on_commit() failed: %s",
+		log_warnx("warn: filter-lua: on_commit: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -309,7 +308,7 @@ on_rollback(uint64_t id)
 	lua_pushstring(L, s_id);
 
 	if (lua_pcall(L, 1, 0, 0)) {
-		log_warnx("warn: filter-lua: on_rollback() failed: %s",
+		log_warnx("warn: filter-lua: on_rollback: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -327,7 +326,7 @@ on_disconnect(uint64_t id)
 	lua_pushstring(L, s_id);
 
 	if (lua_pcall(L, 1, 0, 0)) {
-		log_warnx("warn: filter-lua: on_disconnect() failed: %s",
+		log_warnx("warn: filter-lua: on_disconnect: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -341,7 +340,6 @@ main(int argc, char **argv)
 
 	log_init(1);
 
-	log_debug("debug: filter-lua: args: %s", argv[1]);
 	while ((ch = getopt(argc, argv, "dv")) != -1) {
 		switch (ch) {
 		case 'd':

@@ -199,7 +199,7 @@ on_eom(uint64_t id, size_t size)
 
 	if ((dkim_sig_len = asprintf(&dkim_sig, TEMPLATE, domain, s->hdrs_list,
 	    selector, s->b64_body_hash)) == -1) {
-		log_warnx("warn: dkim_signer: on_eom: asprintf failed");
+		log_warn("warn: dkim_signer: on_eom: asprintf failed");
 		return filter_api_reject(id, FILTER_FAIL);
 	}
 
@@ -218,7 +218,7 @@ on_eom(uint64_t id, size_t size)
 	}
 
 	if (asprintf(&dkim_header, "%s%s", dkim_sig, s->b64_rsa_sig) == -1) {
-		log_warnx("warn: dkim_signer: on_eom: asprintf failed");
+		log_warn("warn: dkim_signer: on_eom: asprintf failed");
 		return filter_api_reject(id, FILTER_FAIL);
 	}
 

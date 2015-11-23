@@ -45,7 +45,7 @@ clamav_init(struct clamav *cl)
 {
 	cl->fd = cl->r = -1;
 	if (iobuf_init(&cl->iobuf, LINE_MAX, LINE_MAX) == -1) {
-		log_warnx("filter-clamav: init iobuf_init");
+		log_warnx("warn: filter-clamav: init: iobuf_init");
 		return -1;
 	}
 	return 0;
@@ -63,7 +63,7 @@ clamav_open(struct clamav *cl)
 	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
 	if ((r = getaddrinfo(CLAMAV_HOST, CLAMAV_PORT, &hints, &addresses))) {
-		log_warnx("warn: filer-clamav: open: getaddrinfo %s", gai_strerror(r));
+		log_warnx("warn: filter-clamav: open: getaddrinfo %s", gai_strerror(r));
 		return -1;
 	}
 	for (ai = addresses; ai; ai = ai->ai_next) {
@@ -78,7 +78,7 @@ clamav_open(struct clamav *cl)
 	}
 	freeaddrinfo(addresses);
 	if (!ai) {
-		log_warnx("warn: filer-clamav: open: failed");
+		log_warnx("warn: filter-clamav: open: failed");
 		return -1;
 	}
 	return 0;
@@ -90,15 +90,15 @@ clamav_write(struct clamav *cl, const char *l, int f) {
 	uint32_t n = htonl(len);
 
 	if (f && iobuf_queue(&cl->iobuf, &n, sizeof(uint32_t)) != (int)sizeof(uint32_t)) {
-		log_warn("warn: filer-clamav: write iobuf_queue");
+		log_warn("warn: filter-clamav: write: iobuf_queue");
 		return -1;
 	}
 	if (f != EOF && iobuf_fqueue(&cl->iobuf, "%s\n", l) != (int)len) {
-		log_warn("warn: filer-clamav: write iobuf_fqueue");
+		log_warn("warn: filter-clamav: write: iobuf_fqueue");
 		return -1;
 	}
 	if (iobuf_flush(&cl->iobuf, cl->fd) < 0) {
-		log_warn("warn: filer-clamav: write iobuf_flush");
+		log_warn("warn: filter-clamav: write: iobuf_flush");
 		return -1;
 	}
 	return 0;
@@ -115,13 +115,13 @@ clamav_read(struct clamav *cl, char **l) {
 
 	while ((*l = iobuf_getline(&cl->iobuf, NULL)) == NULL) {
 		if (iobuf_len(&cl->iobuf) >= LINE_MAX) {
-			log_warnx("warn: filer-clamav: read iobuf_getline");
+			log_warnx("warn: filter-clamav: read: iobuf_getline");
 			return -1;
 		}
 		iobuf_normalize(&cl->iobuf);
 		if ((r = iobuf_read(&cl->iobuf, cl->fd)) < 0) {
 			if (r != IOBUF_CLOSED)
-				log_warn("warn: filer-clamav: read iobuf_read r=%d", r);
+				log_warn("warn: filter-clamav: read: iobuf_read r=%d", r);
 			return r;
 		}
 	}
@@ -136,10 +136,10 @@ clamav_result(struct clamav *cl, const char *l) {
 	char s[BUFSIZ + 1];
 
 	if (sscanf(l, "stream: %"CLAMAV_QUOTE(BUFSIZ)"s", s) != 1) {
-		(errno ? log_warn : log_warnx)("warn: filer-clamav: result sscanf");
+		(errno ? log_warn : log_warnx)("warn: filter-clamav: result: sscanf");
 		return -1;
 	}
-	log_info("info: filter-clamav: result %s", l);
+	log_info("info: filter-clamav: result: %s", l);
 	cl->r = (strcmp(s, "OK") != 0);
 	return 0;
 }
@@ -153,11 +153,11 @@ clamav_message(struct clamav *cl) {
 	if (clamav_result(cl, l) == -1)
 		return -1;
 	if (cl->r == -1) {
-		log_warnx("warn: filer-spamassassin: message result failed");
+		log_warnx("warn: filter-clamav: message: result failed");
 		return -1;
 	}
 	if (iobuf_len(&cl->iobuf)) {
-		log_warnx("warn: filer-spamassassin: message incomplete");
+		log_warnx("warn: filter-clamav: message: incomplete");
 		return -1;
 	}
 	return 0;
@@ -241,7 +241,7 @@ clamav_on_eom(uint64_t id, size_t size)
 	clamav_clear(cl);
 	filter_api_set_udata(id, NULL);
 	if (r) {
-		log_warnx("warn: clamav_filter: on_eom: REJECT virus id=%016"PRIx64, id);
+		log_warnx("warn: clamav_filter: session %016"PRIx64": on_eom: REJECT virus", id);
 		return filter_api_reject_code(id, FILTER_CLOSE, 554, "5.7.1 Virus found");
 	}
 	return filter_api_accept(id);

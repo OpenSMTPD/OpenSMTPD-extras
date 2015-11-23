@@ -40,11 +40,11 @@ dnsbl_event_dispatch(struct asr_result *ar, void *arg)
 	if (ar->ar_addrinfo)
 		freeaddrinfo(ar->ar_addrinfo);
 
-	if (ar->ar_gai_errno != EAI_NODATA)
+	if (ar->ar_gai_errno != EAI_NODATA) {
+		log_warnx("warn: filter-dnsbl: event_dispatch: REJECT address");
 		filter_api_reject(*q, FILTER_CLOSE);
-	else
+	} else
 		filter_api_accept(*q);
-
 	free(q);
 }
 
@@ -70,13 +70,13 @@ dnsbl_on_connect(uint64_t id, struct filter_connect *conn)
 	    (in_addr >> 16) & 0xff,
 	    (in_addr >> 24) & 0xff,
 	    dnsbl_host) >= sizeof(buf)) {
-		log_warnx("filter-dnsbl: host name too long: %s", buf);
+		log_warnx("warn: filter-dnsbl: on_connect: host name too long: %s", buf);
 		return filter_api_reject(id, FILTER_FAIL);
 	}
 
 	q = calloc(1, sizeof *q);
 	if (q == NULL) {
-		log_warn("filter-dnsbl: calloc");
+		log_warn("warn: filter-dnsbl: on_connect: calloc");
 		return filter_api_reject(id, FILTER_FAIL);
 	}
 	*q = id;
@@ -86,12 +86,12 @@ dnsbl_on_connect(uint64_t id, struct filter_connect *conn)
 	hints.ai_socktype = SOCK_STREAM;
 	aq = getaddrinfo_async(buf, NULL, &hints, NULL);
 	if (aq == NULL) {
-		log_warn("filter-dnsbl: getaddrinfo_async");
+		log_warn("warn: filter-dnsbl: on_connect: getaddrinfo_async");
 		free(q);
 		return filter_api_reject(id, FILTER_FAIL);
 	}
 
-	log_debug("debug: filter-dnsbl: checking %s", buf);
+	log_debug("debug: filter-dnsbl: on_connect: checking %s", buf);
 
 	event_asr_run(aq, dnsbl_event_dispatch, q);
 

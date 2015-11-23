@@ -63,7 +63,7 @@ status_to_str(int status)
 static int
 on_connect(uint64_t id, struct filter_connect *conn)
 {
-	printf("filter-trace: id=%016"PRIx64", hostname=%s\n",
+	printf("filter-trace: session %016"PRIx64": on_connect: hostname=%s\n",
 	    id, conn->hostname);
 	return filter_api_accept(id);
 }
@@ -71,14 +71,14 @@ on_connect(uint64_t id, struct filter_connect *conn)
 static int
 on_helo(uint64_t id, const char *helo)
 {
-	printf("filter-trace: HELO id=%016"PRIx64", %s\n", id, helo);
+	printf("filter-trace: session %016"PRIx64": on_helo: %s\n", id, helo);
 	return filter_api_accept(id);
 }
 
 static int
 on_mail(uint64_t id, struct mailaddr *mail)
 {
-	printf("filter-trace: MAIL id=%016"PRIx64", %s@%s\n",
+	printf("filter-trace: session %016"PRIx64": on_mail: %s@%s\n",
 	    id, mail->user, mail->domain);
 	return filter_api_accept(id);
 }
@@ -86,7 +86,7 @@ on_mail(uint64_t id, struct mailaddr *mail)
 static int
 on_rcpt(uint64_t id, struct mailaddr *rcpt)
 {
-	printf("filter-trace: RCPT id=%016"PRIx64", %s@%s\n",
+	printf("filter-trace: session %016"PRIx64": on_rcpt: %s@%s\n",
 	    id, rcpt->user, rcpt->domain);
 	return filter_api_accept(id);
 }
@@ -94,21 +94,21 @@ on_rcpt(uint64_t id, struct mailaddr *rcpt)
 static int
 on_data(uint64_t id)
 {
-	printf("filter-trace: RCPT id=%016"PRIx64, id);
+	printf("filter-trace: session %016"PRIx64": on_data", id);
 	return filter_api_accept(id);
 }
 
 static int
 on_eom(uint64_t id, size_t size)
 {
-	printf("filter-trace: EOM id=%016"PRIx64", size=%zu", id, size);
+	printf("filter-trace: session %016"PRIx64": on_eom: size=%zu", id, size);
 	return filter_api_accept(id);
 }
 
 static void
 on_dataline(uint64_t id, const char *line)
 {
-	printf("filter-trace: [dataline] id=%016"PRIx64", \"%s\"\n", id, line);
+	printf("filter-trace: session %016"PRIx64": dataline: \"%s\"\n", id, line);
 	filter_api_writeln(id, line);
 }
 

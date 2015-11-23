@@ -33,10 +33,10 @@ pause_on_connect(uint64_t id, struct filter_connect *conn)
 {
 	unsigned int r;
 
-	log_debug("debug: filter-pause: sleeping %u", pause_seconds);
+	log_debug("debug: filter-pause: on_connect: sleeping %u", pause_seconds);
 
 	if ((r = sleep(pause_seconds)) != 0)
-		log_warnx("filter-pause: wakeup %u seconds too early", r);
+		log_warnx("warn: filter-pause: on_connect: wakeup %u seconds too early", r);
 
 	return filter_api_accept(id);
 }
