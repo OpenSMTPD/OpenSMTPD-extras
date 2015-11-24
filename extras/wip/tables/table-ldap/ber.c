@@ -27,13 +27,13 @@
 #include <stdlib.h>
 #include <err.h>	/* XXX for debug output */
 #include <stdio.h>	/* XXX for debug output */
-#include <strings.h>
+#include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
 
 #include "ber.h"
 
-#define MINIMUM(a, b)   (((a) < (b)) ? (a) : (b))
+#define MINIMUM(a, b)	(((a) < (b)) ? (a) : (b))
 
 #define BER_TYPE_CONSTRUCTED	0x20	/* otherwise primitive */
 #define BER_TYPE_SINGLE_MAX	30
@@ -920,7 +920,7 @@ ber_dump_element(struct ber *ber, struct ber_element *root)
 static void
 ber_dump_header(struct ber *ber, struct ber_element *root)
 {
-	unsigned char	id = 0, t, buf[8];
+	unsigned char id = 0, t, buf[8];
 	unsigned long type;
 	size_t size;
 
@@ -1025,7 +1025,7 @@ get_id(struct ber *b, unsigned long *tag, int *class, int *cstruct)
 static ssize_t
 get_len(struct ber *b, ssize_t *len)
 {
-	unsigned char	u, n;
+	unsigned char u, n;
 	ssize_t	s, r;
 
 	if (ber_getc(b, &u) == -1)
