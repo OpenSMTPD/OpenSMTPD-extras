@@ -280,7 +280,7 @@ on_eom(uint64_t id, size_t size)
 	return (1);
 }
 
-static int
+static void
 on_commit(uint64_t id)
 {
 	char	s_id[ID_STR_SZ];
@@ -294,11 +294,9 @@ on_commit(uint64_t id)
 		    lua_tostring(L, -1));
 		exit(1);
 	}
-
-	return (1);
 }
 
-static int
+static void
 on_rollback(uint64_t id)
 {
 	char	s_id[ID_STR_SZ];
@@ -312,8 +310,6 @@ on_rollback(uint64_t id)
 		    lua_tostring(L, -1));
 		exit(1);
 	}
-
-	return (1);
 }
 
 static void
