@@ -35,7 +35,7 @@ struct ber_element {
 };
 
 struct ber {
-	int	 fd;
+	int		 fd;
 	unsigned char	*br_wbuf;
 	unsigned char	*br_wptr;
 	unsigned char	*br_wend;

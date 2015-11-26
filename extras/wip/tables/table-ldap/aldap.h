@@ -62,7 +62,7 @@ struct aldap_message {
 		}			 search;
 	} body;
 	struct ber_element	*references;
-	struct aldap_page_control *page; 
+	struct aldap_page_control *page;
 };
 
 enum aldap_protocol {
