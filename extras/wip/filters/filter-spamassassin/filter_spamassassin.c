@@ -32,8 +32,8 @@
 #include "log.h"
 #include "iobuf.h"
 
-#define SPAMASSASSIN_HOST "127.0.0.1"
-#define SPAMASSASSIN_PORT "783"
+#define DEF_SPAMASSASSIN_HOST "127.0.0.1"
+#define DEF_SPAMASSASSIN_PORT "783"
 
 struct spamassassin {
 	int fd, r;
@@ -41,6 +41,7 @@ struct spamassassin {
 };
 
 static enum { SPAMASSASSIN_ACCEPT, SPAMASSASSIN_REJECT } spamassassin_strategy;
+static const char *host, *port;
 
 static int
 spamassassin_init(struct spamassassin *sa)
@@ -63,9 +64,9 @@ spamassassin_open(struct spamassassin *sa)
 	hints.ai_family = PF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
-	hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
-	if ((r = getaddrinfo(SPAMASSASSIN_HOST, SPAMASSASSIN_PORT, &hints, &addresses))) {
-		log_warnx("warn: filter-spamassassin: open: getaddrinfo %s", gai_strerror(r));
+	hints.ai_flags = AI_NUMERICSERV;
+	if ((r = getaddrinfo(host, port, &hints, &addresses))) {
+		log_warnx("warn: filter-spamassassin: open: getaddrinfo failed for [%s]:%s: %s", host, port, gai_strerror(r));
 		return -1;
 	}
 	for (ai = addresses; ai; ai = ai->ai_next) {
@@ -80,7 +81,7 @@ spamassassin_open(struct spamassassin *sa)
 	}
 	freeaddrinfo(addresses);
 	if (!ai) {
-		log_warnx("warn: filter-spamassassin: open: failed");
+		log_warnx("warn: filter-spamassassin: open: failed for [%s]:%s", host, port);
 		return -1;
 	}
 	return 0;
@@ -327,10 +328,18 @@ main(int argc, char **argv)
 
 	log_init(1);
 
-	while ((ch = getopt(argc, argv, "ds:v")) != -1) {
+	while ((ch = getopt(argc, argv, "dh:p:s:v")) != -1) {
 		switch (ch) {
 		case 'd':
 			d = 1;
+			break;
+		case 'h':
+			host = optarg;
+			while (isspace((unsigned char)*host))
+				host++;
+			break;
+		case 'p':
+			port = optarg;
 			break;
 		case 's':
 			s = optarg;
@@ -346,6 +355,12 @@ main(int argc, char **argv)
 	}
 	argc -= optind;
 	argv += optind;
+
+	if (host == NULL)
+		host = DEF_SPAMASSASSIN_HOST;
+
+	if (port == NULL)
+		port = DEF_SPAMASSASSIN_PORT;
 
 	if (s) {
 		while (isspace((unsigned char)*s))
