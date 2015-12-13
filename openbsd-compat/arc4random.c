@@ -36,8 +36,6 @@
 #include <openssl/rand.h>
 #include <openssl/err.h>
 
-#include "log.h"
-
 #define KEYSTREAM_ONLY
 #include "chacha_private.h"
 
