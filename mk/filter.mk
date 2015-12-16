@@ -12,6 +12,3 @@ SRCS	+= $(api_srcdir)/ioev.c
 
 LIBCOMPAT	= $(top_builddir)/openbsd-compat/libopenbsd-compat.a
 LDADD		= $(LIBCOMPAT)
-
-CFLAGS=			-DNO_IO -DBUILD_FILTER
-
