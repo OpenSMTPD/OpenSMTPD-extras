@@ -246,6 +246,7 @@ AC_CHECK_HEADERS([ \
 	arpa/inet.h \
 	dirent.h \
 	fcntl.h \
+	grp.h \
 	inttypes.h \
 	limits.h \
 	mach/mach_time.h \
@@ -295,6 +296,7 @@ main() { if (NSVersionOfRunTimeLibrary("System") >= (60 << 16))
 	;;
 *-*-linux* | *-gnu* | *-k*bsd*-gnu* )
 	use_pie=auto
+	CFLAGS="$CFLAGS -D_BSD_SOURCE"
 	;;
 *-*-netbsd*)
 	if test "x$withval" != "xno" ; then
