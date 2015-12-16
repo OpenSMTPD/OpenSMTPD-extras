@@ -40,7 +40,7 @@ and/or when looking for an alias.
 .Pp
 A SQLite table consists of one or more SQLite3 Databases with one or more tables.
 .Pp
-If the table is used for authentication, the password should be 
+If the table is used for authentication, the password should be
 encrypted using the
 .Xr crypt 3
 function.
@@ -69,12 +69,10 @@ encrypt command.
 .Cd query_credentials
 .Dl This is used to provide a query for looking up credentials. All the question marks are replaced
 .Dl with the appropriate data, in this case it would be the left hand side of the SMTP address.
-.Dl the query expects that there are two varchars returned one with a 
+.Dl the query expects that there are two varchars returned one with a
 .Dl user name one with a password in
 .Xr encrypt 1
 .Dl format.
-.Pp
-
 .Sh SEE ALSO
 .Xr encrypt 1 ,
 .Xr smtpd.conf 5 ,
