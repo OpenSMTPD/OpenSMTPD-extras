@@ -23,6 +23,8 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl dv
+.Op Fl h Ar host
+.Op Fl p Ar port
 .Op Fl s Ar strategy
 .Sh DESCRIPTION
 .Nm
@@ -41,6 +43,14 @@ Debug mode, if this option is specified,
 .Nm
 will run in the foreground and log to
 .Em stderr .
+.It Fl h Ar host
+Connect to SpamAssassin daemon on
+.Ar host
+(default 127.0.0.1).
+.It Fl p Ar port
+Connect to SpamAssassin daemon on
+.Ar port
+(default 738).
 .It Fl s Ar strategy
 Set the
 .Ar strategy
@@ -76,11 +86,13 @@ Non-spam mails are always accepted.
 .\".Dq X-Filter-SpamAssassin
 .\"header.
 .Sh SPAMASSASSIN CONFIGURATION
-.Nm
-expects that SpamAssassin's
+The default values for
+.Ar host
+and
+.Ar port
+match the default configuration of SpamAssassin's
 .Xr spamd 1
-to listen on 127.0.0.1 port 783 for incoming requests.
-This matches to the default configuration of the daemon.
+daemon.
 .Sh SEE ALSO
 .Xr spamd 1 ,
 .Xr filter_api 3 ,
