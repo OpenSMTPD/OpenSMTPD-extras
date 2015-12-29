@@ -504,9 +504,9 @@ table_sqlite_fetch(int service, struct dict *params, char *dst, size_t sz)
 
 	source_ncall += 1;
 
-        if (! dict_iter(&sources, &source_iter, &k, (void **)NULL)) {
+        if (!dict_iter(&sources, &source_iter, &k, (void **)NULL)) {
 		source_iter = NULL;
-		if (! dict_iter(&sources, &source_iter, &k, (void **)NULL))
+		if (!dict_iter(&sources, &source_iter, &k, (void **)NULL))
 			return (0);
 	}
 

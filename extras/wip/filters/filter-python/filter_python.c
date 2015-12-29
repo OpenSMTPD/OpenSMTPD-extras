@@ -54,7 +54,7 @@ py_filter_accept(PyObject *self, PyObject *args)
 {
 	uint64_t	id;
 
-	if (! PyArg_ParseTuple(args, "K", &id))
+	if (!PyArg_ParseTuple(args, "K", &id))
 		return NULL;
 	filter_api_accept(id);
 	Py_RETURN_TRUE;
@@ -66,7 +66,7 @@ py_filter_reject(PyObject *self, PyObject *args)
 	uint64_t	id;
 	uint32_t	action;
 
-	if (! PyArg_ParseTuple(args, "Ki", &id, &action))
+	if (!PyArg_ParseTuple(args, "Ki", &id, &action))
 		return NULL;
 
 	switch (action) {
@@ -87,7 +87,7 @@ py_filter_reject_code(PyObject *self, PyObject *args)
 	uint32_t	code;
 	const char    *line;
 
-	if (! PyArg_ParseTuple(args, "Kiis", &id, &action, &code, &line))
+	if (!PyArg_ParseTuple(args, "Kiis", &id, &action, &code, &line))
 		return NULL;
 
 	switch (action) {
@@ -106,7 +106,7 @@ py_filter_writeln(PyObject *self, PyObject *args)
 	uint64_t	id;
 	const char     *line;
 
-	if (! PyArg_ParseTuple(args, "Ks", &id, &line))
+	if (!PyArg_ParseTuple(args, "Ks", &id, &line))
 		return NULL;
 	filter_api_writeln(id, line);
 	Py_RETURN_TRUE;

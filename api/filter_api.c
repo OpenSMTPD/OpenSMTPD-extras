@@ -718,11 +718,11 @@ filter_api_setugid(uid_t uid, gid_t gid)
 {
 	filter_api_init();
 
-	if (! uid) {
+	if (!uid) {
 		log_warn("warn: filter-api:%s can't set uid 0", filter_name);
 		fatalx("filter-api: exiting");
 	}
-	if (! gid) {
+	if (!gid) {
 		log_warn("warn: filter-api:%s can't set gid 0", filter_name);
 		fatalx("filter-api: exiting");
 	}

@@ -50,7 +50,7 @@ log_init(int n_foreground)
 	extern char	*__progname;
 
 	foreground = n_foreground;
-	if (! foreground)
+	if (!foreground)
 		openlog(__progname, LOG_PID | LOG_NDELAY, LOG_MAIL);
 
 	tzset();

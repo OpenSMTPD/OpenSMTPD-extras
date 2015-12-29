@@ -899,7 +899,7 @@ io_reload_ssl(struct io *io)
 			ev = EV_WRITE;
 			dispatch = io_dispatch_write_ssl;
 		}
-		if (! ev)
+		if (!ev)
 			return; /* paused */
 		break;
 	default:

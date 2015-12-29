@@ -639,9 +639,9 @@ table_mysql_fetch(int service, struct dict *params, char *dst, size_t sz)
 
 	config->source_ncall += 1;
 
-	if (! dict_iter(&config->sources, &config->source_iter, &k, (void **)NULL)) {
+	if (!dict_iter(&config->sources, &config->source_iter, &k, (void **)NULL)) {
 		config->source_iter = NULL;
-		if (! dict_iter(&config->sources, &config->source_iter, &k, (void **)NULL))
+		if (!dict_iter(&config->sources, &config->source_iter, &k, (void **)NULL))
 			return (0);
 	}
 

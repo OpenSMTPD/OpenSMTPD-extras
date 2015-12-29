@@ -287,7 +287,7 @@ queue_python_envelope_walk(uint64_t *evpid, char *buf, size_t len)
 	if (py_ret == Py_None)
 		return -1;
 
-	if (! PyTuple_Check(py_ret) || PyTuple_Size(py_ret) != 2) {
+	if (!PyTuple_Check(py_ret) || PyTuple_Size(py_ret) != 2) {
 		PyErr_SetString(PyExc_TypeError, "2-elements tuple expected");
 		ret = -1;
 	}
@@ -326,7 +326,7 @@ queue_python_message_walk(uint64_t *evpid, char *buf, size_t len,
 	if (py_ret == Py_None)
 		return -1;
 
-	if (! PyTuple_Check(py_ret) || PyTuple_Size(py_ret) != 2) {
+	if (!PyTuple_Check(py_ret) || PyTuple_Size(py_ret) != 2) {
 		PyErr_SetString(PyExc_TypeError, "2-elements tuple expected");
 		ret = -1;
 	}

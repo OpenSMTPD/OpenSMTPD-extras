@@ -121,7 +121,7 @@ table_passwd_update(void)
 			log_warnx("warn: table-passwd: line too long");
 			goto err;
 		}
-		if (! parse_passwd_entry(&pw, tmp)) {
+		if (!parse_passwd_entry(&pw, tmp)) {
 			log_warnx("warn: table-passwd: invalid entry");
 			goto err;
 		}
@@ -171,7 +171,7 @@ table_passwd_lookup(int service, struct dict *params, const char *key, char *dst
 		return 0;
 
 	(void)strlcpy(tmp, line, sizeof tmp);
-	if (! parse_passwd_entry(&pw, tmp)) {
+	if (!parse_passwd_entry(&pw, tmp)) {
 		log_warnx("warn: table-passwd: invalid entry");
 		return -1;
 	}
