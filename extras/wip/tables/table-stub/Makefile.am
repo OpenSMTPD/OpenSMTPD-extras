@@ -4,4 +4,4 @@ include	$(top_srcdir)/mk/table.mk
 pkglibexec_PROGRAMS	 = table-stub
 
 table_stub_SOURCES	 = $(SRCS)
-table_stub_SOURCES	+= $(tables_srcdir)/table-stub/table_stub.c
+table_stub_SOURCES	+= table_stub.c
