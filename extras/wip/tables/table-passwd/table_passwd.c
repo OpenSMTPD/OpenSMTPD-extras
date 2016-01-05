@@ -235,7 +235,7 @@ parse_passwd_entry(struct passwd *pw, char *buf)
 	if ((p = strchr(q, ':')) == NULL)
 		return 0;
 	*p++ = 0;
-	pw->pw_uid = strtonum(q, 1, UID_MAX, &errstr);
+	pw->pw_uid = strtonum(q, 0, UID_MAX, &errstr);
 	if (errstr)
 		return 0;
 
@@ -244,7 +244,7 @@ parse_passwd_entry(struct passwd *pw, char *buf)
 	if ((p = strchr(q, ':')) == NULL)
 		return 0;
 	*p++ = 0;
-	pw->pw_gid = strtonum(q, 1, GID_MAX, &errstr);
+	pw->pw_gid = strtonum(q, 0, GID_MAX, &errstr);
 	if (errstr)
 		return 0;
 
@@ -264,8 +264,10 @@ parse_passwd_entry(struct passwd *pw, char *buf)
 
 	/* shell */
 	q = p;
-	if (strchr(q, ':') != NULL)
-		return 0;
+	/*
+	 * explicitly allow further extra fields to support
+	 * shared authentication with Dovecot Passwd-file format
+	 */
 	pw->pw_shell = q;
 
 	return 1;

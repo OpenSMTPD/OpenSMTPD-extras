@@ -57,6 +57,9 @@ Such passwords can be generated using the
 utility or
 .Xr smtpctl 8
 encrypt command.
+.Pp
+In favor of supporting shared authentication with the Dovecot Passwd-file
+format, extra fields after the last shell field are allowed (and ignored).
 .Sh SEE ALSO
 .Xr passwd 5 ,
 .Xr smtpd.conf 5 ,
