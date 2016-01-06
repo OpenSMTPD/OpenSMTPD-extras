@@ -1413,6 +1413,14 @@ AC_ARG_WITH([python],
 		fi
 	]
 )
+AC_ARG_WITH([python-type],
+	[  --with-python-type=PATH  Specify the type of python used ],
+	[
+		if test "x$withval" != "xno" ; then
+			python_type="${withval}"
+		fi
+	]
+)
 
 AC_ARG_WITH([perl],
 	[  --with-perl=PATH      Specify prefix of perl installation ],
@@ -1448,16 +1456,19 @@ PYTHON_CPPFLAGS=
 PYTHON_LDFLAGS=
 if test x"${need_python}" = x"yes"; then
    PYTHON_CONFIG=
+   if test x"${python_type}" = x""; then
+	python_type="python"
+   fi
    for path in /usr/local/bin /usr/bin; do
-	if test -f ${path}/python-config; then
-		PYTHON_CONFIG=${path}/python-config
+	if test -f ${path}/${python_type}-config; then
+		PYTHON_CONFIG=${path}/${python_type}-config
 		break
 	fi
    done
 
    # if python provided --with-python, override
    if test x"${with_python}" != x""; then
-      PYTHON_CONFIG="${python_prefix}/bin/python-config"
+      PYTHON_CONFIG="${python_prefix}/bin/${python_type}-config"
    fi
 
    if ! test -f $PYTHON_CONFIG; then
