@@ -28,38 +28,6 @@
 #include "smtpd-api.h"
 #include "log.h"
 
-static const char *
-event_to_str(int hook)
-{
-	switch (hook) {
-	case HOOK_RESET:
-		return "RESET";
-	case HOOK_DISCONNECT:
-		return "DISCONNECT";
-	case HOOK_COMMIT:
-		return "COMMIT";
-	case HOOK_ROLLBACK:
-		return "ROLLBACK";
-	default:
-		return "???";
-	}
-}
-
-static const char *
-status_to_str(int status)
-{
-	switch (status) {
-	case FILTER_OK:
-		return "OK";
-	case FILTER_FAIL:
-		return "FAIL";
-	case FILTER_CLOSE:
-		return "CLOSE";
-	default:
-		return "???";
-	}
-}
-
 static int
 on_connect(uint64_t id, struct filter_connect *conn)
 {
