@@ -1362,6 +1362,23 @@ AM_CONDITIONAL([HAVE_TABLE_STUB], [test $HAVE_TABLE_STUB = yes])
 
 
 #
+# TOOLS
+#
+HAVE_TOOL_STATS=no
+AC_ARG_WITH([tool-stats],
+	[  --with-tool-stats	Enable tool stats],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_TOOL_STATS], [1],
+				[Define if you have stats support])
+			HAVE_TOOL_STATS=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_TOOL_STATS], [test $HAVE_TOOL_STATS = yes])
+
+
+#
 # SCHEDULERS
 #
 HAVE_SCHEDULER_RAM=no
@@ -1699,6 +1716,9 @@ AC_CONFIG_FILES([Makefile
 		extras/wip/tables/table-socketmap/Makefile
 		extras/wip/tables/table-sqlite/Makefile
 		extras/wip/tables/table-stub/Makefile
+
+		extras/wip/tools/Makefile
+		extras/wip/tools/tool-stats/Makefile
 		])
 
 #l4761

@@ -1,0 +1,56 @@
+.\"	$OpenBSD: $
+.\"
+.\" Copyright (c) 2016, Joerg Jung <jung@openbsd.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd $Mdocdate: January 06 2016 $
+.Dt TOOL-STATS 8
+.Os
+.Sh NAME
+.Nm tool-stats
+.Nd smtpd tool for log statistics
+.Sh SYNOPSIS
+.Nm
+.Op Ar log ...
+.Sh DESCRIPTION
+.Nm
+is a tool which can be used to display
+statistics from
+.Xr smtpd 8
+.Ar log
+files.
+The
+.Ar log
+files are read line by line and the analyzed statistic results are written to
+the standard output.
+.Pp
+.Nm
+does not have any options.
+.Pp
+Statistics are shown for
+.Xr smtpd 8 ,
+as well as for filters.
+.Sh SEE ALSO
+.Xr filter_api 3 ,
+.Xr smtpd 8
+.Sh HISTORY
+The first version of
+.Nm
+was written in 2015.
+.Sh AUTHORS
+.An Joerg Jung Aq Mt jung@openbsd.org
+.Sh CAVEATS
+Filter statistics are only provided, if the filter process name choosen in
+.Xr smtpd.conf 5
+starts with and matches the filter binary name.

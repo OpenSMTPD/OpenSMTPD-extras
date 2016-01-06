@@ -7,6 +7,7 @@ filters_srcdir		= $(top_srcdir)/extras/wip/filters
 queues_srcdir		= $(top_srcdir)/extras/wip/queues
 schedulers_srcdir	= $(top_srcdir)/extras/wip/schedulers
 tables_srcdir		= $(top_srcdir)/extras/wip/tables
+tools_srcdir		= $(top_srcdir)/extras/wip/tools
 
 PATHS=		-DSMTPD_CONFDIR=\"$(sysconfdir)\"			\
 		-DPATH_CHROOT=\"$(PRIVSEP_PATH)\"			\
