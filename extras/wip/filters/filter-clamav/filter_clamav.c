@@ -61,7 +61,7 @@ clamav_open(struct clamav *cl)
 	hints.ai_family = PF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
-	hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
+	hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV; /* avoid failing name resolution in chroot() */
 	if ((r = getaddrinfo(CLAMAV_HOST, CLAMAV_PORT, &hints, &addresses))) {
 		log_warnx("warn: filter-clamav: open: getaddrinfo %s", gai_strerror(r));
 		return -1;

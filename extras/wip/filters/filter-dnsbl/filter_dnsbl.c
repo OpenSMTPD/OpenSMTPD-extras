@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include <ctype.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,7 +53,6 @@ static int
 dnsbl_on_connect(uint64_t id, struct filter_connect *conn)
 {
 	struct addrinfo		 hints;
-	struct sockaddr_in	*sain;
 	in_addr_t		 in_addr;
 	struct asr_query	*aq;
 	uint64_t		*q;
@@ -74,18 +74,16 @@ dnsbl_on_connect(uint64_t id, struct filter_connect *conn)
 		return filter_api_reject(id, FILTER_FAIL);
 	}
 
-	q = calloc(1, sizeof *q);
-	if (q == NULL) {
+	if ((q = calloc(1, sizeof(*q))) == NULL) {
 		log_warn("warn: filter-dnsbl: on_connect: calloc");
 		return filter_api_reject(id, FILTER_FAIL);
 	}
 	*q = id;
 
-	memset(&hints, 0, sizeof (hints));
+	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = PF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
-	aq = getaddrinfo_async(buf, NULL, &hints, NULL);
-	if (aq == NULL) {
+	if ((aq = getaddrinfo_async(buf, NULL, &hints, NULL)) == NULL) {
 		log_warn("warn: filter-dnsbl: on_connect: getaddrinfo_async");
 		free(q);
 		return filter_api_reject(id, FILTER_FAIL);
@@ -95,7 +93,7 @@ dnsbl_on_connect(uint64_t id, struct filter_connect *conn)
 
 	event_asr_run(aq, dnsbl_event_dispatch, q);
 
-	return (1);
+	return 1;
 }
 
 int
@@ -138,6 +136,7 @@ main(int argc, char **argv)
 	log_debug("debug: filter-dnsbl: starting...");
 
 	filter_api_on_connect(dnsbl_on_connect);
+	filter_api_no_chroot(); /* getaddrinfo requires resolv.conf */
 	filter_api_loop();
 
 	log_debug("debug: filter-dnsbl: exiting");
