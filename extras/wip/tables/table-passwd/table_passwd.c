@@ -2,6 +2,7 @@
 
 /*
  * Copyright (c) 2013 Gilles Chehade <gilles@poolp.org>
+ * Copyright (c) 2016 Joerg Jung <jung@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -32,72 +33,73 @@
 #include "smtpd-api.h"
 #include "log.h"
 
-static int table_passwd_update(void);
-static int table_passwd_check(int, struct dict *, const char *);
-static int table_passwd_lookup(int, struct dict *, const char *, char *, size_t);
-static int table_passwd_fetch(int, struct dict *, char *, size_t);
-static int parse_passwd_entry(struct passwd *, char *);
-
 static char	       *config;
 static struct dict     *passwd;
 
-int
-main(int argc, char **argv)
+static int
+parse_passwd_entry(int service, struct passwd *pw, char *buf)
 {
-	int	ch;
+	const char     *e;
+	char	       *p;
 
-	log_init(1);
+	/* username */
+	if (!(pw->pw_name = strsep(&buf, ":")) || !strlen(pw->pw_name))
+		return 0;
 
-	while ((ch = getopt(argc, argv, "")) != -1) {
-		switch (ch) {
-		default:
-			log_warnx("warn: table-passwd: bad option");
-			return (1);
-			/* NOTREACHED */
-		}
-	}
-	argc -= optind;
-	argv += optind;
+	/* password */
+	if (!(pw->pw_passwd = strsep(&buf, ":")) ||
+	    (service == K_CREDENTIALS && !strlen(pw->pw_passwd)))
+		return 0;
 
-	if (argc != 1) {
-		log_warnx("warn: table-passwd: bogus argument(s)");
-		return (1);
-	}
+	/* uid */
+	if (!(p = strsep(&buf, ":")))
+		return 0;
+	pw->pw_uid = strtonum(p, 0, UID_MAX, &e);
+	if (service == K_USERINFO && (!strlen(p) || e))
+		return 0;
 
-	config = argv[0];
+	/* gid */
+	if (!(p = strsep(&buf, ":")))
+		return 0;
+	pw->pw_gid = strtonum(p, 0, GID_MAX, &e);
+	if (service == K_USERINFO && (!strlen(p) || e))
+		return 0;
 
-	if (table_passwd_update() == 0) {
-		log_warnx("warn: table-passwd: error parsing config file");
-		return (1);
-	}
+	/* gecos */
+	if (!(pw->pw_gecos = strsep(&buf, ":")))
+		return 0;
 
-	table_api_on_update(table_passwd_update);
-	table_api_on_check(table_passwd_check);
-	table_api_on_lookup(table_passwd_lookup);
-	table_api_on_fetch(table_passwd_fetch);
-	table_api_dispatch();
+	/* home */
+	if (!(pw->pw_dir = strsep(&buf, ":")) ||
+	    (service == K_USERINFO && !strlen(pw->pw_dir)))
+		return 0;
 
-	return (0);
+	/* shell */
+	pw->pw_shell = strsep(&buf, ":");
+	/*
+	 * explicitly allow further extra fields to support
+	 * shared authentication with Dovecot Passwd-file format
+	 */
+	return 1;
 }
 
 static int
 table_passwd_update(void)
 {
-	FILE	       *fp;
-	char	       *buf = NULL, *p;
-	char		tmp[LINE_MAX];
-	size_t		sz = 0;
-	ssize_t		len;
-	char	       *line;
-	struct passwd	pw;
-	struct dict    *npasswd;
-	char	       *skip;
+	FILE		*fp;
+	char		*buf = NULL, tmp[LINE_MAX], *skip, *p;
+	size_t		 sz = 0;
+	ssize_t		 len;
+	struct passwd	 pw;
+	struct dict	*npasswd;
 
 	/* Parse configuration */
-	if ((fp = fopen(config, "r")) == NULL)
-		return (0);
+	if ((fp = fopen(config, "r")) == NULL) {
+		log_warn("warn: Table \"%s\"", config);
+		return 0;
+	}
 
-	if ((npasswd = calloc(1, sizeof *passwd)) == NULL)
+	if ((npasswd = calloc(1, sizeof(*passwd))) == NULL)
 		goto err;
 
 	dict_init(npasswd);
@@ -117,18 +119,18 @@ table_passwd_update(void)
 		if (strlen(buf) == 0)
 			continue;
 
-		if (strlcpy(tmp, buf, sizeof tmp) >= sizeof tmp) {
+		if (strlcpy(tmp, buf, sizeof(tmp)) >= sizeof(tmp)) {
 			log_warnx("warn: table-passwd: line too long");
 			goto err;
 		}
-		if (!parse_passwd_entry(&pw, tmp)) {
+
+		if (!parse_passwd_entry(K_ANY, &pw, tmp)) {
 			log_warnx("warn: table-passwd: invalid entry");
 			goto err;
 		}
-		if ((line = strdup(buf)) == NULL)
-			err(1, NULL);
-		dict_set(npasswd, pw.pw_name, line);
+		dict_set(npasswd, pw.pw_name, xstrdup(buf, "update"));
 	}
+	free(buf);
 	fclose(fp);
 
 	/* swap passwd table and release old one*/
@@ -137,11 +139,11 @@ table_passwd_update(void)
 			free(p);
 	passwd = npasswd;
 
-	return (1);
+	return 1;
 
 err:
-	fclose(fp);
 	free(buf);
+	fclose(fp);
 
 	/* release passwd table */
 	if (npasswd) {
@@ -149,40 +151,38 @@ err:
 			free(p);
 		free(npasswd);
 	}
-	return (0);
+	return 0;
 }
 
 static int
 table_passwd_check(int service, struct dict *params, const char *key)
 {
-	return (-1);
+	return -1;
 }
 
 static int
-table_passwd_lookup(int service, struct dict *params, const char *key, char *dst, size_t sz)
+table_passwd_lookup(int service, struct dict *params, const char *key,
+    char *dst, size_t sz)
 {
-	int		r;
 	struct passwd	pw;
 	char	       *line;
 	char		tmp[LINE_MAX];
 
-	line = dict_get(passwd, key);
-	if (line == NULL)
+	if ((line = dict_get(passwd, key)) == NULL)
 		return 0;
 
-	(void)strlcpy(tmp, line, sizeof tmp);
-	if (!parse_passwd_entry(&pw, tmp)) {
+	(void)strlcpy(tmp, line, sizeof(tmp));
+	if (!parse_passwd_entry(service, &pw, tmp)) {
 		log_warnx("warn: table-passwd: invalid entry");
 		return -1;
 	}
 
-	r = 1;
 	switch (service) {
 	case K_CREDENTIALS:
 		if (snprintf(dst, sz, "%s:%s",
 			pw.pw_name, pw.pw_passwd) >= (ssize_t)sz) {
 			log_warnx("warn: table-passwd: result too large");
-			r = -1;
+			return -1;
 		}
 		break;
 	case K_USERINFO:
@@ -190,85 +190,58 @@ table_passwd_lookup(int service, struct dict *params, const char *key, char *dst
 			pw.pw_uid, pw.pw_gid, pw.pw_dir)
 		    >= (ssize_t)sz) {
 			log_warnx("warn: table-passwd: result too large");
-			r = -1;
+			return -1;
 		}
 		break;
 	default:
 		log_warnx("warn: table-passwd: unknown service %d",
 		    service);
-		r = -1;
+		return -1;
 	}
-
-	return (r);
+	return 1;
 }
 
 static int
 table_passwd_fetch(int service, struct dict *params, char *dst, size_t sz)
 {
-	return (-1);
+	return -1;
 }
 
-static int
-parse_passwd_entry(struct passwd *pw, char *buf)
+int
+main(int argc, char **argv)
 {
-	const char     *errstr;
-	char	       *p, *q;
+	int	ch;
 
-	p = buf;
+	log_init(1);
 
-	/* username */
-	q = p;
-	if ((p = strchr(q, ':')) == NULL)
-		return 0;
-	*p++ = 0;
-	pw->pw_name = q;
+	while ((ch = getopt(argc, argv, "")) != -1) {
+		switch (ch) {
+		default:
+			log_warnx("warn: table-passwd: bad option");
+			return 1;
+			/* NOTREACHED */
+		}
+	}
+	argc -= optind;
+	argv += optind;
 
-	/* password */
-	q = p;
-	if ((p = strchr(q, ':')) == NULL)
-		return 0;
-	*p++ = 0;
-	pw->pw_passwd = q;
+	if (argc != 1) {
+		log_warnx("warn: table-passwd: bogus argument(s)");
+		return 1;
+	}
 
-	/* uid */
-	q = p;
-	if ((p = strchr(q, ':')) == NULL)
-		return 0;
-	*p++ = 0;
-	pw->pw_uid = strtonum(q, 0, UID_MAX, &errstr);
-	if (errstr)
-		return 0;
+	config = argv[0];
 
-	/* gid */
-	q = p;
-	if ((p = strchr(q, ':')) == NULL)
-		return 0;
-	*p++ = 0;
-	pw->pw_gid = strtonum(q, 0, GID_MAX, &errstr);
-	if (errstr)
-		return 0;
+	if (table_passwd_update() == 0) {
+		log_warnx("warn: table-passwd: error parsing config file");
+		return 1;
+	}
 
-	/* gecos */
-	q = p;
-	if ((p = strchr(q, ':')) == NULL)
-		return 0;
-	*p++ = 0;
-	pw->pw_gecos = q;
+	table_api_on_update(table_passwd_update);
+	table_api_on_check(table_passwd_check);
+	table_api_on_lookup(table_passwd_lookup);
+	table_api_on_fetch(table_passwd_fetch);
+	table_api_dispatch();
 
-	/* home */
-	q = p;
-	if ((p = strchr(q, ':')) == NULL)
-		return 0;
-	*p++ = 0;
-	pw->pw_dir = q;
-
-	/* shell */
-	q = p;
-	/*
-	 * explicitly allow further extra fields to support
-	 * shared authentication with Dovecot Passwd-file format
-	 */
-	pw->pw_shell = q;
-
-	return 1;
+	return 0;
 }

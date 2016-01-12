@@ -1,6 +1,7 @@
 .\"	$OpenBSD: table_passwd.5,v 1.2 2014/02/04 17:47:02 jmc Exp $
 .\"
 .\" Copyright (c) 2014 Gilles Chehade <gilles@poolp.org>
+.\" Copyright (c) 2016 Joerg Jung <jung@openbsd.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
@@ -48,7 +49,11 @@ eric:*:1001:1001:Eric:/home/eric:/sbin/nologin
 chl:*:1002:1002:Charles:/home/chl:/sbin/nologin
 .Ed
 .Pp
-If the table is used for authentication, the second field may contain a
+Besides the first username field and depending on the table type, fields are
+optional and might be empty.
+The gecos and the shell field are not used and ignored.
+.Pp
+If the table is used for authentication, the second field should contain a
 password encrypted using the
 .Xr crypt 3
 function.
@@ -58,6 +63,9 @@ utility or
 .Xr smtpctl 8
 encrypt command.
 .Pp
+If the table is used for user information, user-id, group-id, and home
+directory fields are required.
+.Pp
 In favor of supporting shared authentication with the Dovecot Passwd-file
 format, extra fields after the last shell field are allowed (and ignored).
 .Sh SEE ALSO
@@ -65,3 +73,14 @@ format, extra fields after the last shell field are allowed (and ignored).
 .Xr smtpd.conf 5 ,
 .Xr smtpctl 8 ,
 .Xr smtpd 8
+.Sh HISTORY
+The first version of
+.Nm
+was written in 2013.
+.Sh AUTHORS
+.An -nosplit
+.Nm
+was intially written by
+.An Gilles Chehade Aq Mt gilles@poolp.org
+and further improved by
+.An Joerg Jung Aq Mt jung@openbsd.org .
