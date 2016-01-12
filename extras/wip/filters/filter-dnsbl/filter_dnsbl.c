@@ -15,7 +15,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
- 
+
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -42,8 +42,8 @@ dnsbl_event_dispatch(struct asr_result *ar, void *arg)
 		freeaddrinfo(ar->ar_addrinfo);
 
 	if (ar->ar_gai_errno != EAI_NODATA) {
-		log_warnx("warn: filter-dnsbl: event_dispatch: REJECT address");
-		filter_api_reject(*q, FILTER_CLOSE);
+		log_warnx("warn: filter-dnsbl: session %016"PRIx64": event_dispatch: REJECT address", *q);
+		filter_api_reject_code(*q, FILTER_CLOSE, 554, "5.7.1 Address in DNSBL");
 	} else
 		filter_api_accept(*q);
 	free(q);
@@ -60,7 +60,7 @@ dnsbl_on_connect(uint64_t id, struct filter_connect *conn)
 
 	if (conn->remote.ss_family != AF_INET)
 		return filter_api_accept(id);
-	
+
 	in_addr = ((const struct sockaddr_in *)&conn->remote)->sin_addr.s_addr;
 
 	in_addr = ntohl(in_addr);
@@ -71,12 +71,12 @@ dnsbl_on_connect(uint64_t id, struct filter_connect *conn)
 	    (in_addr >> 24) & 0xff,
 	    dnsbl_host) >= sizeof(buf)) {
 		log_warnx("warn: filter-dnsbl: on_connect: host name too long: %s", buf);
-		return filter_api_reject(id, FILTER_FAIL);
+		return filter_api_reject_code(id, FILTER_FAIL, 451, "4.7.1 DNSBL filter failed");
 	}
 
 	if ((q = calloc(1, sizeof(*q))) == NULL) {
 		log_warn("warn: filter-dnsbl: on_connect: calloc");
-		return filter_api_reject(id, FILTER_FAIL);
+		return filter_api_reject_code(id, FILTER_FAIL, 451, "4.7.1 DNSBL filter failed");
 	}
 	*q = id;
 
@@ -86,7 +86,7 @@ dnsbl_on_connect(uint64_t id, struct filter_connect *conn)
 	if ((aq = getaddrinfo_async(buf, NULL, &hints, NULL)) == NULL) {
 		log_warn("warn: filter-dnsbl: on_connect: getaddrinfo_async");
 		free(q);
-		return filter_api_reject(id, FILTER_FAIL);
+		return filter_api_reject_code(id, FILTER_FAIL, 451, "4.7.1 DNSBL filter failed");
 	}
 
 	log_debug("debug: filter-dnsbl: on_connect: checking %s", buf);
