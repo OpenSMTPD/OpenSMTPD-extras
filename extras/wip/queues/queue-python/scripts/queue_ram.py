@@ -16,10 +16,11 @@
 
 import random
 import tempfile
-import time
+# import time
 import os
 
 queue = {}
+
 
 def generate_msgid():
     while True:
@@ -27,13 +28,14 @@ def generate_msgid():
         if msgid not in queue:
             return msgid
 
+
 def generate_evpid(msgid):
     if msgid not in queue:
         return 0
     while True:
         evpid = random.randint(1, 0xffffffff)
         if evpid not in queue[msgid]:
-            return (msgid<<32)|evpid
+            return (msgid << 32) | evpid
 
 
 # message_create must allocate a message entry and return a stricly positive
@@ -41,7 +43,7 @@ def generate_evpid(msgid):
 #
 def message_create():
     msgid = generate_msgid()
-    queue[msgid] = { 'envelopes': {}, 'message': None }
+    queue[msgid] = {'envelopes': {}, 'message': None}
     return msgid
 
 
@@ -72,6 +74,7 @@ def message_fd_r(msgid):
     tmp.seek(0, os.SEEK_SET)
     return os.dup(tmp.fileno())
 
+
 def message_corrupt():
     return 1
 
@@ -86,27 +89,31 @@ def envelope_create(msgid, envelope):
     queue[msgid]['envelopes'][evpid] = envelope
     return evpid
 
+
 def envelope_delete(evpid):
-    msgid = (evpid>>32)&0xffffffff
+    msgid = (evpid >> 32) & 0xffffffff
     del queue[msgid]['envelopes'][evpid]
     if len(queue[msgid]['envelopes']) == 0:
         del queue[msgid]
     return 1
 
+
 # envelope_update  must create an envelope within a message and return a
 # 64-bit unique envelope identifier where upper 32-bit == msgid
 #
 def envelope_update(evpid, envelope):
-    queue[(evpid>>32)&0xffffffff]['envelopes'][evpid] = envelope
+    queue[(evpid >> 32) & 0xffffffff]['envelopes'][evpid] = envelope
     return 1
 
+
 def envelope_load(evpid):
-    msgid = (evpid>>32)&0xffffffff
+    msgid = (evpid >> 32) & 0xffffffff
     if msgid not in queue:
         return 0
     if evpid not in queue[msgid]['envelopes']:
         return 0
     return queue[msgid]['envelopes'][evpid]
+
 
 def envelope_walk():
     return -1
