@@ -35,7 +35,7 @@
 struct stats {
 	struct { time_t first, last, time; } ts;
 	struct { size_t master, mda, mta, smtp; } restart;
-	struct { size_t in, out, delivery, reject, size; } total;
+	struct { size_t in, relay, delivery, reject, size; } total;
 	struct { struct { size_t connect, helo, mail, rcpt, dataline; } regex;
 		 size_t dnsbl, spam, virus; } filter;
 	struct { struct dict id, status, error, from, to, host, relay; } top;
@@ -67,7 +67,6 @@ stats_tok(char **l, size_t no, const char *e) {
 	}
 	return t;
 }
-
 
 static char *
 stats_kv(char **l, size_t no, const char *e)
@@ -101,41 +100,30 @@ stats_init(struct stats *s)
 static void
 stats_in(struct stats *s, char *l, size_t no)
 {
-	const char *e;
+	const char *f, *e;
 	char *id, *v;
 	size_t *p, n;
 
-	l = stats_skip(l);
-	if (strncmp(l, "session", 7))
-		return;
-
-	if (!stats_tok(&l, no, "session") || !(id = stats_tok(&l, no, NULL)))
+	f = l = stats_skip(l);
+	if (!(l = strstr(l, "session")) || !stats_tok(&l, no, "session") ||
+	    !(id = stats_tok(&l, no, NULL)))
 		return;
 	id[strcspn(id, ":")] = '\0';
 
-	if (!strncmp(l, "connection from host ", 21)) {
-		if (!stats_tok(&l, no, "connection") ||
-		    !stats_tok(&l, no, "from") || !stats_tok(&l, no, "host"))
+	if (!strncmp(f, "New session", 11)) {
+		if (!stats_tok(&l, no, "from") || !stats_tok(&l, no, "host"))
 			return;
-		v = l;
-		if (!(l = strchr(l, '['))) { /* move forward to ip */
-			warnx("host failed line %lu", no);
-			return;
-		}
-		if (!stats_tok(&l, no, NULL))
-			return;
-		if (!strncmp(l, "established", 11))
-			dict_xset(&s->top.id, id, xstrdup(v, "in"));
-		else if (!strncmp(l, "closed", 6))
-			free(dict_pop(&s->top.host, id));
+		dict_xset(&s->top.id, id, xstrdup((v = l), "in"));
 		return;
-	} else if (!(l = strstr(l, "status=")))
+	} else if (!strncmp(f, "Closing session", 15)) {
+		free(dict_pop(&s->top.host, id));
+		return;
+	}
+	if (strncmp(f, "Accepted message", 16))
 		return;
 
-	if (!(v = stats_kv(&l, no, "status")))
-		return;
-	if (!(p = dict_get(&s->top.status, v)))
-		dict_xset(&s->top.status, v, (p = xcalloc(1, sizeof(size_t), "in")));
+	if (!(p = dict_get(&s->top.status, "Ok")))
+		dict_xset(&s->top.status, "Ok", (p = xcalloc(1, sizeof(size_t), "in")));
 	(*p)++;
 
 	l = stats_skip(l);
@@ -175,43 +163,41 @@ stats_in(struct stats *s, char *l, size_t no)
 }
 
 static void
-stats_out(struct stats *s, char *l, size_t no )
+stats_relay(struct stats *s, char *l, size_t no )
 {
-	const char *v;
+	const char *f, *v;
 	size_t *p;
-	int e;
 
-	if (!(l = strstr(l, "status=")))
-		return;
-
-	if (!(v = stats_kv(&l, no, "status")))
+	f = l = stats_skip(l);
+	if (!(v = stats_tok(&l, no, NULL)))
 		return;
 	if (!(p = dict_get(&s->top.status, v)))
-		dict_xset(&s->top.status, v, (p = xcalloc(1, sizeof(size_t), "out")));
-	(*p)++;
-	e = strcmp(v, "Ok");
-
-	if (!(l = strstr(l, "relay="))) {
-		warnx("relay failed line %lu", no);
-		return;
-	}
-	if (!(v = stats_kv(&l, no, "relay")))
-		return;
-	if (!(p = dict_get(&s->top.relay, v)))
-		dict_xset(&s->top.relay, v, (p = xcalloc(1, sizeof(size_t), "out")));
+		dict_xset(&s->top.status, v, (p = xcalloc(1, sizeof(size_t), "relay")));
 	(*p)++;
 
-	if (e) {
-		if (!(l = strstr(l, "stat="))) {
+	if (strcmp(f, "Expire")) {
+		if (!(l = strstr(l, "relay="))) {
 			warnx("relay failed line %lu", no);
+			return;
+		}
+		if (!(v = stats_kv(&l, no, "relay")))
+			return;
+		if (!(p = dict_get(&s->top.relay, v)))
+			dict_xset(&s->top.relay, v, (p = xcalloc(1, sizeof(size_t), "relay")));
+		(*p)++;
+	}
+
+	if (strcmp(f, "Ok")) {
+		if (!(l = strstr(l, "stat="))) {
+			warnx("status failed line %lu", no);
 			return;
 		}
 		v = l + 5; /* stat until EOL may contain commas and spaces */
 		if (!(p = dict_get(&s->top.error, v)))
-			dict_xset(&s->top.error, v, (p = xcalloc(1, sizeof(size_t), "out")));
+			dict_xset(&s->top.error, v, (p = xcalloc(1, sizeof(size_t), "relay")));
 		(*p)++;
 	}
-	s->total.out++;
+	s->total.relay++;
 }
 
 static void
@@ -224,17 +210,17 @@ stats_delivery(struct stats *s, char *l, size_t no)
         if (!(v = stats_tok(&l, no, NULL)))
 		return;
 	if (!(p = dict_get(&s->top.status, v)))
-		dict_xset(&s->top.status, v, (p = xcalloc(1, sizeof(size_t), "out")));
+		dict_xset(&s->top.status, v, (p = xcalloc(1, sizeof(size_t), "delivery")));
 	(*p)++;
 
 	if (strcmp(v, "Ok")) {
 		if (!(l = strstr(l, "stat="))) {
-			warnx("relay failed line %lu", no);
+			warnx("status failed line %lu", no);
 			return;
 		}
 		v = l + 5; /* stat until EOL may contain commas and spaces */
 		if (!(p = dict_get(&s->top.error, v)))
-			dict_xset(&s->top.error, v, (p = xcalloc(1, sizeof(size_t), "out")));
+			dict_xset(&s->top.error, v, (p = xcalloc(1, sizeof(size_t), "delivery")));
 		(*p)++;
 	}
 	s->total.delivery++;
@@ -262,8 +248,8 @@ stats_smtpd(struct stats *s, char *l, size_t no)
 		return;
 	if (!strcmp(t, "smtp-in:"))
 		stats_in(s, l, no);
-	else if (!strcmp(t, "smtp-out:"))
-		stats_out(s, l, no);
+	else if (!strcmp(t, "relay:"))
+		stats_relay(s, l, no);
 	else if (!strcmp(t, "delivery:"))
 		stats_delivery(s, l, no);
 	else
@@ -348,9 +334,9 @@ static void
 stats_top(struct dict *d)
 {
 	const char *k, *max_k;
-	size_t *v, max_v, t = 0, n = 0;
+	size_t *v, max_v, t = 0, n;
 	double p;
-	void *i = NULL;
+	void *i;
 
 	for (n = 0; n < STATS_TOP; n++) { /* this can be optimized */
 		i = NULL, max_k = NULL, max_v = 0;
@@ -403,8 +389,8 @@ stats_print(struct stats *s)
 	printf("%s - %s\n\n", first, last);
 	printf("%-11s master: %lu mda: %lu mta: %lu smtp: %lu\n", "Restarts:",
 	    s->restart.master, s->restart.mda, s->restart.mta, s->restart.smtp);
-	printf("%-11s in: %lu out: %lu deliver: %lu reject: %lu\n", "Messages:",
-	    s->total.in, s->total.out, s->total.delivery, s->total.reject);
+	printf("%-11s in: %lu relay: %lu deliver: %lu reject: %lu\n", "Messages:",
+	    s->total.in, s->total.relay, s->total.delivery, s->total.reject);
 	printf("%-11s %.2f mails/hour ", "Throughput:",
 	    s->total.in / (s->ts.time / (double)3600));
 	stats_byte(s->total.size / (s->ts.time / (double)3600));
