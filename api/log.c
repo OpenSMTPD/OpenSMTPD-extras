@@ -31,6 +31,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "log.h"
 
@@ -75,11 +76,13 @@ logit(int pri, const char *fmt, ...)
 void
 vlog(int pri, const char *fmt, va_list ap)
 {
+	extern char	*__progname;
 	char	*nfmt;
 
 	if (foreground) {
 		/* best effort in out of mem situations */
-		if (asprintf(&nfmt, "%s\n", fmt) == -1) {
+		if (asprintf(&nfmt, "%s[%u]: %s\n", __progname, getpid(), fmt) == -1) {
+			fprintf(stderr, "%s[%u]: ", __progname, getpid());
 			vfprintf(stderr, fmt, ap);
 			fprintf(stderr, "\n");
 		} else {
