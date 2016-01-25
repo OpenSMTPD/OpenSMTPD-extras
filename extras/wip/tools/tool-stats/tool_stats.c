@@ -52,7 +52,7 @@ static char *
 stats_skip(char *l)
 {
 	while (isspace((unsigned char)*l))
-                l++;
+		l++;
 	return l;
 }
 
@@ -73,11 +73,11 @@ stats_kv(char **l, size_t no, const char *e)
 {
 	char *k, *v;
 
-        if (!(k = strsep(l, "=")) || !strlen(k) || strcmp(k, e)) {
+	if (!(k = strsep(l, "=")) || !strlen(k) || strcmp(k, e)) {
 		warnx("key %s failed line %lu", e, no);
 		return NULL;
 	}
-        if (!(v = strsep(l, ",")) || !strlen(v)) {
+	if (!(v = strsep(l, ",")) || !strlen(v)) {
 		warnx("value failed line %lu", no);
 		return NULL;
 	}
@@ -100,82 +100,76 @@ stats_init(struct stats *s)
 static void
 stats_in(struct stats *s, char *l, size_t no)
 {
-	const char *f, *e;
+	const char *e;
 	char *id, *v;
 	size_t *p, n;
 
-	f = l = stats_skip(l);
+	if (strncmp(l, "New session", 11) &&
+	    strncmp(l, "Accepted message", 16) &&
+	    strncmp(l, "Closing session", 15))
+		return;
+
+	if (!(v = stats_tok(&l, no, NULL)))
+		return;
+
 	if (!(l = strstr(l, "session")) || !stats_tok(&l, no, "session") ||
 	    !(id = stats_tok(&l, no, NULL)))
 		return;
 	id[strcspn(id, ":")] = '\0';
 
-	if (!strncmp(f, "New session", 11)) {
+	if (!strcmp(v, "New")) {
 		if (!stats_tok(&l, no, "from") || !stats_tok(&l, no, "host"))
 			return;
-		dict_xset(&s->top.id, id, xstrdup((v = l), "in"));
-		return;
-	} else if (!strncmp(f, "Closing session", 15)) {
+		dict_xset(&s->top.id, id, xstrdup(l, "in"));
+	} else if (!strcmp(v, "Accepted")) { /* todo: parse and count errors and failures? */
+		if (!(v = stats_kv(&l, no, "from")))
+			return;
+		if (!(p = dict_get(&s->top.from, v)))
+			dict_xset(&s->top.from, v, (p = xcalloc(1, sizeof(size_t), "in")));
+		(*p)++;
+
+		l = stats_skip(l);
+		if (!(v = stats_kv(&l, no, "to")))
+			return;
+		if (!(p = dict_get(&s->top.to, v)))
+			dict_xset(&s->top.to, v, (p = xcalloc(1, sizeof(size_t), "in")));
+		(*p)++;
+
+		l = stats_skip(l);
+		if (!(v = stats_kv(&l, no, "size")))
+			return;
+		n = strtonum(v, 0, UINT_MAX, &e); /* todo: SIZE_MAX here? */
+		if (e) {
+			warnx("size value is %s: %s line %lu", e, v, no);
+			return;
+		}
+		s->total.size += n;
+
+		if (!(v = dict_get(&s->top.id, id))) {
+			warnx("session failed line %lu", no);
+			return;
+		}
+		if (!(p = dict_get(&s->top.host, v)))
+			dict_xset(&s->top.host, v, (p = xcalloc(1, sizeof(size_t), "in")));
+		(*p)++;
+
+		s->total.in++;
+	} else if (!strcmp(v, "Closing"))
 		free(dict_pop(&s->top.host, id));
-		return;
-	}
-	if (strncmp(f, "Accepted message", 16))
-		return;
-
-	if (!(p = dict_get(&s->top.status, "Ok")))
-		dict_xset(&s->top.status, "Ok", (p = xcalloc(1, sizeof(size_t), "in")));
-	(*p)++;
-
-	l = stats_skip(l);
-	if (!(v = stats_kv(&l, no, "from")))
-		return;
-	if (!(p = dict_get(&s->top.from, v)))
-		dict_xset(&s->top.from, v, (p = xcalloc(1, sizeof(size_t), "in")));
-	(*p)++;
-
-	l = stats_skip(l);
-	if (!(v = stats_kv(&l, no, "to")))
-		return;
-	if (!(p = dict_get(&s->top.to, v)))
-		dict_xset(&s->top.to, v, (p = xcalloc(1, sizeof(size_t), "in")));
-	(*p)++;
-
-	l = stats_skip(l);
-	if (!(v = stats_kv(&l, no, "size")))
-		return;
-	n = strtonum(v, 0, UINT_MAX, &e); /* todo: SIZE_MAX here? */
-	if (e) {
-		warnx("size value is %s: %s line %lu", e, v, no);
-		return;
-	}
-	s->total.size += n;
-
-	if (!(v = dict_get(&s->top.id, id))) {
-		warnx("session failed line %lu", no);
-		return;
-	}
-	if (!(p = dict_get(&s->top.host, v)))
-		dict_xset(&s->top.host, v, (p = xcalloc(1, sizeof(size_t), "in")));
-	(*p)++;
-
-	/* todo: parse and count errors and failures */
-	s->total.in++;
 }
 
 static void
 stats_relay(struct stats *s, char *l, size_t no )
 {
-	const char *f, *v;
+	const char *v;
 	size_t *p;
 
-	f = l = stats_skip(l);
 	if (!(v = stats_tok(&l, no, NULL)))
 		return;
 	if (!(p = dict_get(&s->top.status, v)))
 		dict_xset(&s->top.status, v, (p = xcalloc(1, sizeof(size_t), "relay")));
 	(*p)++;
-
-	if (strcmp(f, "Expire")) {
+	if (!strcmp(v, "Ok")) {
 		if (!(l = strstr(l, "relay="))) {
 			warnx("relay failed line %lu", no);
 			return;
@@ -185,19 +179,18 @@ stats_relay(struct stats *s, char *l, size_t no )
 		if (!(p = dict_get(&s->top.relay, v)))
 			dict_xset(&s->top.relay, v, (p = xcalloc(1, sizeof(size_t), "relay")));
 		(*p)++;
-	}
 
-	if (strcmp(f, "Ok")) {
-		if (!(l = strstr(l, "stat="))) {
-			warnx("status failed line %lu", no);
-			return;
-		}
-		v = l + 5; /* stat until EOL may contain commas and spaces */
-		if (!(p = dict_get(&s->top.error, v)))
-			dict_xset(&s->top.error, v, (p = xcalloc(1, sizeof(size_t), "relay")));
-		(*p)++;
+		s->total.relay++;
+		return;
 	}
-	s->total.relay++;
+	if (!(l = strstr(l, "stat="))) {
+		warnx("status failed line %lu", no);
+		return;
+	}
+	v = l + 5; /* stat until EOL may contain commas and spaces */
+	if (!(p = dict_get(&s->top.error, v)))
+		dict_xset(&s->top.error, v, (p = xcalloc(1, sizeof(size_t), "relay")));
+	(*p)++;
 }
 
 static void
@@ -206,30 +199,29 @@ stats_delivery(struct stats *s, char *l, size_t no)
 	const char *v;
 	size_t *p;
 
-	l = stats_skip(l);
-        if (!(v = stats_tok(&l, no, NULL)))
+	if (!(v = stats_tok(&l, no, NULL)))
 		return;
 	if (!(p = dict_get(&s->top.status, v)))
 		dict_xset(&s->top.status, v, (p = xcalloc(1, sizeof(size_t), "delivery")));
 	(*p)++;
-
-	if (strcmp(v, "Ok")) {
-		if (!(l = strstr(l, "stat="))) {
-			warnx("status failed line %lu", no);
-			return;
-		}
-		v = l + 5; /* stat until EOL may contain commas and spaces */
-		if (!(p = dict_get(&s->top.error, v)))
-			dict_xset(&s->top.error, v, (p = xcalloc(1, sizeof(size_t), "delivery")));
-		(*p)++;
+	if (!strcmp(v, "Ok")) {
+		s->total.delivery++;
+		return;
 	}
-	s->total.delivery++;
+	if (!(l = strstr(l, "stat="))) {
+		warnx("status failed line %lu", no);
+		return;
+	}
+	v = l + 5; /* stat until EOL may contain commas and spaces */
+	if (!(p = dict_get(&s->top.error, v)))
+		dict_xset(&s->top.error, v, (p = xcalloc(1, sizeof(size_t), "delivery")));
+	(*p)++;
 }
 
 static void
 stats_restart(struct stats *s, char *l, size_t no)
 {
-	if (!strcmp(l, "OpenSMTPD master starting"))
+	if (!strncmp(l, "OpenSMTPD", 9) && strstr(l, "starting"))
 		s->restart.master++;
 	else if (!strcmp(l, "mta resumed"))
 		s->restart.mta++;
