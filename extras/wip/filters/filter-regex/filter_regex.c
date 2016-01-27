@@ -77,26 +77,26 @@ regex_parse(char *l, size_t no)
 		if (strcmp(k, regex_s[i].s) == 0)
 			rq = regex_s[i].rq;
 	if (rq == NULL) {
-		log_warnx("warn: filter-regex: parse: unknown keyword %s line %lu", k, no);
+		log_warnx("warn: parse: unknown keyword %s line %lu", k, no);
 		return -1;
 	}
 	if (strlen((l = regex_skip(l))) == 0 || *l == '#') {
-		log_warnx("warn: filter-regex: parse: missing value line %lu", no);
+		log_warnx("warn: parse: missing value line %lu", no);
 		return -1;
 	}
-	re = xcalloc(1, sizeof(struct regex), "filter-regex: parse");
-	re->s = xstrdup(l, "filter-regex: parse");
+	re = xcalloc(1, sizeof(struct regex), "parse");
+	re->s = xstrdup(l, "parse");
 	if ((re->n = (l[0] == '!' && isspace((unsigned char)l[1]))))
 		l = regex_skip(++l);
 	if ((r = regcomp(&re->p, l, REG_EXTENDED|REG_NOSUB)) != 0) {
 		regerror(r, &re->p, buf, sizeof(buf));
-		log_warnx("warn: filter-regex: parse: regcomp %s line %lu", buf, no);
+		log_warnx("warn: parse: regcomp %s line %lu", buf, no);
 		free(re->s);
 		free(re);
 		return -1;
 	}
 	SIMPLEQ_INSERT_TAIL(rq, re, el);
-	log_debug("debug: filter-regex: parse: %s %s line %lu", k, re->s, no);
+	log_debug("debug: parse: %s %s line %lu", k, re->s, no);
 	return 0;
 }
 
@@ -109,7 +109,7 @@ regex_load(const char *c)
 	ssize_t len;
 
 	if ((f = fopen(c, "r")) == NULL) {
-		log_warn("warn: filter-regex: load: fopen %s", c);
+		log_warn("warn: load: fopen %s", c);
 		return -1;
 	}
 	while ((len = getline(&l, &sz, f)) != -1) {
@@ -122,7 +122,7 @@ regex_load(const char *c)
 		}
 	}
 	if (ferror(f)) {
-		log_warn("warn: filter-regex: load: getline");
+		log_warn("warn: load: getline");
 		free(l);
 		fclose(f);
 		return -1;
@@ -143,11 +143,11 @@ regex_match(struct regex_q *rq, const char *s)
 		if ((r = regexec(&re->p, s, 0, NULL, 0)) != 0) {
 			if (r != REG_NOMATCH) {
 				regerror(r, &re->p, buf, sizeof(buf));
-				log_warnx("warn: filter-regex: match: regexec %s", buf);
+				log_warnx("warn: match: regexec %s", buf);
 			}
 			continue;
 		}
-		log_info("info: filter-regex: match: %s to %s", re->s, s);
+		log_info("info: match: %s to %s", re->s, s);
 		return (re->n == 0);
 	}
 	return 0;
@@ -173,7 +173,7 @@ static int
 regex_on_connect(uint64_t id, struct filter_connect *c)
 {
 	if (regex_match(&regex_connect, c->hostname)) {
-		log_warnx("warn: filter-regex: session %016"PRIx64": on_connect: REJECT connect hostname", id);
+		log_warnx("warn: session %016"PRIx64": on_connect: REJECT connect hostname", id);
 		return filter_api_reject_code(id, FILTER_FAIL, 554, "5.7.1 Hostname rejected");
 	}
 	return filter_api_accept(id);
@@ -183,7 +183,7 @@ static int
 regex_on_helo(uint64_t id, const char *h)
 {
 	if (regex_match(&regex_helo, h)) {
-		log_warnx("warn: filter-regex: session %016"PRIx64": on_helo: REJECT helo hostname", id);
+		log_warnx("warn: session %016"PRIx64": on_helo: REJECT helo hostname", id);
 		return filter_api_reject_code(id, FILTER_FAIL, 554, "5.7.1 Helo rejected");
 	}
 	return filter_api_accept(id);
@@ -193,7 +193,7 @@ static int
 regex_on_mail(uint64_t id, struct mailaddr *m)
 {
 	if (regex_match(&regex_mail, filter_api_mailaddr_to_text(m))) {
-		log_warnx("warn: filter-regex: session %016"PRIx64": on_mail: REJECT mail from", id);
+		log_warnx("warn: session %016"PRIx64": on_mail: REJECT mail from", id);
 		return filter_api_reject_code(id, FILTER_FAIL, 554, "5.7.1 Sender rejected");
 	}
 	return filter_api_accept(id);
@@ -203,7 +203,7 @@ static int
 regex_on_rcpt(uint64_t id, struct mailaddr *r)
 {
 	if (regex_match(&regex_rcpt, filter_api_mailaddr_to_text(r))) {
-		log_warnx("warn: filter-regex: session %016"PRIx64": on_rcpt: REJECT rcpt to", id);
+		log_warnx("warn: session %016"PRIx64": on_rcpt: REJECT rcpt to", id);
 		return filter_api_reject_code(id, FILTER_FAIL, 554, "5.7.1 Recipient rejected");
 	}
 	return filter_api_accept(id);
@@ -216,7 +216,7 @@ regex_on_dataline(uint64_t id, const char *l)
 
 	filter_api_writeln(id, l);
 	if ((u = filter_api_get_udata(id)) == NULL) {
-		u = xcalloc(1, sizeof(*u), "filter-regex: on_dataline");
+		u = xcalloc(1, sizeof(*u), "on_dataline");
 		filter_api_set_udata(id, u);
 	}
 	if (u->m || (regex_limit && ++u->l >= regex_limit))
@@ -233,7 +233,7 @@ regex_on_eom(uint64_t id, size_t size)
 		return filter_api_accept(id);
 	r = *m, free(m), filter_api_set_udata(id, NULL);
 	if (r) {
-		log_warnx("warn: filter-regex: session %016"PRIx64": on_eom: REJECT dataline", id);
+		log_warnx("warn: session %016"PRIx64": on_eom: REJECT dataline", id);
 		return filter_api_reject_code(id, FILTER_CLOSE, 554, "5.7.1 Message content rejected");
 	}
 	return filter_api_accept(id);
@@ -280,7 +280,7 @@ main(int argc, char **argv)
 			v |= TRACE_DEBUG;
 			break;
 		default:
-			log_warnx("warn: filter-regex: bad option");
+			log_warnx("warn: bad option");
 			return (1);
 			/* NOTREACHED */
 		}
@@ -288,20 +288,20 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 	if (argc > 1)
-		fatalx("filter-regex: bogus argument(s)");
+		fatalx("bogus argument(s)");
 
 	if (l) {
 		regex_limit = strtonum(l, 1, UINT_MAX, &errstr);
 		if (errstr)
-			fatalx("filter-regex: limit option is %s: %s", errstr, l);
+			fatalx("limit option is %s: %s", errstr, l);
 	}
 
 	log_init(d);
 	log_verbose(v);
 
-	log_debug("debug: filter-regex: starting...");
+	log_debug("debug: starting...");
 	if (regex_load((argc == 1) ? argv[0] : REGEX_CONF) == -1)
-		fatalx("filter-regex: configuration failed");
+		fatalx("configuration failed");
 
 	filter_api_on_connect(regex_on_connect);
 	filter_api_on_helo(regex_on_helo);
@@ -315,7 +315,7 @@ main(int argc, char **argv)
 
 	filter_api_loop();
 	regex_clear();
-	log_debug("debug: filter-regex: exiting");
+	log_debug("debug: exiting");
 
 	return (1);
 }

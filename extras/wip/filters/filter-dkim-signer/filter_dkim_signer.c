@@ -190,7 +190,7 @@ on_eom(uint64_t id, size_t size)
 	SHA256_Final(s->body_hash, &s->body_ctx);
 	if (base64_encode(s->body_hash, sizeof(s->body_hash),
 	    s->b64_body_hash, sizeof(s->b64_body_hash)) == -1) {
-		log_warnx("warn: dkim_signer: on_eom: __b64_ntop failed");
+		log_warnx("warn: on_eom: __b64_ntop failed");
 		return filter_api_reject(id, FILTER_FAIL);	
 	}
 
@@ -199,7 +199,7 @@ on_eom(uint64_t id, size_t size)
 
 	if ((dkim_sig_len = asprintf(&dkim_sig, TEMPLATE, domain, s->hdrs_list,
 	    selector, s->b64_body_hash)) == -1) {
-		log_warn("warn: dkim_signer: on_eom: asprintf failed");
+		log_warn("warn: on_eom: asprintf failed");
 		return filter_api_reject(id, FILTER_FAIL);
 	}
 
@@ -213,12 +213,12 @@ on_eom(uint64_t id, size_t size)
 
 	if (base64_encode(rsa_sig, rsa_sig_len, s->b64_rsa_sig,
 	    sizeof(s->b64_rsa_sig)) == -1) {
-		log_warnx("warn: dkim_signer: on_eom: __b64_ntop failed");
+		log_warnx("warn: on_eom: __b64_ntop failed");
 		return filter_api_reject(id, FILTER_FAIL);
 	}
 
 	if (asprintf(&dkim_header, "%s%s", dkim_sig, s->b64_rsa_sig) == -1) {
-		log_warn("warn: dkim_signer: on_eom: asprintf failed");
+		log_warn("warn: on_eom: asprintf failed");
 		return filter_api_reject(id, FILTER_FAIL);
 	}
 
@@ -292,7 +292,7 @@ main(int argc, char **argv)
 			v |= TRACE_DEBUG;
 			break;
 		default:
-			log_warnx("warn: filter-dkim-signer: bad option");
+			log_warnx("warn: bad option");
 			return (1);
 			/* NOTREACHED */
 		}
@@ -303,7 +303,7 @@ main(int argc, char **argv)
 
 	if (domain == NULL) {
 		if (gethostname(hostname, sizeof(hostname)) == -1)
-			fatal("dkim_signer: main: gethostname");
+			fatal("main: gethostname");
 		domain = hostname;
 	}
 
@@ -316,14 +316,14 @@ main(int argc, char **argv)
 	log_init(d);
 	log_verbose(v);
 
-	log_debug("debug: filter-dkim-signer: starting...");
+	log_debug("debug: starting...");
 
 	OpenSSL_add_all_algorithms();
 	OpenSSL_add_all_ciphers();
 	OpenSSL_add_all_digests();
 
 	if ((fp = fopen(p, "r")) == NULL)
-		fatal("dkim_signer: main: fopen %s", p);
+		fatal("main: fopen %s", p);
 
 	rsa = PEM_read_RSAPrivateKey(fp, NULL, NULL, NULL);
 	if (rsa == NULL)
@@ -338,6 +338,6 @@ main(int argc, char **argv)
 
 	filter_api_loop();
 
-	log_debug("debug: filter-dkimg-signer: exiting");
+	log_debug("debug: exiting");
 	return (1);
 }

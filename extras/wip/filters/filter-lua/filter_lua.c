@@ -163,7 +163,7 @@ on_connect(uint64_t id, struct filter_connect *conn)
 	lua_pushstring(L, conn->hostname);
 
 	if (lua_pcall(L, 4, 0, 0)) {
-		log_warnx("warn: filter-lua: on_connect: %s",
+		log_warnx("warn: on_connect: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -182,7 +182,7 @@ on_helo(uint64_t id, const char *helo)
 	lua_pushstring(L, helo);
 
 	if (lua_pcall(L, 2, 0, 0)) {
-		log_warnx("warn: filter-lua: on_helo: %s",
+		log_warnx("warn: on_helo: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -201,7 +201,7 @@ on_mail(uint64_t id, struct mailaddr *mail)
 	lua_pushstring(L, filter_api_mailaddr_to_text(mail));
 
 	if (lua_pcall(L, 2, 0, 0)) {
-		log_warnx("warn: filter-lua: on_mail: %s",
+		log_warnx("warn: on_mail: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -220,7 +220,7 @@ on_rcpt(uint64_t id, struct mailaddr *rcpt)
 	lua_pushstring(L, filter_api_mailaddr_to_text(rcpt));
 
 	if (lua_pcall(L, 2, 0, 0)) {
-		log_warnx("warn: filter-lua: on_rcpt: %s",
+		log_warnx("warn: on_rcpt: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -238,7 +238,7 @@ on_data(uint64_t id)
 	lua_pushstring(L, s_id);
 
 	if (lua_pcall(L, 1, 0, 0)) {
-		log_warnx("warn: filter-lua: on_data: %s",
+		log_warnx("warn: on_data: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -257,7 +257,7 @@ on_dataline(uint64_t id, const char *line)
 	lua_pushstring(L, line);
 
 	if (lua_pcall(L, 2, 0, 0)) {
-		log_warnx("warn: filter-lua: on_dataline: %s",
+		log_warnx("warn: on_dataline: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -273,7 +273,7 @@ on_eom(uint64_t id, size_t size)
 	lua_pushstring(L, s_id);
 
 	if (lua_pcall(L, 1, 0, 0)) {
-		log_warnx("warn: filter-lua: on_eom: %s", lua_tostring(L, -1));
+		log_warnx("warn: on_eom: %s", lua_tostring(L, -1));
 		exit(1);
 	}
 
@@ -290,7 +290,7 @@ on_commit(uint64_t id)
 	lua_pushstring(L, s_id);
 
 	if (lua_pcall(L, 1, 0, 0)) {
-		log_warnx("warn: filter-lua: on_commit: %s",
+		log_warnx("warn: on_commit: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -306,7 +306,7 @@ on_rollback(uint64_t id)
 	lua_pushstring(L, s_id);
 
 	if (lua_pcall(L, 1, 0, 0)) {
-		log_warnx("warn: filter-lua: on_rollback: %s",
+		log_warnx("warn: on_rollback: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -322,7 +322,7 @@ on_disconnect(uint64_t id)
 	lua_pushstring(L, s_id);
 
 	if (lua_pcall(L, 1, 0, 0)) {
-		log_warnx("warn: filter-lua: on_disconnect: %s",
+		log_warnx("warn: on_disconnect: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -345,7 +345,7 @@ main(int argc, char **argv)
 			v |= TRACE_DEBUG;
 			break;
 		default:
-			log_warnx("warn: filter-lua: bad option");
+			log_warnx("warn: bad option");
 			return (1);
 			/* NOTREACHED */
 		}
@@ -360,10 +360,10 @@ main(int argc, char **argv)
 	log_init(d);
 	log_verbose(v);
 
-	log_debug("debug: filter-lua: starting...");
+	log_debug("debug: starting...");
 
 	if ((L = luaL_newstate()) == NULL) {
-		log_warnx("warn: filter-lua: can't create lua state");
+		log_warnx("warn: can't create lua state");
 		return (1);
 	}
 	luaL_openlibs(L);
@@ -382,75 +382,75 @@ main(int argc, char **argv)
 	lua_setglobal(L, "filter");
 
 	if (luaL_dofile(L, path) != 0) {
-		log_warnx("warn: filter-lua: error loading script: %s",
+		log_warnx("warn: error loading script: %s",
 		    path);
 		    return (1);
 	}
 
 	lua_getglobal(L, "on_connect");
 	if (lua_isfunction(L, -1)) {
-		log_debug("debug: filter-lua: on_connect is present");
+		log_debug("debug: on_connect is present");
 		filter_api_on_connect(on_connect);
 	}
 
 	lua_getglobal(L, "on_helo");
 	if (lua_isfunction(L, 1)) {
-		log_debug("debug: filter-lua: on_helo is present");
+		log_debug("debug: on_helo is present");
 		filter_api_on_helo(on_helo);
 	}
 
 	lua_getglobal(L, "on_mail");
 	if (lua_isfunction(L, 1)) {
-		log_debug("debug: filter-lua: on_mail is present");
+		log_debug("debug: on_mail is present");
 		filter_api_on_mail(on_mail);
 	}
 
 	lua_getglobal(L, "on_rcpt");
 	if (lua_isfunction(L, 1)) {
-		log_debug("debug: filter-lua: on_rcpt is present");
+		log_debug("debug: on_rcpt is present");
 		filter_api_on_rcpt(on_rcpt);
 	}
 
 	lua_getglobal(L, "on_data");
 	if (lua_isfunction(L, 1)) {
-		log_debug("debug: filter-lua: on_data is present");
+		log_debug("debug: on_data is present");
 		filter_api_on_data(on_data);
 	}
 
 	lua_getglobal(L, "on_dataline");
 	if (lua_isfunction(L, 1)) {
-		log_debug("debug: filter-lua: on_dataline is present");
+		log_debug("debug: on_dataline is present");
 		filter_api_on_dataline(on_dataline);
 	}
 
 	lua_getglobal(L, "on_eom");
 	if (lua_isfunction(L, 1)) {
-		log_debug("debug: filter-lua: on_eom is present");
+		log_debug("debug: on_eom is present");
 		filter_api_on_eom(on_eom);
 	}
 
 	lua_getglobal(L, "on_commit");
 	if (lua_isfunction(L, 1)) {
-		log_debug("debug: filter-lua: on_commit is present");
+		log_debug("debug: on_commit is present");
 		filter_api_on_commit(on_commit);
 	}
 
 	lua_getglobal(L, "on_rollback");
 	if (lua_isfunction(L, 1)) {
-		log_debug("debug: filter-lua: on_rollback is present");
+		log_debug("debug: on_rollback is present");
 		filter_api_on_rollback(on_rollback);
 	}
 
 	lua_getglobal(L, "on_disconnect");
 	if (lua_isfunction(L, 1)) {
-		log_debug("debug: filter-lua: on_disconnect is present");
+		log_debug("debug: on_disconnect is present");
 		filter_api_on_disconnect(on_disconnect);
 	}
 
 	filter_api_no_chroot();
 	filter_api_loop();
 
-	log_debug("debug: filter-lua: exiting");
+	log_debug("debug: exiting");
 
 	return (0);
 }

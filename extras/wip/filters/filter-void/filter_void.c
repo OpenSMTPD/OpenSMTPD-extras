@@ -44,7 +44,7 @@ main(int argc, char **argv)
 			v |= TRACE_DEBUG;
 			break;
 		default:
-			log_warnx("warn: filter-void: bad option");
+			log_warnx("warn: bad option");
 			return (1);
 			/* NOTREACHED */
 		}
@@ -55,10 +55,10 @@ main(int argc, char **argv)
 	log_init(d);
 	log_verbose(v);
 
-	log_debug("debug: filter-void: starting...");
+	log_debug("debug: starting...");
 
 	filter_api_loop();
-	log_debug("debug: filter-void: exiting");
+	log_debug("debug: exiting");
 
 	return (1);
 }

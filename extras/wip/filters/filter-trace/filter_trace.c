@@ -31,7 +31,8 @@
 static int
 on_connect(uint64_t id, struct filter_connect *conn)
 {
-	printf("filter-trace: session %016"PRIx64": on_connect: hostname=%s\n",
+
+	log_info("info: session %016"PRIx64": on_connect: hostname=%s",
 	    id, conn->hostname);
 	return filter_api_accept(id);
 }
@@ -39,14 +40,14 @@ on_connect(uint64_t id, struct filter_connect *conn)
 static int
 on_helo(uint64_t id, const char *helo)
 {
-	printf("filter-trace: session %016"PRIx64": on_helo: %s\n", id, helo);
+	log_info("info: session %016"PRIx64": on_helo: helo=%s", id, helo);
 	return filter_api_accept(id);
 }
 
 static int
 on_mail(uint64_t id, struct mailaddr *mail)
 {
-	printf("filter-trace: session %016"PRIx64": on_mail: %s@%s\n",
+	log_info("info: session %016"PRIx64": on_mail: from=%s@%s",
 	    id, mail->user, mail->domain);
 	return filter_api_accept(id);
 }
@@ -54,7 +55,7 @@ on_mail(uint64_t id, struct mailaddr *mail)
 static int
 on_rcpt(uint64_t id, struct mailaddr *rcpt)
 {
-	printf("filter-trace: session %016"PRIx64": on_rcpt: %s@%s\n",
+	log_info("info: session %016"PRIx64": on_rcpt: to=%s@%s",
 	    id, rcpt->user, rcpt->domain);
 	return filter_api_accept(id);
 }
@@ -62,22 +63,46 @@ on_rcpt(uint64_t id, struct mailaddr *rcpt)
 static int
 on_data(uint64_t id)
 {
-	printf("filter-trace: session %016"PRIx64": on_data", id);
+	log_info("info: session %016"PRIx64": on_data", id);
 	return filter_api_accept(id);
 }
 
 static int
 on_eom(uint64_t id, size_t size)
 {
-	printf("filter-trace: session %016"PRIx64": on_eom: size=%zu", id, size);
+	log_info("info: session %016"PRIx64": on_eom: size=%zu", id, size);
 	return filter_api_accept(id);
 }
 
 static void
 on_dataline(uint64_t id, const char *line)
 {
-	printf("filter-trace: session %016"PRIx64": dataline: \"%s\"\n", id, line);
+	log_info("info: session %016"PRIx64": on_dataline: line=\"%s\"", id, line);
 	filter_api_writeln(id, line);
+}
+
+static void
+on_reset(uint64_t id)
+{
+	log_info("info: session %016"PRIx64": on_reset", id);
+}
+
+static void
+on_disconnect(uint64_t id)
+{
+	log_info("info: session %016"PRIx64": on_disconnect", id);
+}
+
+static void
+on_commit(uint64_t id)
+{
+	log_info("info: session %016"PRIx64": on_commit", id);
+}
+
+static void
+on_rollback(uint64_t id)
+{
+	log_info("info: session %016"PRIx64": on_rollback", id);
 }
 
 int
@@ -96,7 +121,7 @@ main(int argc, char **argv)
 			v |= TRACE_DEBUG;
 			break;
 		default:
-			log_warnx("warn: filter-trace: bad option");
+			log_warnx("warn: bad option");
 			return (1);
 			/* NOTREACHED */
 		}
@@ -107,7 +132,7 @@ main(int argc, char **argv)
 	log_init(d);
 	log_verbose(v);
 
-	log_debug("debug: filter-trace: starting...");
+	log_debug("debug: starting...");
 
 	filter_api_on_connect(on_connect);
 	filter_api_on_helo(on_helo);
@@ -116,9 +141,15 @@ main(int argc, char **argv)
 	filter_api_on_data(on_data);
 	filter_api_on_dataline(on_dataline);
 	filter_api_on_eom(on_eom);
+
+	filter_api_on_reset(on_reset);
+	filter_api_on_disconnect(on_disconnect);
+	filter_api_on_commit(on_commit);
+	filter_api_on_rollback(on_rollback);
+
 	filter_api_loop();
 
-	log_debug("debug: filter-trace: exiting");
+	log_debug("debug: exiting");
 
 	return (1);
 }

@@ -22,6 +22,8 @@
 
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "smtpd-defines.h"
@@ -29,55 +31,73 @@
 #include "log.h"
 
 static int
-monkey(uint64_t id)
+monkey(uint64_t id, const char *cmd)
 {
 	uint32_t r;
 
-	r = arc4random_uniform(100);
-	if (r < 70)
-		return filter_api_accept(id);
-	else if (r < 90)
-		return filter_api_reject_code(id, FILTER_FAIL, 666,
+#if 0
+	if (!strcmp(cmd, "eom")) {
+		log_info("info: session %016"PRIx64": REJECT cmd=%s", id, cmd);
+		return filter_api_reject_code(id, FILTER_FAIL, 451,
 		    "I am a monkey!");
+	}
+
+	log_info("info: session %016"PRIx64": ACCEPT cmd=%s", id, cmd);
+	return filter_api_accept(id);
+#endif
+
+	r = arc4random_uniform(100);
+	if (r < 70) {
+		log_info("info: session %016"PRIx64": ACCEPT cmd=%s", id, cmd);
+		return filter_api_accept(id);
+	}
+	else if (r < 90) {
+		log_info("info: session %016"PRIx64": REJECT cmd=%s", id, cmd);
+		return filter_api_reject_code(id, FILTER_FAIL, 451,
+		    "I am a monkey!");
+	}
 	else
-		return filter_api_reject_code(id, FILTER_CLOSE, 666,
+	{
+		log_info("info: session %016"PRIx64": CLOSE cmd=%s", id, cmd);
+		return filter_api_reject_code(id, FILTER_CLOSE, 421,
 		    "I am a not so funny monkey!");
+	}
 }
 
 static int
 on_connect(uint64_t id, struct filter_connect *conn)
 {
-	return monkey(id);
+	return monkey(id, "connect");
 }
 
 static int
 on_helo(uint64_t id, const char *helo)
 {
-	return monkey(id);
+	return monkey(id, "helo");
 }
 
 static int
 on_mail(uint64_t id, struct mailaddr *mail)
 {
-	return monkey(id);
+	return monkey(id, "mail");
 }
 
 static int
 on_rcpt(uint64_t id, struct mailaddr *rcpt)
 {
-	return monkey(id);
+	return monkey(id, "rcpt");
 }
 
 static int
 on_data(uint64_t id)
 {
-	return monkey(id);
+	return monkey(id, "data");
 }
 
 static int
 on_eom(uint64_t id, size_t size)
 {
-	return monkey(id);
+	return monkey(id, "eom");
 }
 
 int
@@ -96,7 +116,7 @@ main(int argc, char **argv)
 			v |= TRACE_DEBUG;
 			break;
 		default:
-			log_warnx("warn: filter-monkey: bad option");
+			log_warnx("warn: bad option");
 			return (1);
 			/* NOTREACHED */
 		}
@@ -107,7 +127,7 @@ main(int argc, char **argv)
 	log_init(d);
 	log_verbose(v);
 
-	log_debug("debug: filter-monkey: starting...");
+	log_debug("debug: starting...");
 
 	filter_api_on_connect(on_connect);
 	filter_api_on_helo(on_helo);
@@ -117,7 +137,7 @@ main(int argc, char **argv)
 	filter_api_on_eom(on_eom);
 	filter_api_loop();
 
-	log_debug("debug: filter-monkey: exiting");
+	log_debug("debug: exiting");
 
 	return (0);
 }
