@@ -128,7 +128,7 @@ add_rule(const char *cmd, uint32_t proba, int status, int code, const char *msg)
 	struct ruleset *ruleset;
 	uint32_t limit;
 
-	log_info("info: adding rule cmd=%s, proba=%i, status=%i, code=%i, msg=\"%s\"",
+	log_debug("info: adding rule cmd=%s, proba=%i, status=%i, code=%i, msg=\"%s\"",
 	    cmd, proba, status, code, msg);
 
 	ruleset = dict_xget(&rulesets, cmd);
@@ -161,7 +161,7 @@ read_config(const char *path)
 	size_t linelen;
 	int n, lineno, proba, status, code, offset;
 
-	log_info("info: config file is %s", path);
+	log_debug("info: config file is %s", path);
 
 	dict_init(&rulesets);
 
@@ -228,7 +228,6 @@ read_config(const char *path)
 	if (ferror(fp))
 		fatal("ferror");
 	fclose(fp);
-	log_info("info: config file has %i", lineno);
 
     done:
 
