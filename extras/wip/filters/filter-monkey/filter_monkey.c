@@ -42,7 +42,15 @@ struct rule {
 TAILQ_HEAD(tq_rules, rule);
 
 struct ruleset {
-	struct tq_rules		rules;
+	uint32_t	delay_min;
+	uint32_t	delay_max;
+	struct tq_rules	rules;
+};
+
+struct deferred {
+	struct event	 ev;
+	const char	*cmd;
+	uint64_t	 id;
 };
 
 struct dict rulesets;
@@ -85,40 +93,74 @@ monkey(uint64_t id, const char *cmd)
 	return (0);
 }
 
+static void
+monkey_cb(int fd, short evt, void *arg)
+{
+	struct deferred *d = arg;
+
+	(void)monkey(d->id, d->cmd);
+	free(d);
+}
+
+static int
+defer_monkey(uint64_t id, const char *cmd)
+{
+	struct ruleset	*ruleset;
+	struct deferred	*d;
+	struct timeval tv;
+	uint32_t delay;
+
+	ruleset = dict_xget(&rulesets, cmd);
+	if (ruleset->delay_max == 0)
+		return monkey(id, cmd);
+
+	delay = arc4random_uniform(ruleset->delay_max - ruleset->delay_min);
+	delay += ruleset->delay_min;
+
+	d = xcalloc(1, sizeof(*d), "deferred_monkey");
+	d->id = id;
+	d->cmd = cmd;
+	evtimer_set(&d->ev, monkey_cb, d);
+	tv.tv_sec = delay  / 1000;
+	tv.tv_usec = (delay % 1000) * 1000;
+	evtimer_add(&d->ev, &tv);
+	return (0);
+}
+
 static int
 on_connect(uint64_t id, struct filter_connect *conn)
 {
-	return monkey(id, "connect");
+	return defer_monkey(id, "connect");
 }
 
 static int
 on_helo(uint64_t id, const char *helo)
 {
-	return monkey(id, "helo");
+	return defer_monkey(id, "helo");
 }
 
 static int
 on_mail(uint64_t id, struct mailaddr *mail)
 {
-	return monkey(id, "mail");
+	return defer_monkey(id, "mail");
 }
 
 static int
 on_rcpt(uint64_t id, struct mailaddr *rcpt)
 {
-	return monkey(id, "rcpt");
+	return defer_monkey(id, "rcpt");
 }
 
 static int
 on_data(uint64_t id)
 {
-	return monkey(id, "data");
+	return defer_monkey(id, "data");
 }
 
 static int
 on_eom(uint64_t id, size_t size)
 {
-	return monkey(id, "eom");
+	return defer_monkey(id, "eom");
 }
 
 static void
@@ -160,6 +202,7 @@ read_config(const char *path)
 	ssize_t len;
 	size_t linelen;
 	int n, lineno, proba, status, code, offset;
+	uint32_t delay_min, delay_max;
 
 	log_debug("info: config file is %s", path);
 
@@ -195,6 +238,26 @@ read_config(const char *path)
 			continue;
 		if (*start == '#')
 			continue;
+
+		if (!strncmp(start, "delay", strlen("delay"))) {
+			n = sscanf(start, "delay %u:%u on %16s", &delay_min, &delay_max, cmd);
+			if (n < 3)
+				fatalx("line %i: parse error: %i", lineno, n);
+
+			if (delay_min > delay_max)
+				fatalx("line %i: invalid delays", lineno);
+
+			for (s = entries; *s; s++)
+				if (!strcmp(*s, cmd))
+					break;
+			if (*s == NULL)
+				fatalx("line %i: invalid command", lineno);
+
+			ruleset = dict_xget(&rulesets, cmd);
+			ruleset->delay_min = delay_min;
+			ruleset->delay_max = delay_max;
+			continue;
+		}
 
 		n = sscanf(start, "%16s %i%% on %16s %i %n", action, &proba, cmd, &code, &offset);
 		if (n < 3)
