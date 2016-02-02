@@ -52,6 +52,7 @@ struct filter_session {
 	int		qtype;
 	size_t		datalen;
 
+	int		tx;
 	struct {
 		int		 eom_called;
 
@@ -393,6 +394,13 @@ filter_dispatch_helo(uint64_t id, const char *helo)
 static void
 filter_dispatch_mail(uint64_t id, struct mailaddr *mail)
 {
+	struct filter_session	*s;
+
+	s = tree_xget(&sessions, id);
+	if (s->tx)
+		fatalx("transaction already started");
+	s->tx = 1;
+
 	if (fi.cb.mail)
 		fi.cb.mail(id, mail);
 	else
@@ -420,13 +428,24 @@ filter_dispatch_data(uint64_t id)
 static void
 filter_dispatch_reset(uint64_t id)
 {
-	if (fi.cb.reset)
-		fi.cb.reset(id);
+	filter_dispatch_rollback(id);
 }
 
 static void
 filter_dispatch_commit(uint64_t id)
 {
+	struct filter_session	*s;
+
+	s = tree_xget(&sessions, id);
+	if (s->tx == 0)
+		fatalx("commit: session %016"PRIx64" not in transaction", id);
+
+	s->tx = 0;
+	io_clear(&s->pipe.oev);
+	iobuf_clear(&s->pipe.obuf);
+	io_clear(&s->pipe.iev);
+	iobuf_clear(&s->pipe.ibuf);
+
 	if (fi.cb.commit)
 		fi.cb.commit(id);
 }
@@ -434,6 +453,18 @@ filter_dispatch_commit(uint64_t id)
 static void
 filter_dispatch_rollback(uint64_t id)
 {
+	struct filter_session	*s;
+
+	s = tree_xget(&sessions, id);
+	if (s->tx == 0)
+		return;
+
+	s->tx = 0;
+	io_clear(&s->pipe.oev);
+	iobuf_clear(&s->pipe.obuf);
+	io_clear(&s->pipe.iev);
+	iobuf_clear(&s->pipe.ibuf);
+
 	if (fi.cb.rollback)
 		fi.cb.rollback(id);
 }
@@ -441,6 +472,9 @@ filter_dispatch_rollback(uint64_t id)
 static void
 filter_dispatch_disconnect(uint64_t id)
 {
+
+	filter_dispatch_rollback(id);
+
 	if (fi.cb.disconnect)
 		fi.cb.disconnect(id);
 }
