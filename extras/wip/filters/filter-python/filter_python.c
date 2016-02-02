@@ -147,7 +147,7 @@ on_connect(uint64_t id, struct filter_connect *conn)
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: on_connect: handler failed");
+		log_warnx("warn: on_connect: handler failed");
 		exit(1);
 	}
 
@@ -173,7 +173,7 @@ on_helo(uint64_t id, const char *helo)
 	Py_DECREF(py_args);
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: on_helo: handler failed");
+		log_warnx("warn: on_helo: handler failed");
 		exit(1);
 	}
 	return 1;
@@ -199,7 +199,7 @@ on_mail(uint64_t id, struct mailaddr *mail)
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: on_mail: handler failed");
+		log_warnx("warn: on_mail: handler failed");
 		exit(1);
 	}
 
@@ -226,7 +226,7 @@ on_rcpt(uint64_t id, struct mailaddr *rcpt)
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: on_rcpt: handler failed");
+		log_warnx("warn: on_rcpt: handler failed");
 		exit(1);
 	}
 
@@ -248,7 +248,7 @@ on_data(uint64_t id)
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: on_data: handler failed");
+		log_warnx("warn: on_data: handler failed");
 		exit(1);
 	}
 
@@ -273,7 +273,7 @@ on_eom(uint64_t id, size_t sz)
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: on_eom: handler failed");
+		log_warnx("warn: on_eom: handler failed");
 		exit(1);
 	}
 
@@ -295,7 +295,7 @@ on_commit(uint64_t id)
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: on_commit: handler failed");
+		log_warnx("warn: on_commit: handler failed");
 		exit(1);
 	}
 }
@@ -315,7 +315,7 @@ on_rollback(uint64_t id)
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: on_rollback: handler failed");
+		log_warnx("warn: on_rollback: handler failed");
 		exit(1);
 	}
 }
@@ -335,7 +335,7 @@ on_disconnect(uint64_t id)
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: on_disconnect: handler failed");
+		log_warnx("warn: on_disconnect: handler failed");
 		exit(1);
 	}
 }
@@ -360,7 +360,7 @@ on_dataline(uint64_t id, const char *line)
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: on_dataline: handler failed");
+		log_warnx("warn: on_dataline: handler failed");
 		exit(1);
 	}
 }
@@ -420,7 +420,7 @@ main(int argc, char **argv)
 			v |= TRACE_DEBUG;
 			break;
 		default:
-			log_warnx("warn: filter-python: bad option");
+			log_warnx("warn: bad option");
 			return (1);
 			/* NOTREACHED */
 		}
@@ -447,7 +447,7 @@ main(int argc, char **argv)
 
 	if (code == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: failed to compile %s", path);
+		log_warnx("warn: failed to compile %s", path);
 		return (1);
 	}
 
@@ -455,11 +455,11 @@ main(int argc, char **argv)
 
 	if (module == NULL) {
 		PyErr_Print();
-		log_warnx("warn: filter-python: failed to install module %s", path);
+		log_warnx("warn: failed to install module %s", path);
 		return (1);
 	}
 
-	log_debug("debug: filter-python: starting...");
+	log_debug("debug: starting...");
 
 	py_on_connect = PyObject_GetAttrString(module, "on_connect");
 	if (py_on_connect && PyCallable_Check(py_on_connect))
@@ -504,7 +504,7 @@ main(int argc, char **argv)
 	filter_api_no_chroot();
 	filter_api_loop();
 
-	log_debug("debug: filter-python: exiting");
+	log_debug("debug: exiting");
 	Py_Finalize();
 
 	return (1);

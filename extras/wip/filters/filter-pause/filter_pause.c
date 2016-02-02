@@ -33,10 +33,10 @@ pause_on_connect(uint64_t id, struct filter_connect *conn)
 {
 	unsigned int r;
 
-	log_debug("debug: filter-pause: on_connect: sleeping %u", pause_seconds);
+	log_debug("debug: on_connect: sleeping %u", pause_seconds);
 
 	if ((r = sleep(pause_seconds)) != 0)
-		log_warnx("warn: filter-pause: on_connect: wakeup %u seconds too early", r);
+		log_warnx("warn: on_connect: wakeup %u seconds too early", r);
 
 	return filter_api_accept(id);
 }
@@ -61,7 +61,7 @@ main(int argc, char **argv)
 			v |= TRACE_DEBUG;
 			break;
 		default:
-			log_warnx("warn: filter-pause: bad option");
+			log_warnx("warn: bad option");
 			return (1);
 			/* NOTREACHED */
 		}
@@ -72,18 +72,18 @@ main(int argc, char **argv)
 	if (s) { /* RFC 5321 4.5.3.2 Initial 220 Message: 5 Minutes */
 		pause_seconds = strtonum(s, 1, 300, &errstr);
 		if (errstr)
-			fatalx("filter-pause: seconds option is %s: %s", errstr, s); 
+			fatalx("seconds option is %s: %s", errstr, s);
 	}
 
 	log_init(d);
 	log_verbose(v);
 
-	log_debug("debug: filter-pause: starting...");
+	log_debug("debug: starting...");
 
 	filter_api_on_connect(pause_on_connect);
 	filter_api_loop();
 
-	log_debug("debug: filter-pause: exiting");
+	log_debug("debug: exiting");
 
 	return (1);
 }

@@ -42,7 +42,7 @@ dnsbl_event_dispatch(struct asr_result *ar, void *arg)
 		freeaddrinfo(ar->ar_addrinfo);
 
 	if (ar->ar_gai_errno != EAI_NODATA) {
-		log_warnx("warn: filter-dnsbl: session %016"PRIx64": event_dispatch: REJECT address", *q);
+		log_warnx("warn: session %016"PRIx64": event_dispatch: REJECT address", *q);
 		filter_api_reject_code(*q, FILTER_CLOSE, 554, "5.7.1 Address in DNSBL");
 	} else
 		filter_api_accept(*q);
@@ -70,12 +70,12 @@ dnsbl_on_connect(uint64_t id, struct filter_connect *conn)
 	    (in_addr >> 16) & 0xff,
 	    (in_addr >> 24) & 0xff,
 	    dnsbl_host) >= sizeof(buf)) {
-		log_warnx("warn: filter-dnsbl: on_connect: host name too long: %s", buf);
+		log_warnx("warn: on_connect: host name too long: %s", buf);
 		return filter_api_reject_code(id, FILTER_FAIL, 451, "4.7.1 DNSBL filter failed");
 	}
 
 	if ((q = calloc(1, sizeof(*q))) == NULL) {
-		log_warn("warn: filter-dnsbl: on_connect: calloc");
+		log_warn("warn: on_connect: calloc");
 		return filter_api_reject_code(id, FILTER_FAIL, 451, "4.7.1 DNSBL filter failed");
 	}
 	*q = id;
@@ -84,12 +84,12 @@ dnsbl_on_connect(uint64_t id, struct filter_connect *conn)
 	hints.ai_family = PF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	if ((aq = getaddrinfo_async(buf, NULL, &hints, NULL)) == NULL) {
-		log_warn("warn: filter-dnsbl: on_connect: getaddrinfo_async");
+		log_warn("warn: on_connect: getaddrinfo_async");
 		free(q);
 		return filter_api_reject_code(id, FILTER_FAIL, 451, "4.7.1 DNSBL filter failed");
 	}
 
-	log_debug("debug: filter-dnsbl: on_connect: checking %s", buf);
+	log_debug("debug: on_connect: checking %s", buf);
 
 	event_asr_run(aq, dnsbl_event_dispatch, q);
 
@@ -116,7 +116,7 @@ main(int argc, char **argv)
 			v |= TRACE_DEBUG;
 			break;
 		default:
-			log_warnx("warn: filter-dnsbl: bad option");
+			log_warnx("warn: bad option");
 			return (1);
 			/* NOTREACHED */
 		}
@@ -133,13 +133,13 @@ main(int argc, char **argv)
 	log_init(d);
 	log_verbose(v);
 
-	log_debug("debug: filter-dnsbl: starting...");
+	log_debug("debug: starting...");
 
 	filter_api_on_connect(dnsbl_on_connect);
 	filter_api_no_chroot(); /* getaddrinfo requires resolv.conf */
 	filter_api_loop();
 
-	log_debug("debug: filter-dnsbl: exiting");
+	log_debug("debug: exiting");
 
 	return (1);
 }

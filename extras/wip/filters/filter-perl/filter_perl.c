@@ -234,7 +234,7 @@ main(int argc, char **argv)
 			v |= TRACE_DEBUG;
 			break;
 		default:
-			log_warnx("warn: filter-perl: bad option");
+			log_warnx("warn: bad option");
 			return (1);
 			/* NOTREACHED */
 		}
@@ -257,7 +257,7 @@ main(int argc, char **argv)
 	newXS("smtpd::filter_api_reject", XS_filter_reject, __FILE__);
 	newXS("smtpd::filter_api_writeln", XS_filter_writeln, __FILE__);
 
-	log_debug("debug: filter-perl: starting...");
+	log_debug("debug: starting...");
 
 	if ((pl_on_connect = perl_get_cv("on_connect", FALSE)))
 		filter_api_on_connect(on_connect);
@@ -283,7 +283,7 @@ main(int argc, char **argv)
 	filter_api_no_chroot();
 	filter_api_loop();
 
-	log_debug("debug: filter-perl: exiting");
+	log_debug("debug: exiting");
 
 	perl_destruct(pi);
 	perl_free(pi);

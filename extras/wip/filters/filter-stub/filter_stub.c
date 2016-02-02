@@ -31,74 +31,74 @@
 static int
 on_connect(uint64_t id, struct filter_connect *conn)
 {
-	log_debug("debug: filter-stub: on_connect");
+	log_debug("debug: on_connect");
 	return filter_api_accept(id);
 }
 
 static int
 on_helo(uint64_t id, const char *helo)
 {
-	log_debug("debug: filter-stub: on_helo");
+	log_debug("debug: on_helo");
 	return filter_api_accept(id);
 }
 
 static int
 on_mail(uint64_t id, struct mailaddr *mail)
 {
-	log_debug("debug: filter-stub: on_mail");
+	log_debug("debug: on_mail");
 	return filter_api_accept(id);
 }
 
 static int
 on_rcpt(uint64_t id, struct mailaddr *rcpt)
 {
-	log_debug("debug: filter-stub: on_rcpt");
+	log_debug("debug: on_rcpt");
 	return filter_api_accept(id);
 }
 
 static int
 on_data(uint64_t id)
 {
-	log_debug("debug: filter-stub: on_data");
+	log_debug("debug: on_data");
 	return filter_api_accept(id);
 }
 
 static int
 on_eom(uint64_t id, size_t size)
 {
-	log_debug("debug: filter-stub: on_eom");
+	log_debug("debug: on_eom");
 	return filter_api_accept(id);
 }
 
 static void
 on_dataline(uint64_t id, const char *line)
 {
-	log_debug("debug: filter-stub: on_dataline");
+	log_debug("debug: on_dataline");
 	filter_api_writeln(id, line);
 }
 
 static void
 on_reset(uint64_t id)
 {
-	log_debug("debug: filter-stub: on_reset");
+	log_debug("debug: on_reset");
 }
 
 static void
 on_commit(uint64_t id)
 {
-	log_debug("debug: filter-stub: on_commit");
+	log_debug("debug: on_commit");
 }
 
 static void
 on_rollback(uint64_t id)
 {
-	log_debug("debug: filter-stub: on_rollback");
+	log_debug("debug: on_rollback");
 }
 
 static void
 on_disconnect(uint64_t id)
 {
-	log_debug("debug: filter-stub: on_disconnect");
+	log_debug("debug: on_disconnect");
 }
 
 int
@@ -117,7 +117,7 @@ main(int argc, char **argv)
 			v |= TRACE_DEBUG;
 			break;
 		default:
-			log_warnx("warn: filter-stub: bad option");
+			log_warnx("warn: bad option");
 			return (1);
 			/* NOTREACHED */
 		}
@@ -128,7 +128,7 @@ main(int argc, char **argv)
 	log_init(d);
 	log_verbose(v);
 
-	log_debug("debug: filter-stub: starting...");
+	log_debug("debug: starting...");
 
 	filter_api_on_connect(on_connect);
 	filter_api_on_helo(on_helo);
@@ -143,7 +143,7 @@ main(int argc, char **argv)
 	filter_api_on_disconnect(on_disconnect);
 
 	filter_api_loop();
-	log_debug("debug: filter-stub: exiting");
+	log_debug("debug: exiting");
 
 	return (1);
 }
