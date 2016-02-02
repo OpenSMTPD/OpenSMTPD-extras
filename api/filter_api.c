@@ -28,6 +28,7 @@
 #include <imsg.h>
 #include <inttypes.h>
 #include <pwd.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -915,6 +916,9 @@ filter_api_loop(void)
 		log_warn("warn: filter-api:%s cannot drop privileges", filter_name);
 		fatalx("filter-api: exiting");
 	}
+
+	/* we must ignore SIGPIPE otherwise we might die when a data pipe goes away */
+	signal(SIGPIPE, SIG_IGN);
 
 	if (event_dispatch() < 0) {
 		log_warn("warn: filter-api:%s event_dispatch", filter_name);
