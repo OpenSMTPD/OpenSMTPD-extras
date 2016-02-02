@@ -23,13 +23,13 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl dv
+.Op Ar file
 .Sh DESCRIPTION
 .Nm
 is a filter for
 .Xr smtpd 8
 which can be used to arbitrary filter mails.
-Mails are randomly accepted with a probability of 70%, otherwise they
-are rejected.
+Mails are randomly delayed or rejected.
 .Pp
 The options are as follows:
 .Bl -tag -width "-d"
@@ -46,8 +46,19 @@ The debug and verbose options given with the
 .Xr smtpd 8
 invocation are intially passed to
 .Nm .
+.Pp
+Depending on the configuration lines, mails are randomly delayed or rejected
+with an optionally given SMTP reply.
+.Sh FILES
+.Bl -tag -width "/etc/mail/filter-monkey.conf" -compact
+.It Pa /etc/mail/filter-monkey.conf
+Default
+.Nm
+configuration file.
+.El
 .Sh SEE ALSO
 .Xr filter_api 3 ,
+.Xr filter-monkey.conf 5 ,
 .Xr smtpd.conf 5 ,
 .Xr smtpd 8
 .Sh HISTORY

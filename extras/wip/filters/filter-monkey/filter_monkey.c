@@ -31,6 +31,8 @@
 #include "smtpd-api.h"
 #include "log.h"
 
+#define MONKEY_CONF "/etc/mail/filter-monkey.conf"
+
 struct rule {
 	uint32_t            limit;
 	enum filter_status  status;
@@ -76,12 +78,10 @@ monkey(uint64_t id, const char *cmd)
 		return filter_api_accept(id);
 	case FILTER_FAIL:
 	case FILTER_CLOSE:
-
 		if (rule->code == 0) {
 			log_info("info: session %016"PRIx64": REJECT cmd=%s", id, cmd);
 			return filter_api_reject(id, rule->status);
 		}
-
 		log_info("info: session %016"PRIx64": REJECT cmd=%s, code=%i, response=%s",
 		    id, cmd, rule->code, rule->response);
 		return filter_api_reject_code(id, rule->status, rule->code, rule->response);
@@ -197,11 +197,10 @@ read_config(const char *path)
 	struct rule *rule;
 	struct ruleset *ruleset;
 	FILE *fp;
-	char **s, *line, *start;
-	char action[17], cmd[17];
+	char **s, *line = NULL, *start, action[17], cmd[17];
 	ssize_t len;
-	size_t linelen;
-	int n, lineno, proba, status, code, offset;
+	size_t linelen = 0;
+	int n, lineno = 0, proba, status = 0, code, offset;
 	uint32_t delay_min, delay_max;
 
 	log_debug("info: config file is %s", path);
@@ -214,16 +213,9 @@ read_config(const char *path)
 		dict_xset(&rulesets, *s, ruleset);
 	}
 
-	if (!path)
-		goto done;
-
-	fp = fopen(path, "r");
-	if (fp == NULL)
+	if ((fp = fopen(path, "r")) == NULL)
 		fatal("fopen");
 
-	line = NULL;
-	linelen = 0;
-	lineno = 0;
 	while ((len = getline(&line, &linelen, fp)) != -1) {
 		lineno += 1;
 		if (len)
@@ -290,9 +282,8 @@ read_config(const char *path)
 
 	if (ferror(fp))
 		fatal("ferror");
+	free(line);
 	fclose(fp);
-
-    done:
 
 	for (s = entries; *s; s++) {
 		ruleset = dict_xget(&rulesets, *s);
@@ -307,17 +298,13 @@ int
 main(int argc, char **argv)
 {
 	int	ch, d = 0, v = 0;
-	const	char* conffile = NULL;
 
 	log_init(1);
 
-	while ((ch = getopt(argc, argv, "df:v")) != -1) {
+	while ((ch = getopt(argc, argv, "dv")) != -1) {
 		switch (ch) {
 		case 'd':
 			d = 1;
-			break;
-		case 'f':
-			conffile = optarg;
 			break;
 		case 'v':
 			v |= TRACE_DEBUG;
@@ -330,13 +317,14 @@ main(int argc, char **argv)
 	}
 	argc -= optind;
 	argv += optind;
+	if (argc > 1)
+		fatalx("bogus argument(s)");
 
 	log_init(d);
 	log_verbose(v);
 
-	read_config(conffile);
-
 	log_debug("debug: starting...");
+	read_config((argc == 1) ? argv[0] : MONKEY_CONF);
 
 	filter_api_on_connect(on_connect);
 	filter_api_on_helo(on_helo);
