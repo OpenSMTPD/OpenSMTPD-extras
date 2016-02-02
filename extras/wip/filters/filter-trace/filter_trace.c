@@ -108,17 +108,17 @@ on_rollback(uint64_t id)
 int
 main(int argc, char **argv)
 {
-	int	ch, d = 0, v = 0, lines = 1;
+	int	ch, d = 0, l = 1, v = 0;
 
 	log_init(1);
 
-	while ((ch = getopt(argc, argv, "dvl")) != -1) {
+	while ((ch = getopt(argc, argv, "dlv")) != -1) {
 		switch (ch) {
 		case 'd':
 			d = 1;
 			break;
 		case 'l':
-			lines = 0;
+			l = 0;
 			break;
 		case 'v':
 			v |= TRACE_DEBUG;
@@ -142,7 +142,7 @@ main(int argc, char **argv)
 	filter_api_on_mail(on_mail);
 	filter_api_on_rcpt(on_rcpt);
 	filter_api_on_data(on_data);
-	if (lines)
+	if (l)
 		filter_api_on_dataline(on_dataline);
 	filter_api_on_eom(on_eom);
 

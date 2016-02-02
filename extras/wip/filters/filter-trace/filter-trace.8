@@ -1,6 +1,6 @@
 .\"	$OpenBSD: $
 .\"
-.\" Copyright (c) 2015, Joerg Jung <jung@openbsd.org>
+.\" Copyright (c) 2015-2016, Joerg Jung <jung@openbsd.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
@@ -22,7 +22,7 @@
 .Nd smtpd filter for tracing
 .Sh SYNOPSIS
 .Nm
-.Op Fl dv
+.Op Fl dlv
 .Sh DESCRIPTION
 .Nm
 is a trace filter for
@@ -37,6 +37,8 @@ Debug mode, if this option is specified,
 .Nm
 will run in the foreground and log to
 .Em stderr .
+.It Fl l
+Ignore data content lines.
 .It Fl v
 Produce more verbose output.
 .El
