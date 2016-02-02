@@ -1006,8 +1006,8 @@ filter_api_writeln(uint64_t id, const char *line)
 	s = tree_xget(&sessions, id);
 
 	if (s->pipe.oev.sock == -1) {
-		log_warnx("warn: filter:%s: cannot write at this point", filter_name);
-		fatalx("exiting");
+		log_warnx("warn: session %016"PRIx64": write out of sequence", id);
+		return;
 	}
 
 	s->pipe.odatalen += strlen(line) + 1;
