@@ -29,8 +29,6 @@ The file consists of rules that, when matched, cause
 .Xr filter-regex 8
 to reject mails.
 .Pp
-The current line can be extended over multiple lines using a trailing backslash
-.Pq Sq \e .
 Comments can be put anywhere in the file using a hash mark
 .Pq Sq # ,
 and extend to the end of the current line.
@@ -107,7 +105,7 @@ commented examples.
 .Bl -tag -width "/etc/mail/filter-regex.conf" -compact
 .It Pa /etc/mail/filter-regex.conf
 Default
-.Nm
+.Xr filter-regex 8
 configuration file.
 .El
 .Sh SEE ALSO
