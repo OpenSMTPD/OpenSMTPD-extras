@@ -358,7 +358,7 @@ main(int argc, char **argv)
 			s = optarg;
 			break;
 		case 'm':
-			maximum_message_size = strtonum(optarg, 0, INT_MAX, &errstr);
+			maximum_message_size = strtonum(optarg, 0, UINT_MAX, &errstr);
 			if (errstr) {
 				fatalx("invalid number for maximum message size");
 			}
