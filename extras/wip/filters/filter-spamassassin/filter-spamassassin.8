@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: May 15 2015 $
+.Dd $Mdocdate: Apr 06 2016 $
 .Dt FILTER-SPAMASSASSIN 8
 .Os
 .Sh NAME
@@ -24,6 +24,7 @@
 .Nm
 .Op Fl dv
 .Op Fl s Ar strategy
+.Op Fl m Ar bytes
 .Sh DESCRIPTION
 .Nm
 is a filter for
@@ -59,6 +60,12 @@ Spam mails are rejected.
 The default
 .Ar strategy
 value is accept.
+.It Fl m
+Set the maximum number of bytes that will passed to
+.Xr spamd 1
+and thus scanned from a message. If a message exceeds this limit, the remainder
+of it (above the limit) will not be scanned. The default is 512000, while zero
+disables the limit.
 .It Fl v
 Produce more verbose output.
 .El

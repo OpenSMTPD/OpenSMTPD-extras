@@ -42,6 +42,9 @@ struct spamassassin {
 
 static enum { SPAMASSASSIN_ACCEPT, SPAMASSASSIN_REJECT } spamassassin_strategy;
 
+static size_t message_size = 0;
+size_t maximum_message_size = 512000;
+
 static int
 spamassassin_init(struct spamassassin *sa)
 {
@@ -265,6 +268,20 @@ spamassassin_on_dataline(uint64_t id, const char *l)
 		filter_api_writeln(id, l);
 		return;
 	}
+
+	message_size += strlen(l);
+	if (message_size >= maximum_message_size  &&  maximum_message_size != 0) {
+		log_warnx("message size is more than the allowed maximum of %zd bytes", maximum_message_size);
+
+		spamassassin_response(sa, id);
+		filter_api_writeln(id, l);
+
+		spamassassin_clear(sa);
+		filter_api_set_udata(id, NULL);
+
+		return;
+	}
+
 	if (sa->fd >= 0 && spamassassin_write(sa, l) == -1)
 		spamassassin_close(sa);
 }
@@ -275,6 +292,7 @@ spamassassin_on_eom(uint64_t id, size_t size)
 	struct spamassassin *sa;
 	int r;
 
+	message_size = 0;
 	if ((sa = filter_api_get_udata(id)) == NULL)
 		return filter_api_accept(id);
 	if (spamassassin_response(sa, id) == -1) {
@@ -303,6 +321,7 @@ spamassassin_on_reset(uint64_t id)
 {
 	spamassassin_clear(filter_api_get_udata(id));
 	filter_api_set_udata(id, NULL);
+	message_size = 0;
 }
 
 static void
@@ -310,6 +329,7 @@ spamassassin_on_disconnect(uint64_t id)
 {
 	spamassassin_clear(filter_api_get_udata(id));
 	filter_api_set_udata(id, NULL);
+	message_size = 0;
 }
 
 static void
@@ -317,6 +337,7 @@ spamassassin_on_rollback(uint64_t id)
 {
 	spamassassin_clear(filter_api_get_udata(id));
 	filter_api_set_udata(id, NULL);
+	message_size = 0;
 }
 
 int
@@ -324,16 +345,23 @@ main(int argc, char **argv)
 {
 	int	ch, d = 0, v = 0;
 	const char *s = NULL;
+	const char *errstr = NULL;
 
 	log_init(1);
 
-	while ((ch = getopt(argc, argv, "ds:v")) != -1) {
+	while ((ch = getopt(argc, argv, "ds:m:v")) != -1) {
 		switch (ch) {
 		case 'd':
 			d = 1;
 			break;
 		case 's':
 			s = optarg;
+			break;
+		case 'm':
+			maximum_message_size = strtonum(optarg, 0, INT_MAX, &errstr);
+			if (errstr) {
+				fatalx("invalid number for maximum message size");
+			}
 			break;
 		case 'v':
 			v |= TRACE_DEBUG;
