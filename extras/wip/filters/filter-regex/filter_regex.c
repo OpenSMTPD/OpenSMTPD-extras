@@ -2,7 +2,7 @@
 
 /*
  * Copyright (c) 2015 Armin Wolfermann <armin@wolfermann.org>
- * Copyright (c) 2015 Joerg Jung <jung@openbsd.org>
+ * Copyright (c) 2015, 2016 Joerg Jung <jung@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -53,7 +53,7 @@ static struct { const char *s; struct regex_q *rq; } regex_s[] = {
 	{ "connect", &regex_connect }, { "helo", &regex_helo },
 	{ "mail", &regex_mail }, { "rcpt", &regex_rcpt },
 	{ "dataline", &regex_dataline }, { NULL, NULL } };
-static unsigned int regex_limit;
+static size_t regex_limit;
 
 static char *
 regex_skip(char *s) {
@@ -212,14 +212,15 @@ regex_on_rcpt(uint64_t id, struct mailaddr *r)
 static void
 regex_on_dataline(uint64_t id, const char *l)
 {
-	struct { int m; unsigned int l; } *u;
+	struct { int m; size_t l; } *u;
 
 	filter_api_writeln(id, l);
 	if ((u = filter_api_get_udata(id)) == NULL) {
 		u = xcalloc(1, sizeof(*u), "on_dataline");
 		filter_api_set_udata(id, u);
 	}
-	if (u->m || (regex_limit && ++u->l >= regex_limit))
+	u->l += strlen(l);
+	if (u->m || (regex_limit && u->l >= regex_limit))
 		return;
 	u->m = regex_match(&regex_dataline, l);
 }
@@ -291,7 +292,7 @@ main(int argc, char **argv)
 		fatalx("bogus argument(s)");
 
 	if (l) {
-		regex_limit = strtonum(l, 1, UINT_MAX, &errstr);
+		regex_limit = strtonum(l, 1, SIZE_T_MAX, &errstr);
 		if (errstr)
 			fatalx("limit option is %s: %s", errstr, l);
 	}

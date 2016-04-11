@@ -1,6 +1,6 @@
 .\"	$OpenBSD: $
 .\"
-.\" Copyright (c) 2015, Joerg Jung <jung@openbsd.org>
+.\" Copyright (c) 2015, 2016 Joerg Jung <jung@openbsd.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: May 15 2015 $
+.Dd $Mdocdate: April 10 2016 $
 .Dt FILTER-REGEX 8
 .Os
 .Sh NAME
@@ -40,13 +40,11 @@ Debug mode, if this option is specified,
 will run in the foreground and log to
 .Em stderr .
 .It Fl l Ar limit
-Set the number of lines
+Set the number of bytes
 .Ar limit
-of
-.Nm
 after which the regular expression processing is stopped and the mail is
 accepted.
-The accepted values are within the range of 1 and UINT_MAX.
+The accepted values are within the range of 1 and SIZE_T_MAX.
 .Pp
 The default
 .Ar limit
