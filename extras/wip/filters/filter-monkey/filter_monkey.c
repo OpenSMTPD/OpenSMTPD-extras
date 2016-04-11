@@ -90,7 +90,7 @@ monkey(uint64_t id, const char *cmd)
 		fatalx("invalid status");
 	}
 
-	return (0);
+	return 0;
 }
 
 static void
@@ -124,7 +124,7 @@ defer_monkey(uint64_t id, const char *cmd)
 	tv.tv_sec = delay  / 1000;
 	tv.tv_usec = (delay % 1000) * 1000;
 	evtimer_add(&d->ev, &tv);
-	return (0);
+	return 0;
 }
 
 static int
@@ -311,7 +311,7 @@ main(int argc, char **argv)
 			break;
 		default:
 			log_warnx("warn: bad option");
-			return (1);
+			return 1;
 			/* NOTREACHED */
 		}
 	}
@@ -336,5 +336,5 @@ main(int argc, char **argv)
 
 	log_debug("debug: exiting");
 
-	return (0);
+	return 0;
 }

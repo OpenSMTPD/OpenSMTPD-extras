@@ -235,7 +235,7 @@ config_load(const char *path)
 		
 		value = strdup(value);
 		if (value == NULL) {
-			log_warn("warn: table-mysql: malloc");
+			log_warn("warn: table-mysql: strdup");
 			goto end;
 		}
 

@@ -151,7 +151,7 @@ on_connect(uint64_t id, struct filter_connect *conn)
 		exit(1);
 	}
 
-	return (1);
+	return 1;
 }
 
 static int
@@ -203,7 +203,7 @@ on_mail(uint64_t id, struct mailaddr *mail)
 		exit(1);
 	}
 
-	return (1);
+	return 1;
 }
 
 static int
@@ -230,7 +230,7 @@ on_rcpt(uint64_t id, struct mailaddr *rcpt)
 		exit(1);
 	}
 
-	return (1);
+	return 1;
 }
 
 static int
@@ -252,7 +252,7 @@ on_data(uint64_t id)
 		exit(1);
 	}
 
-	return (1);
+	return 1;
 }
 
 static int
@@ -277,7 +277,7 @@ on_eom(uint64_t id, size_t sz)
 		exit(1);
 	}
 
-	return (1);
+	return 1;
 }
 
 static void
@@ -389,8 +389,7 @@ loadfile(const char * path)
 
 	sz = oz;
 
-	if ((buf = malloc(sz + 1)) == NULL)
-		err(1, "malloc");
+	buf = xmalloc(sz + 1, "loadfile");
 
 	if (fread(buf, 1, sz, f) != sz)
 		err(1, "fread");
@@ -399,7 +398,7 @@ loadfile(const char * path)
 
 	fclose(f);
 
-	return (buf);
+	return buf;
 }
 
 int
@@ -421,7 +420,7 @@ main(int argc, char **argv)
 			break;
 		default:
 			log_warnx("warn: bad option");
-			return (1);
+			return 1;
 			/* NOTREACHED */
 		}
 	}
@@ -448,7 +447,7 @@ main(int argc, char **argv)
 	if (code == NULL) {
 		PyErr_Print();
 		log_warnx("warn: failed to compile %s", path);
-		return (1);
+		return 1;
 	}
 
 	module = PyImport_ExecCodeModuleEx("myfilter", code, path);
@@ -456,7 +455,7 @@ main(int argc, char **argv)
 	if (module == NULL) {
 		PyErr_Print();
 		log_warnx("warn: failed to install module %s", path);
-		return (1);
+		return 1;
 	}
 
 	log_debug("debug: starting...");
@@ -507,5 +506,5 @@ main(int argc, char **argv)
 	log_debug("debug: exiting");
 	Py_Finalize();
 
-	return (1);
+	return 1;
 }

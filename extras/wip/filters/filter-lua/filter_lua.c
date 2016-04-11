@@ -61,12 +61,12 @@ l_filter_accept(lua_State *L)
 	const char	*s_hex_id;
 
 	if (lua_gettop(L) != 1)
-		return (0);
+		return 0;
 
 	s_hex_id = luaL_checklstring(L, 1, NULL);
 	id = strtoumax(s_hex_id, NULL, 16);
 	filter_api_accept(id);
-	return (0);
+	return 0;
 }
 
 static int
@@ -77,7 +77,7 @@ l_filter_reject(lua_State *L)
 	uint32_t	action;
 
 	if (lua_gettop(L) != 2)
-		return (0);
+		return 0;
 
 	s_hex_id = luaL_checklstring(L, 1, NULL);
 	id = strtoumax(s_hex_id, NULL, 16);
@@ -89,7 +89,7 @@ l_filter_reject(lua_State *L)
 		break;
 	}
 
-	return (0);
+	return 0;
 }
 
 static int
@@ -102,7 +102,7 @@ l_filter_reject_code(lua_State *L)
 	const char	*line;
 
 	if (lua_gettop(L) != 4)
-		return (0);
+		return 0;
 
 	s_hex_id = luaL_checklstring(L, 1, NULL);
 	id = strtoumax(s_hex_id, NULL, 16);
@@ -117,7 +117,7 @@ l_filter_reject_code(lua_State *L)
 		break;
 	}
 
-	return (0);
+	return 0;
 }
 
 static int
@@ -128,7 +128,7 @@ l_filter_writeln(lua_State *L)
 	const char	*line;
 
 	if (lua_gettop(L) != 2)
-		return (0);
+		return 0;
 
 	s_hex_id = luaL_checklstring(L, 1, NULL);
 	id = strtoumax(s_hex_id, NULL, 16);
@@ -136,7 +136,7 @@ l_filter_writeln(lua_State *L)
 
 	filter_api_writeln(id, line);
 
-	return (0);
+	return 0;
 }
 
 static const luaL_Reg l_filter [] = {
@@ -168,7 +168,7 @@ on_connect(uint64_t id, struct filter_connect *conn)
 		exit(1);
 	}
 
-	return (1);
+	return 1;
 }
 
 static int
@@ -187,7 +187,7 @@ on_helo(uint64_t id, const char *helo)
 		exit(1);
 	}
 
-	return (1);
+	return 1;
 }
 
 static int
@@ -206,7 +206,7 @@ on_mail(uint64_t id, struct mailaddr *mail)
 		exit(1);
 	}
 
-	return (1);
+	return 1;
 }
 
 static int
@@ -225,7 +225,7 @@ on_rcpt(uint64_t id, struct mailaddr *rcpt)
 		exit(1);
 	}
 
-	return (1);
+	return 1;
 }
 
 static int
@@ -243,7 +243,7 @@ on_data(uint64_t id)
 		exit(1);
 	}
 
-	return (1);
+	return 1;
 }
 
 static void
@@ -277,7 +277,7 @@ on_eom(uint64_t id, size_t size)
 		exit(1);
 	}
 
-	return (1);
+	return 1;
 }
 
 static void
@@ -346,7 +346,7 @@ main(int argc, char **argv)
 			break;
 		default:
 			log_warnx("warn: bad option");
-			return (1);
+			return 1;
 			/* NOTREACHED */
 		}
 	}
@@ -364,7 +364,7 @@ main(int argc, char **argv)
 
 	if ((L = luaL_newstate()) == NULL) {
 		log_warnx("warn: can't create lua state");
-		return (1);
+		return 1;
 	}
 	luaL_openlibs(L);
 	luaL_newlib(L, l_filter);
@@ -384,7 +384,7 @@ main(int argc, char **argv)
 	if (luaL_dofile(L, path) != 0) {
 		log_warnx("warn: error loading script: %s",
 		    path);
-		    return (1);
+		    return 1;
 	}
 
 	lua_getglobal(L, "on_connect");
@@ -452,5 +452,5 @@ main(int argc, char **argv)
 
 	log_debug("debug: exiting");
 
-	return (0);
+	return 0;
 }

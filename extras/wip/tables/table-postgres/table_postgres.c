@@ -211,7 +211,7 @@ config_load(const char *path)
 		
 		value = strdup(value);
 		if (value == NULL) {
-			log_warn("warn: table-postgres: malloc");
+			log_warn("warn: table-postgres: strdup");
 			goto end;
 		}
 

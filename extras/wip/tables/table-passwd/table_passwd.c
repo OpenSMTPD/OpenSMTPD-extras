@@ -93,7 +93,7 @@ table_passwd_update(void)
 	struct passwd	 pw;
 	struct dict	*npasswd;
 
-	/* Parse configuration */
+	/* parse configuration */
 	if ((fp = fopen(config, "r")) == NULL) {
 		log_warn("warn: Table \"%s\"", config);
 		return 0;

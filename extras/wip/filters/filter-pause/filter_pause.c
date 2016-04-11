@@ -62,7 +62,7 @@ main(int argc, char **argv)
 			break;
 		default:
 			log_warnx("warn: bad option");
-			return (1);
+			return 1;
 			/* NOTREACHED */
 		}
 	}
@@ -85,5 +85,5 @@ main(int argc, char **argv)
 
 	log_debug("debug: exiting");
 
-	return (1);
+	return 1;
 }

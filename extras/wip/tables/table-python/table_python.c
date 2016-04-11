@@ -264,8 +264,7 @@ loadfile(const char * path)
 
 	sz = oz;
 
-	if ((buf = malloc(sz + 1)) == NULL)
-		err(1, "malloc");
+	buf = xmalloc(sz + 1, "loadfile");
 
 	if (fread(buf, 1, sz, f) != sz)
 		err(1, "fread");

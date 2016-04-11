@@ -126,10 +126,10 @@ add_hdr_line(struct signer *s, const char *line)
 		    sizeof(s->hdrs_list)) >= sizeof(s->hdrs_list))
 			fatalx("headers list overflow");
 		else
-			return (1);
+			return 1;
 	}
 
-	return (0);
+	return 0;
 }
 
 static void
@@ -293,7 +293,7 @@ main(int argc, char **argv)
 			break;
 		default:
 			log_warnx("warn: bad option");
-			return (1);
+			return 1;
 			/* NOTREACHED */
 		}
 	}
@@ -339,5 +339,5 @@ main(int argc, char **argv)
 	filter_api_loop();
 
 	log_debug("debug: exiting");
-	return (1);
+	return 1;
 }

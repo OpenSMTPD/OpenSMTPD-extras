@@ -171,7 +171,7 @@ config_load(const char *path)
 
 		value = strdup(value);
 		if (value == NULL) {
-			log_warn("warn: table-redis: malloc");
+			log_warn("warn: table-redis: strdup");
 			goto end;
 		}
 
@@ -357,7 +357,7 @@ config_connect(struct config *config)
 		else
 			config->queries[i] = strdup(qspec[i].default_query);
 		if (config->queries[i] == NULL) {
-			log_warn("warn: table-redis: malloc");
+			log_warn("warn: table-redis: strdup");
 			goto end;
 		}
 	}
