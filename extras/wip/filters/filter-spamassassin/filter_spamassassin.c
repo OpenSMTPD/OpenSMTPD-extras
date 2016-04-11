@@ -1,7 +1,7 @@
 /*      $OpenBSD$   */
 
 /*
- * Copyright (c) 2015 Joerg Jung <jung@openbsd.org>
+ * Copyright (c) 2015, 2016 Joerg Jung <jung@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -38,8 +38,10 @@
 struct spamassassin {
 	int fd, r;
 	struct iobuf iobuf;
+	size_t l;
 };
 
+static size_t spamassassin_limit;
 static enum { SPAMASSASSIN_ACCEPT, SPAMASSASSIN_REJECT } spamassassin_strategy;
 
 static int
@@ -265,6 +267,15 @@ spamassassin_on_dataline(uint64_t id, const char *l)
 		filter_api_writeln(id, l);
 		return;
 	}
+	sa->l += strlen(l);
+	if (spamassassin_limit && sa->l >= spamassassin_limit) {
+		log_info("info: dataline: limit reached");
+		spamassassin_response(sa, id);
+		filter_api_writeln(id, l);
+		spamassassin_clear(sa);
+		filter_api_set_udata(id, NULL);
+		return;
+	}
 	if (sa->fd >= 0 && spamassassin_write(sa, l) == -1)
 		spamassassin_close(sa);
 }
@@ -323,14 +334,17 @@ int
 main(int argc, char **argv)
 {
 	int	ch, d = 0, v = 0;
-	const char *s = NULL;
+	const char *errstr, *l = NULL, *s = NULL;
 
 	log_init(1);
 
-	while ((ch = getopt(argc, argv, "ds:v")) != -1) {
+	while ((ch = getopt(argc, argv, "dl:s:v")) != -1) {
 		switch (ch) {
 		case 'd':
 			d = 1;
+			break;
+		case 'l':
+			l = optarg;
 			break;
 		case 's':
 			s = optarg;
@@ -347,6 +361,11 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	if (l) {
+		spamassassin_limit = strtonum(l, 1, SIZE_T_MAX, &errstr);
+		if (errstr)
+			fatalx("limit option is %s: %s", errstr, l);
+	}
 	if (s) {
 		while (isspace((unsigned char)*s))
 			s++;
