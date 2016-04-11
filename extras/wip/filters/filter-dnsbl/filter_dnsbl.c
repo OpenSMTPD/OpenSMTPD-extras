@@ -32,34 +32,64 @@
 #include "log.h"
 
 const char * dnsbl_host = "dnsbl.sorbs.net";
+const char * dnswl_host = NULL;
+
+struct dispatch_arg {
+	uint64_t		id;
+	struct filter_connect	*conn;
+};
+
+static void dnsbl_check_black(struct dispatch_arg *q);
+static void dnsbl_check_white(struct dispatch_arg *q);
 
 static void
-dnsbl_event_dispatch(struct asr_result *ar, void *arg)
+dnsbl_event_dispatch_black(struct asr_result *ar, void *arg)
 {
-	uint64_t *q = arg;
+	struct dispatch_arg *q = arg;
 
 	if (ar->ar_addrinfo)
 		freeaddrinfo(ar->ar_addrinfo);
 
 	if (ar->ar_gai_errno != EAI_NODATA) {
-		log_warnx("warn: session %016"PRIx64": event_dispatch: REJECT address", *q);
-		filter_api_reject_code(*q, FILTER_CLOSE, 554, "5.7.1 Address in DNSBL");
+		log_warnx("warn: session %016"PRIx64": event_dispatch_black: REJECT address", q->id);
+		filter_api_reject_code(q->id, FILTER_CLOSE, 554, "5.7.1 Address in DNSBL");
 	} else
-		filter_api_accept(*q);
+		filter_api_accept(q->id);
 	free(q);
 }
 
-static int
-dnsbl_on_connect(uint64_t id, struct filter_connect *conn)
+static void
+dnsbl_event_dispatch_white(struct asr_result *ar, void *arg)
 {
+	struct dispatch_arg *q = arg;
+
+	if (ar->ar_addrinfo)
+		freeaddrinfo(ar->ar_addrinfo);
+
+	if (ar->ar_gai_errno != EAI_NODATA) {
+		log_info("info: session %016"PRIx64": event_dispatch_white: ACCEPT address", q->id);
+		filter_api_accept(q->id);
+		free(q);
+	} 
+	else
+	{
+		dnsbl_check_black(q);	
+	}
+}
+
+static struct asr_query*
+dnsbl_get_asr_query(const char* host, struct dispatch_arg *q)
+{
+	struct filter_connect 	*conn;
+	uint64_t		 id;
 	struct addrinfo		 hints;
 	in_addr_t		 in_addr;
 	struct asr_query	*aq;
-	uint64_t		*q;
 	char			 buf[512];
 
-	if (conn->remote.ss_family != AF_INET)
-		return filter_api_accept(id);
+	aq = NULL;
+	conn = q->conn;
+	id = q->id;
 
 	in_addr = ((const struct sockaddr_in *)&conn->remote)->sin_addr.s_addr;
 
@@ -69,29 +99,75 @@ dnsbl_on_connect(uint64_t id, struct filter_connect *conn)
 	    (in_addr >> 8) & 0xff,
 	    (in_addr >> 16) & 0xff,
 	    (in_addr >> 24) & 0xff,
-	    dnsbl_host) >= sizeof(buf)) {
-		log_warnx("warn: on_connect: host name too long: %s", buf);
-		return filter_api_reject_code(id, FILTER_FAIL, 451, "4.7.1 DNSBL filter failed");
+	    host) >= sizeof(buf)) {
+		log_warnx("warn: asr_query: host name too long: %s", buf);
+		filter_api_reject_code(id, FILTER_FAIL, 451, "4.7.1 DNSBL filter failed");
+	 	return NULL;	
 	}
-
-	if ((q = calloc(1, sizeof(*q))) == NULL) {
-		log_warn("warn: on_connect: calloc");
-		return filter_api_reject_code(id, FILTER_FAIL, 451, "4.7.1 DNSBL filter failed");
-	}
-	*q = id;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = PF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	if ((aq = getaddrinfo_async(buf, NULL, &hints, NULL)) == NULL) {
-		log_warn("warn: on_connect: getaddrinfo_async");
-		free(q);
-		return filter_api_reject_code(id, FILTER_FAIL, 451, "4.7.1 DNSBL filter failed");
+		log_warn("warn: get_asr_query: getaddrinfo_async");
+		filter_api_reject_code(id, FILTER_FAIL, 451, "4.7.1 DNSBL filter failed");
+	 	return NULL;	
 	}
 
-	log_debug("debug: on_connect: checking %s", buf);
+	log_debug("debug: get_asr_query: checking %s", buf);
+	return aq;
+}
 
-	event_asr_run(aq, dnsbl_event_dispatch, q);
+static void
+dnsbl_check_black(struct dispatch_arg *q)
+{
+	struct asr_query	*aq;
+	
+	if ((aq = dnsbl_get_asr_query(dnsbl_host, q)) == NULL) {
+		free(q);	
+	}
+	else
+	{
+		event_asr_run(aq, dnsbl_event_dispatch_black, q);
+	}
+}
+
+static void
+dnsbl_check_white(struct dispatch_arg *q)
+{
+	struct asr_query	*aq;
+	
+	if ((aq = dnsbl_get_asr_query(dnswl_host, q)) == NULL) {
+		free(q);	
+	}
+	else
+	{
+		event_asr_run(aq, dnsbl_event_dispatch_white, q);
+	}
+}
+
+static int
+dnsbl_on_connect(uint64_t id, struct filter_connect *conn)
+{
+	struct dispatch_arg	*q;
+
+	if (conn->remote.ss_family != AF_INET)
+		return filter_api_accept(id);
+
+	if ((q = calloc(1, sizeof(*q))) == NULL) {
+		log_warn("warn: on_connect: calloc");
+		return filter_api_reject_code(id, FILTER_FAIL, 451, "4.7.1 DNSBL filter failed");
+	}
+	q->id	 = id;
+	q->conn	 = conn;
+
+	if (dnswl_host) {
+		dnsbl_check_white(q);
+	}
+	else
+	{
+		dnsbl_check_black(q);
+	}
 
 	return 1;
 }
@@ -101,10 +177,11 @@ main(int argc, char **argv)
 {
 	int	ch, d = 0, v = 0;
 	const char *h = NULL;
+	const char *w = NULL;
 
 	log_init(1);
 
-	while ((ch = getopt(argc, argv, "dh:v")) != -1) {
+	while ((ch = getopt(argc, argv, "dh:vw:")) != -1) {
 		switch (ch) {
 		case 'd':
 			d = 1;
@@ -114,6 +191,9 @@ main(int argc, char **argv)
 			break;
 		case 'v':
 			v |= TRACE_DEBUG;
+			break;
+		case 'w':
+			w = optarg;
 			break;
 		default:
 			log_warnx("warn: bad option");
@@ -129,6 +209,13 @@ main(int argc, char **argv)
 			h++;
 		dnsbl_host = h;
 	}
+
+	if (w) {
+		while (isspace((unsigned char)*w))
+			w++;
+		dnswl_host = w;
+	}
+
 
 	log_init(d);
 	log_verbose(v);
