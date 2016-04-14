@@ -2,6 +2,7 @@
 
 /*
  * Copyright (c) 2013 Eric Faurot <eric@openbsd.org>
+ * Copyright (c) 2016 Joerg Jung <jung@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -31,13 +32,12 @@
 #include "smtpd-api.h"
 #include "log.h"
 
-const char * dnsbl_host = "dnsbl.sorbs.net";
-const char * dnswl_host = NULL;
-
 struct dispatch_arg {
 	uint64_t		id;
 	struct filter_connect	*conn;
 };
+
+static const char *dnsbl_host = "dnsbl.sorbs.net", *dnswl_host;
 
 static void dnsbl_check_black(struct dispatch_arg *q);
 static void dnsbl_check_white(struct dispatch_arg *q);
@@ -176,8 +176,7 @@ int
 main(int argc, char **argv)
 {
 	int	ch, d = 0, v = 0;
-	const char *h = NULL;
-	const char *w = NULL;
+	const char *h = NULL, *w = NULL;
 
 	log_init(1);
 
@@ -209,13 +208,11 @@ main(int argc, char **argv)
 			h++;
 		dnsbl_host = h;
 	}
-
 	if (w) {
 		while (isspace((unsigned char)*w))
 			w++;
 		dnswl_host = w;
 	}
-
 
 	log_init(d);
 	log_verbose(v);
