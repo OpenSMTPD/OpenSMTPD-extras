@@ -1,6 +1,6 @@
 .\"	$OpenBSD: $
 .\"
-.\" Copyright (c) 2015, Joerg Jung <jung@openbsd.org>
+.\" Copyright (c) 2015, 2016, Joerg Jung <jung@openbsd.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
@@ -14,7 +14,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: May 15 2015 $
+.Dd $Mdocdate: April 09 2016 $
 .Dt FILTER-DNSBL 8
 .Os
 .Sh NAME
@@ -24,12 +24,13 @@
 .Nm
 .Op Fl dv
 .Op Fl h Ar host
+.Op Fl w Ar host
 .Sh DESCRIPTION
 .Nm
 is a filter for
 .Xr smtpd 8
 which can be used to check new connections against a
-DNS-based Blackhole List (DNSBL).
+DNS-based Blackhole List (DNSBL) and optional a DNS-based Whitelist (DNSWL).
 .Pp
 The options are as follows:
 .Bl -tag -width "-h host"
@@ -48,6 +49,13 @@ The default
 is dnsbl.sorbs.net.
 .It Fl v
 Produce more verbose output.
+.It Fl w Ar host
+Set the DNSWL
+.Ar host
+to be queried.
+.Pp
+The default is to not query a DNSWL
+.Ar host .
 .El
 .Pp
 The debug and verbose options given with the
@@ -56,9 +64,11 @@ invocation are intially passed to
 .Nm .
 .Pp
 The remote IP address of new connections is used in a DNS query against the
-DNSBL.
-If the remote address is listed, the connection is rejected, otherwise
-accepted.
+DNSBL and optional DNSWL.
+If the remote address is listed in the DNSBL, the connection is rejected,
+otherwise accepted.
+If the optional DNSWL host is given, it is queried first and if the remote
+address is listed the connection is accepted (without checking the DNSBL).
 .Sh SEE ALSO
 .Xr filter_api 3 ,
 .Xr smtpd.conf 5 ,
