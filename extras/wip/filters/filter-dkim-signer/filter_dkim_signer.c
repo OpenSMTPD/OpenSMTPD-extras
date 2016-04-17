@@ -137,7 +137,7 @@ on_dataline(uint64_t id, const char *line)
 {
 	struct signer	*s;
 	struct entry	*n;
-	
+
 	s = filter_api_get_udata(id);
 	n = xmalloc(sizeof *n, "dkim_signer: on_dataline");
 	n->line = xstrdup(line, "dkim_signer: on_dataline");
@@ -154,7 +154,7 @@ on_dataline(uint64_t id, const char *line)
 			return; /* skip unwanted headers */
 	} else {
 		s->nlines += 1;
-		/* 
+		/*
 		 * treat trailing two or more emptylines at end of
 		 * message as a single emptyline
 		 */
@@ -181,7 +181,7 @@ on_eom(uint64_t id, size_t size)
 	struct entry	*n;
 	char		*dkim_header, *dkim_sig, *rsa_sig;
 	int		 dkim_sig_len, rsa_sig_len;
-	
+
 	s = filter_api_get_udata(id);
 	/* empty body should be treated as a single CRLF */
 	if (s->nlines == 0)
@@ -191,7 +191,7 @@ on_eom(uint64_t id, size_t size)
 	if (base64_encode(s->body_hash, sizeof(s->body_hash),
 	    s->b64_body_hash, sizeof(s->b64_body_hash)) == -1) {
 		log_warnx("warn: on_eom: __b64_ntop failed");
-		return filter_api_reject(id, FILTER_FAIL);	
+		return filter_api_reject(id, FILTER_FAIL);
 	}
 
 	/* trim trailing colon in the hdrs_list */
@@ -267,10 +267,10 @@ on_disconnect(uint64_t id)
 int
 main(int argc, char **argv)
 {
-	int		 ch, d = 0, v = 0;
-	const char	*p = NULL;
-	FILE		*fp;
-	static char	 hostname[SMTPD_MAXHOSTNAMELEN];
+	int ch, d = 0, v = 0;
+	const char *p = NULL;
+	FILE *fp;
+	static char hostname[SMTPD_MAXHOSTNAMELEN];
 
 	log_init(1);
 
@@ -339,5 +339,6 @@ main(int argc, char **argv)
 	filter_api_loop();
 
 	log_debug("debug: exiting");
+
 	return 1;
 }

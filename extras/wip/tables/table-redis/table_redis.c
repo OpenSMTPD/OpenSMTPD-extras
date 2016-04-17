@@ -1,5 +1,3 @@
-/*	$OpenBSD$	*/
-
 /*
  * Copyright (c) 2013 Eric Faurot <eric@openbsd.org>
  * Copyright (c) 2014 Michael Neumann <mneumann@ntecs.de>
@@ -141,9 +139,7 @@ config_load(const char *path)
 		if (buf[flen - 1] == '\n')
 			buf[flen - 1] = '\0';
 
-		key = buf;
-		while (isspace((unsigned char)*key))
-			++key;
+		key = strip(buf);
 		if (*key == '\0' || *key == '#')
 			continue;
 		value = key;

@@ -1,7 +1,5 @@
-/*      $OpenBSD$   */
-
 /*
- * Copyright (c) 2015 Armin Wolfermann <armin@wolfermann.org>
+ * Copyright (c) 2015, Armin Wolfermann <armin@wolfermann.org>
  * Copyright (c) 2015, 2016 Joerg Jung <jung@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -55,13 +53,6 @@ static struct { const char *s; struct regex_q *rq; } regex_s[] = {
 	{ "dataline", &regex_dataline }, { NULL, NULL } };
 static size_t regex_limit;
 
-static char *
-regex_skip(char *s) {
-	while (isspace((unsigned char)*s))
-		s++;
-	return s;
-}
-
 static int
 regex_parse(char *l, size_t no)
 {
@@ -70,7 +61,7 @@ regex_parse(char *l, size_t no)
 	char *k, buf[BUFSIZ];
 	int i, r;
 
-	l = regex_skip(l);
+	l = strip(l);
 	if ((k = strsep(&l, " \t")) == NULL || strlen(k) == 0 || *k == '#')
 		return 0; /* skip empty or commented line */
 	for (i = 0; regex_s[i].s != NULL && rq == NULL; i++)
@@ -80,14 +71,14 @@ regex_parse(char *l, size_t no)
 		log_warnx("warn: parse: unknown keyword %s line %lu", k, no);
 		return -1;
 	}
-	if (strlen((l = regex_skip(l))) == 0 || *l == '#') {
+	if (strlen((l = strip(l))) == 0 || *l == '#') {
 		log_warnx("warn: parse: missing value line %lu", no);
 		return -1;
 	}
 	re = xcalloc(1, sizeof(struct regex), "parse");
 	re->s = xstrdup(l, "parse");
 	if ((re->n = (l[0] == '!' && isspace((unsigned char)l[1]))))
-		l = regex_skip(++l);
+		l = strip(++l);
 	if ((r = regcomp(&re->p, l, REG_EXTENDED|REG_NOSUB)) != 0) {
 		regerror(r, &re->p, buf, sizeof(buf));
 		log_warnx("warn: parse: regcomp %s line %lu", buf, no);
@@ -264,7 +255,7 @@ regex_on_rollback(uint64_t id)
 int
 main(int argc, char **argv)
 {
-	int	ch, d = 0, v = 0;
+	int ch, d = 0, v = 0;
 	const char *errstr, *l = NULL;
 
 	log_init(1);

@@ -1,5 +1,3 @@
-/*	$OpenBSD$ */
-
 /*
  * Copyright (c) 2008 Alexander Schrijver <aschrijver@openbsd.org>
  * Copyright (c) 2006, 2007 Marc Balmer <mbalmer@openbsd.org>

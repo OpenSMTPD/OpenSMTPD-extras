@@ -1,7 +1,5 @@
-/*	$OpenBSD$	*/
-
 /*
- * Copyright (c) 2013,2016 Eric Faurot <eric@openbsd.org>
+ * Copyright (c) 2013, 2016 Eric Faurot <eric@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -297,7 +295,7 @@ read_config(const char *path)
 int
 main(int argc, char **argv)
 {
-	int	ch, d = 0, v = 0;
+	int ch, d = 0, v = 0;
 
 	log_init(1);
 

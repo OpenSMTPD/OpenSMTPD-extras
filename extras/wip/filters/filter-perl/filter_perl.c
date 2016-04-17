@@ -1,5 +1,3 @@
-/*      $OpenBSD$   */
-
 /*
  * Copyright (c) 2014 Gilles Chehade <gilles@poolp.org>
  *
@@ -17,7 +15,7 @@
  */
 
 #include "includes.h"
- 
+
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -150,7 +148,7 @@ on_connect(uint64_t id, struct filter_connect *conn)
 	    filter_api_sockaddr_to_text((struct sockaddr *)&conn->local));
 	(void)snprintf(remote, sizeof remote, "%s",
 	    filter_api_sockaddr_to_text((struct sockaddr *)&conn->remote));
-	
+
 	call_sub_sv((SV *)pl_on_connect, "%i%s%s%s", id, local, remote, conn->hostname);
 }
 
@@ -220,8 +218,8 @@ on_dataline(uint64_t id, const char *line)
 int
 main(int argc, char **argv)
 {
-	int	ch, d = 0, v = 0;
-	char  *fake_argv[3] = { "-e", NULL, NULL };
+	int ch, d = 0, v = 0;
+	char *fake_argv[3] = { "-e", NULL, NULL };
 
 	log_init(1);
 

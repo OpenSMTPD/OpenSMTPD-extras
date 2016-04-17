@@ -1,5 +1,3 @@
-/*      $OpenBSD$   */
-
 /*
  * Copyright (c) 2016 Joerg Jung <jung@openbsd.org>
  *
@@ -46,14 +44,6 @@ stats_round(double d) {
 	if (d < 0 || d > ULONG_MAX - 0.5)
 		errx(1, "ulong overflow");
 	return (unsigned long)(d + 0.5); /* half round up */
-}
-
-static char *
-stats_skip(char *l)
-{
-	while (isspace((unsigned char)*l))
-		l++;
-	return l;
 }
 
 static char *
@@ -128,14 +118,14 @@ stats_in(struct stats *s, char *l, size_t no)
 			dict_xset(&s->top.from, v, (p = xcalloc(1, sizeof(size_t), "in")));
 		(*p)++;
 
-		l = stats_skip(l);
+		l = strip(l);
 		if (!(v = stats_kv(&l, no, "to")))
 			return;
 		if (!(p = dict_get(&s->top.to, v)))
 			dict_xset(&s->top.to, v, (p = xcalloc(1, sizeof(size_t), "in")));
 		(*p)++;
 
-		l = stats_skip(l);
+		l = strip(l);
 		if (!(v = stats_kv(&l, no, "size")))
 			return;
 		n = strtonum(v, 0, UINT_MAX, &e); /* todo: SIZE_MAX here? */

@@ -1,5 +1,3 @@
-/*	$OpenBSD$	*/
-
 /*
  * Copyright (c) 2013 Gilles Chehade <gilles@poolp.org>
  * Copyright (c) 2016 Joerg Jung <jung@openbsd.org>

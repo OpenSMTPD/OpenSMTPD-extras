@@ -1,7 +1,5 @@
-/*      $OpenBSD$   */
-
 /*
- * Copyright (c) 2015 Joerg Jung <jung@openbsd.org>
+ * Copyright (c) 2015, 2016 Joerg Jung <jung@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -40,15 +38,11 @@ struct clamav {
 	struct iobuf iobuf;
 };
 
-static int
+static void
 clamav_init(struct clamav *cl)
 {
 	cl->fd = cl->r = -1;
-	if (iobuf_init(&cl->iobuf, LINE_MAX, LINE_MAX) == -1) {
-		log_warnx("warn: init: iobuf_init");
-		return -1;
-	}
-	return 0;
+	iobuf_xinit(&cl->iobuf, LINE_MAX, LINE_MAX, "init");
 }
 
 static int
@@ -195,11 +189,7 @@ clamav_on_data(uint64_t id)
 {
 	struct clamav *cl;
 
-	cl = xcalloc(1, sizeof(struct clamav), "on_data");
-	if (clamav_init(cl) == -1) {
-		clamav_clear(cl);
-		return filter_api_accept(id);
-	}
+	clamav_init((cl = xcalloc(1, sizeof(struct clamav), "on_data")));
 	if (clamav_open(cl) == -1) {
 		clamav_clear(cl);
 		return filter_api_accept(id);
@@ -271,7 +261,7 @@ clamav_on_rollback(uint64_t id)
 int
 main(int argc, char **argv)
 {
-	int	ch, d = 0, v = 0;
+	int ch, d = 0, v = 0;
 
 	log_init(1);
 

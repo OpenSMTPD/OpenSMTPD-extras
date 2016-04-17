@@ -1,5 +1,3 @@
-/*	$OpenBSD$	*/
-
 /*
  * Copyright (c) 2013 Eric Faurot <eric@openbsd.org>
  *
@@ -308,9 +306,7 @@ ldap_config(void)
 		if (buf[flen - 1] == '\n')
 			buf[flen - 1] = '\0';
 
-		key = buf;
-		while (isspace((unsigned char)*key))
-			++key;
+		key = strip(buf);
 		if (*key == '\0' || *key == '#')
 			continue;
 		value = key;

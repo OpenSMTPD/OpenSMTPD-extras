@@ -1,5 +1,3 @@
-/*	$OpenBSD: aldap.c,v 1.7 2014/04/19 14:37:45 gilles Exp $ */
-
 /*
  * Copyright (c) 2008 Alexander Schrijver <aschrijver@openbsd.org>
  * Copyright (c) 2006, 2007 Marc Balmer <mbalmer@openbsd.org>

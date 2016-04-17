@@ -21,11 +21,13 @@
 
 #include <netinet/in.h>
 
-#include <pwd.h>
 #include <base64.h>
+#include <ctype.h>
+#include <pwd.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "iobuf.h"
 #include "log.h"
 
 void *
@@ -65,6 +67,32 @@ xstrdup(const char *str, const char *where)
 	}
 
 	return (r);
+}
+
+void
+iobuf_xinit(struct iobuf *io, size_t size, size_t max, const char *where)
+{
+	if (iobuf_init(io, size, max) == -1) {
+		log_warnx("%s: iobuf_init(%p, %zu, %zu)", where, io, size, max);
+		fatalx("exiting");
+	}
+}
+
+char *
+strip(char *s)
+{
+	size_t	 l;
+
+	while (isspace((unsigned char)*s))
+		s++;
+
+	for (l = strlen(s); l; l--) {
+		if (!isspace((unsigned char)s[l-1]))
+			break;
+		s[l-1] = '\0';
+	}
+
+	return (s);
 }
 
 int

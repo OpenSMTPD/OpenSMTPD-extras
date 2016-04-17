@@ -1,5 +1,3 @@
-/*      $OpenBSD$   */
-
 /*
  * Copyright (c) 2015, 2016 Joerg Jung <jung@openbsd.org>
  *
@@ -44,15 +42,11 @@ struct spamassassin {
 static size_t spamassassin_limit;
 static enum { SPAMASSASSIN_ACCEPT, SPAMASSASSIN_REJECT } spamassassin_strategy;
 
-static int
+static void
 spamassassin_init(struct spamassassin *sa)
 {
 	sa->fd = sa->r = -1;
-	if (iobuf_init(&sa->iobuf, LINE_MAX, LINE_MAX) == -1) {
-		log_warnx("warn: init: iobuf_init");
-		return -1;
-	}
-	return 0;
+	iobuf_xinit(&sa->iobuf, LINE_MAX, LINE_MAX, "init");
 }
 
 static int
@@ -241,11 +235,7 @@ spamassassin_on_data(uint64_t id)
 {
 	struct spamassassin *sa;
 
-	sa = xcalloc(1, sizeof(struct spamassassin), "on_data");
-	if (spamassassin_init(sa) == -1) {
-		spamassassin_clear(sa);
-		return filter_api_accept(id);
-	}
+	spamassassin_init((sa = xcalloc(1, sizeof(struct spamassassin), "on_data")));
 	if (spamassassin_open(sa) == -1) {
 		spamassassin_clear(sa);
 		return filter_api_accept(id);
@@ -333,8 +323,9 @@ spamassassin_on_rollback(uint64_t id)
 int
 main(int argc, char **argv)
 {
-	int	ch, d = 0, v = 0;
-	const char *errstr, *l = NULL, *s = NULL;
+	int ch, d = 0, v = 0;
+	const char *errstr, *l = NULL;
+	char *s = NULL;
 
 	log_init(1);
 
@@ -367,8 +358,7 @@ main(int argc, char **argv)
 			fatalx("limit option is %s: %s", errstr, l);
 	}
 	if (s) {
-		while (isspace((unsigned char)*s))
-			s++;
+		s = strip(s);
 		if (strncmp(s, "accept", 6) == 0)
 			spamassassin_strategy = SPAMASSASSIN_ACCEPT;
 		else if (strncmp(s, "reject", 6) == 0)

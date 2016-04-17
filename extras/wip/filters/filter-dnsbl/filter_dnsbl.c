@@ -1,5 +1,3 @@
-/*      $OpenBSD$   */
-
 /*
  * Copyright (c) 2013 Eric Faurot <eric@openbsd.org>
  * Copyright (c) 2016 Joerg Jung <jung@openbsd.org>
@@ -130,8 +128,8 @@ dnsbl_on_connect(uint64_t id, struct filter_connect *conn)
 int
 main(int argc, char **argv)
 {
-	int	ch, d = 0, v = 0;
-	const char *h = NULL, *w = NULL;
+	int ch, d = 0, v = 0;
+	char *h = NULL, *w = NULL;
 
 	log_init(1);
 
@@ -158,16 +156,10 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (h) {
-		while (isspace((unsigned char)*h))
-			h++;
-		dnsbl_host = h;
-	}
-	if (w) {
-		while (isspace((unsigned char)*w))
-			w++;
-		dnswl_host = w;
-	}
+	if (h)
+		dnsbl_host = strip(h);
+	if (w)
+		dnswl_host = strip(w);
 
 	log_init(d);
 	log_verbose(v);

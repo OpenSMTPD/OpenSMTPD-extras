@@ -244,6 +244,7 @@ AC_ARG_WITH([Werror],
 
 AC_CHECK_HEADERS([ \
 	arpa/inet.h \
+	ctype.h \
 	dirent.h \
 	fcntl.h \
 	grp.h \

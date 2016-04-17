@@ -1,7 +1,5 @@
-/*      $OpenBSD$   */
-
 /*
- * Copyright (c) 2015 Joerg Jung <jung@openbsd.org>
+ * Copyright (c) 2015, 2016 Joerg Jung <jung@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +13,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
- 
+
 #include <sys/types.h>
 
 #include <inttypes.h>
@@ -44,7 +42,7 @@ pause_on_connect(uint64_t id, struct filter_connect *conn)
 int
 main(int argc, char **argv)
 {
-	int	ch, d = 0, v = 0;
+	int ch, d = 0, v = 0;
 	const char *errstr, *s = NULL;
 
 	log_init(1);

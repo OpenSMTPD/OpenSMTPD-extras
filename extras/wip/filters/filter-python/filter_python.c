@@ -1,5 +1,3 @@
-/*      $OpenBSD$   */
-
 /*
  * Copyright (c) 2014 Gilles Chehade <gilles@poolp.org>
  *
@@ -17,7 +15,7 @@
  */
 
 #include "includes.h"
- 
+
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -404,9 +402,9 @@ loadfile(const char * path)
 int
 main(int argc, char **argv)
 {
-	int		 ch, d = 0, v = 0;
-	char		*path, *buf;
-	PyObject	*self, *code, *module;
+	int ch, d = 0, v = 0;
+	char *path, *buf;
+	PyObject *self, *code, *module;
 
 	log_init(1);
 

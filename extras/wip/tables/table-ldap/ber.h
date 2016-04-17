@@ -1,5 +1,3 @@
-/*	$OpenBSD$ */
-
 /*
  * Copyright (c) 2007 Reyk Floeter <reyk@vantronix.net>
  * Copyright (c) 2006, 2007 Claudio Jeker <claudio@openbsd.org>

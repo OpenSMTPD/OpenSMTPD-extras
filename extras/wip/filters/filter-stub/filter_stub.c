@@ -1,5 +1,3 @@
-/*      $OpenBSD$   */
-
 /*
  * Copyright (c) 2013 Eric Faurot <eric@openbsd.org>
  *
@@ -104,7 +102,7 @@ on_disconnect(uint64_t id)
 int
 main(int argc, char **argv)
 {
-	int	ch, d = 0, v = 0;
+	int ch, d = 0, v = 0;
 
 	log_init(1);
 

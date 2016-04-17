@@ -1,5 +1,3 @@
-/*	$OpenBSD: table_socketmap.c,v 1.3 2014/04/19 14:21:26 gilles Exp $	*/
-
 /*
  * Copyright (c) 2014 Gilles Chehade <gilles@poolp.org>
  *
