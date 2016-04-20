@@ -38,7 +38,7 @@ main(int argc, char **argv)
 		switch (ch) {
 		default:
 			log_warnx("warn: table-stub: bad option");
-			return (1);
+			return 1;
 			/* NOTREACHED */
 		}
 	}
@@ -47,7 +47,7 @@ main(int argc, char **argv)
 
 	if (argc != 0) {
 		log_warnx("warn: table-stub: bogus argument(s)");
-		return (1);
+		return 1;
 	}
 
 	table_api_on_update(table_stub_update);
@@ -56,29 +56,29 @@ main(int argc, char **argv)
 	table_api_on_fetch(table_stub_fetch);
 	table_api_dispatch();
 
-	return (0);
+	return 0;
 }
 
 static int
 table_stub_update(void)
 {
-	return (-1);
+	return -1;
 }
 
 static int
 table_stub_check(int service, struct dict *params, const char *key)
 {
-	return (-1);
+	return -1;
 }
 
 static int
 table_stub_lookup(int service, struct dict *params, const char *key, char *dst, size_t sz)
 {
-	return (-1);
+	return -1;
 }
 
 static int
 table_stub_fetch(int service, struct dict *params, char *dst, size_t sz)
 {
-	return (-1);
+	return -1;
 }

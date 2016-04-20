@@ -31,37 +31,37 @@ static int
 queue_null_message_create(uint32_t *msgid)
 {
 	*msgid = queue_generate_msgid();
-	return (1);
+	return 1;
 }
 
 static int
 queue_null_message_commit(uint32_t msgid, const char *path)
 {
-	return (1);
+	return 1;
 }
 
 static int
 queue_null_message_delete(uint32_t msgid)
 {
-	return (1);
+	return 1;
 }
 
 static int
 queue_null_message_fd_r(uint32_t msgid)
 {
-	return (-1);
+	return -1;
 }
 
 static int
 queue_null_message_corrupt(uint32_t msgid)
 {
-	return (0);
+	return 0;
 }
 
 static int
 queue_null_message_uncorrupt(uint32_t msgid)
 {
-	return (0);
+	return 0;
 }
 
 static int
@@ -69,38 +69,38 @@ queue_null_envelope_create(uint32_t msgid, const char *buf, size_t len,
     uint64_t *evpid)
 {
 	*evpid = queue_generate_evpid(msgid);
-	return (1);
+	return 1;
 }
 
 static int
 queue_null_envelope_delete(uint64_t evpid)
 {
-	return (1);
+	return 1;
 }
 
 static int
 queue_null_envelope_update(uint64_t evpid, const char *buf, size_t len)
 {
-	return (1);
+	return 1;
 }
 
 static int
 queue_null_envelope_load(uint64_t evpid, char *buf, size_t len)
 {
-	return (0);
+	return 0;
 }
 
 static int
 queue_null_envelope_walk(uint64_t *evpid, char *buf, size_t len)
 {
-	return (-1);
+	return -1;
 }
 
 static int
 queue_null_message_walk(uint64_t *evpid, char *buf, size_t len,
     uint32_t msgid, int *done, void **data)
 {
-	return (-1);
+	return -1;
 }
 
 static int
@@ -119,7 +119,7 @@ queue_null_init(int server)
 	queue_api_on_envelope_walk(queue_null_envelope_walk);
 	queue_api_on_message_walk(queue_null_message_walk);
 
-	return (1);
+	return 1;
 }
 
 int
@@ -133,7 +133,7 @@ main(int argc, char **argv)
 		switch (ch) {
 		default:
 			log_warnx("warn: queue-null: bad option");
-			return (1);
+			return 1;
 			/* NOTREACHED */
 		}
 	}
@@ -143,5 +143,5 @@ main(int argc, char **argv)
 	queue_null_init(1);
 	queue_api_dispatch();
 
-	return (0);
+	return 0;
 }
