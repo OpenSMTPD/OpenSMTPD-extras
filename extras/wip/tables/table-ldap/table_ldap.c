@@ -299,8 +299,10 @@ ldap_config(void)
 	FILE		*fp;
 	char		*key, *value, *buf = NULL;
 
-	if ((fp = fopen(config, "r")) == NULL)
+	if ((fp = fopen(config, "r")) == NULL) {
+		log_warn("warn: table-ldap: \"%s\"", config);
 		return 0;
+	}
 
 	while ((flen = getline(&buf, &sz, fp)) != -1) {
 		if (buf[flen - 1] == '\n')

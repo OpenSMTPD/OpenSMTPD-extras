@@ -186,11 +186,11 @@ table_sqlite_update(void)
 
 	ret = 0;
 
-	/* Parse configuration */
-
-	if ((fp = fopen(config, "r")) == NULL)
+	/* parse configuration */
+	if ((fp = fopen(config, "r")) == NULL) {
+		log_warn("warn: table-sqlite: \"%s\"", config);
 		return 0;
-
+	}
 	while ((flen = getline(&buf, &sz, fp)) != -1) {
 		if (buf[flen - 1] == '\n')
 			buf[flen - 1] = '\0';

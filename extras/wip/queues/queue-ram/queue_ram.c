@@ -93,9 +93,8 @@ queue_ram_message_commit(uint32_t msgid, const char *path)
 		return 0;
 	}
 
-	f = fopen(path, "rb");
-	if (f == NULL) {
-		log_warn("warn: queue-ram: fopen: %s", path);
+	if ((f = fopen(path, "rb")) == NULL) {
+		log_warn("warn: queue-ram: fopen: \"%s\"", path);
 		return 0;
 	}
 	if (fstat(fileno(f), &sb) == -1) {

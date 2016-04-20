@@ -131,7 +131,7 @@ config_load(const char *path)
 	dict_init(&config->conf);
 
 	if ((fp = fopen(path, "r")) == NULL) {
-		log_warn("warn: table-redis: fopen");
+		log_warn("warn: table-redis: \"%s\"", path);
 		goto end;
 	}
 

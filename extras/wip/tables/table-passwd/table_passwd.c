@@ -93,7 +93,7 @@ table_passwd_update(void)
 
 	/* parse configuration */
 	if ((fp = fopen(config, "r")) == NULL) {
-		log_warn("warn: Table \"%s\"", config);
+		log_warn("warn: table-passwd: \"%s\"", config);
 		return 0;
 	}
 

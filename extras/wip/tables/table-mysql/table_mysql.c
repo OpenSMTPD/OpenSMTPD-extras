@@ -195,7 +195,7 @@ config_load(const char *path)
 	conf->source_expire = DEFAULT_EXPIRE;
 
 	if ((fp = fopen(path, "r")) == NULL) {
-		log_warn("warn: table-mysql: fopen");
+		log_warn("warn: table-mysql: \"%s\"", path);
 		goto end;
 	}
 

@@ -171,7 +171,7 @@ config_load(const char *path)
 	conf->source_expire = DEFAULT_EXPIRE;
 
 	if ((fp = fopen(path, "r")) == NULL) {
-		log_warn("warn: table-postgres: fopen");
+		log_warn("warn: table-postgres: \"%s\"", path);
 		goto end;
 	}
 
