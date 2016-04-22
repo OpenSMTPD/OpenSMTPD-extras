@@ -225,7 +225,7 @@ config_connect(struct config *config)
 	char	*slave = "NULL";
 	int	slave_port = 6380;
 	char	*password = NULL;
-	int	database;
+	int	database = 0;
 
 	char	*q;
 
