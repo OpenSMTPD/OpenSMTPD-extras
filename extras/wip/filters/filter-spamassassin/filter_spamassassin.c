@@ -324,7 +324,7 @@ main(int argc, char **argv)
 {
 	int ch, d = 0, v = 0;
 	const char *errstr, *l = NULL;
-	char *s = NULL;
+	char *h = NULL, *p = NULL, *s = NULL;
 
 	log_init(1);
 
