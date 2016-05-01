@@ -30,7 +30,7 @@
 #include "log.h"
 #include "iobuf.h"
 
-static const char *spamassassin_host = "127.0.0.1", *spamassassin_port = "783"
+static const char *spamassassin_host = "127.0.0.1", *spamassassin_port = "783";
 
 struct spamassassin {
 	int fd, r;
