@@ -75,6 +75,13 @@ struct filter_session {
 	void			*udata;
 };
 
+struct filter_timer {
+	struct event		 ev;
+	uint64_t		 id;
+	void			(*cb)(uint64_t, void *);
+	void			*arg;
+};
+
 static int		 register_done;
 static const char	*filter_name;
 
@@ -506,7 +513,7 @@ filter_trigger_eom(struct filter_session *s)
 	    filter_name, s->id, s->pipe.iev.sock, s->pipe.oev.sock,
 	    s->datalen, s->pipe.idatalen, s->pipe.odatalen);
 
-	/* This is called when 
+	/* This is called when
 	 * - EOM query is first received
 	 * - input data is closed
 	 * - output has been written
@@ -1047,6 +1054,27 @@ filter_api_writeln(uint64_t id, const char *line)
 	s->pipe.odatalen += strlen(line) + 1;
 	iobuf_fqueue(&s->pipe.obuf, "%s\n", line);
 	io_reload(&s->pipe.oev);
+}
+
+static void
+filter_api_timer_cb(int fd, short evt, void *arg)
+{
+	struct filter_timer *ft = arg;
+
+	ft->cb(ft->id, ft->arg);
+	free(ft);
+}
+
+void
+filter_api_timer(uint64_t id, struct timeval *tv, void (*cb)(uint64_t, void *), void *arg)
+{
+	struct filter_timer *ft = xcalloc(1, sizeof(struct filter_timer), "filter_api_timer");
+
+	ft->id = id;
+	ft->cb = cb;
+	ft->arg = arg;
+	evtimer_set(&ft->ev, filter_api_timer_cb, ft);
+	evtimer_add(&ft->ev, tv);
 }
 
 const char *
