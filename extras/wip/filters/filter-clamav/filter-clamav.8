@@ -21,7 +21,7 @@
 .Nd smtpd filter for Clam AntiVirus clamd
 .Sh SYNOPSIS
 .Nm
-.Op Fl dv
+.Op Fl cdv
 .Op Fl h Ar host
 .Op Fl p Ar port
 .Sh DESCRIPTION
@@ -35,15 +35,23 @@ Mails are piped to the daemon, which scans the mail for viruses.
 .Pp
 The options are as follows:
 .Bl -tag -width "-d"
+.It Fl c
+No chroot(), if this option is specififed,
+.Nm
+will not run chroot-ed allowing name resolution of the
+.Ar host
+parameter.
 .It Fl d
 Debug mode, if this option is specified,
 .Nm
 will run in the foreground and log to
 .Em stderr .
-.It Fl h
+.It Fl h Ar host
 Set the ClamAV
 .Ar host
-to be used.
+to be used. Use an IP-address or set
+.Ar -c
+if you require name-resolution.
 .Pp
 The default
 .Ar host
