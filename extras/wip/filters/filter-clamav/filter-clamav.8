@@ -22,6 +22,8 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl dv
+.Op Fl h Ar host
+.Op Fl p Ar port
 .Sh DESCRIPTION
 .Nm
 is a filter for
@@ -38,6 +40,22 @@ Debug mode, if this option is specified,
 .Nm
 will run in the foreground and log to
 .Em stderr .
+.It Fl h
+Set the ClamAV
+.Ar host
+to be used.
+.Pp
+The default
+.Ar host
+is 127.0.0.1.
+.It Fl p Ar port
+Set the
+.Ar port
+ClamAV is listening on.
+.Pp
+The default
+.Ar port
+is 3310.
 .It Fl v
 Produce more verbose output.
 .El
@@ -53,8 +71,9 @@ Non-virus mails are accepted.
 .\".Dq X-Filter-ClamAV
 .\"header.
 .Sh CLAM ANTIVIRUS CONFIGURATION
+By default
 .Nm
-expects that Clam AntiVirus's
+expects Clam AntiVirus'
 .Xr clamd 1
 to listen on 127.0.0.1 port 3310 for incoming requests.
 This requires to uncomment the TCPAddr and TCPSocket option in the default
