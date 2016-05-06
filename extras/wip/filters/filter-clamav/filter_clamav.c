@@ -260,13 +260,16 @@ clamav_on_rollback(uint64_t id)
 int
 main(int argc, char **argv)
 {
-	int ch, d = 0, v = 0;
+	int ch, c = 0, d = 0, v = 0;
 	char *h = NULL, *p = NULL;
 
 	log_init(1);
 
-	while ((ch = getopt(argc, argv, "dh:p:v")) != -1) {
+	while ((ch = getopt(argc, argv, "cdh:p:v")) != -1) {
 		switch (ch) {
+		case 'c':
+			c = 1;
+			break;
 		case 'd':
 			d = 1;
 			break;
@@ -304,6 +307,8 @@ main(int argc, char **argv)
 	filter_api_on_reset(clamav_on_reset);
 	filter_api_on_disconnect(clamav_on_disconnect);
 	filter_api_on_rollback(clamav_on_rollback);
+	if (c)
+		filter_api_no_chroot(); /* getaddrinfo requires resolv.conf */
 
 	filter_api_loop();
 	log_debug("debug: exiting");
