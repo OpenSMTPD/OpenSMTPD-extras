@@ -30,14 +30,13 @@
 #include "log.h"
 #include "iobuf.h"
 
-static const char *spamassassin_host = "127.0.0.1", *spamassassin_port = "783";
-
 struct spamassassin {
 	int fd, r;
 	struct iobuf iobuf;
 	size_t l;
 };
 
+static const char *spamassassin_host = "127.0.0.1", *spamassassin_port = "783";
 static size_t spamassassin_limit;
 static enum { SPAMASSASSIN_ACCEPT, SPAMASSASSIN_REJECT } spamassassin_strategy;
 
@@ -357,20 +356,15 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	if (h)
+		spamassassin_host = strip(h);
+	if (p)
+		spamassassin_port = strip(p);
 	if (l) {
 		spamassassin_limit = strtonum(l, 1, SIZE_T_MAX, &errstr);
 		if (errstr)
 			fatalx("limit option is %s: %s", errstr, l);
 	}
-	
-	if (h) {
-		spamassassin_host = strip(h);
-	}
-
-	if (p) {
-		spamassassin_port = strip(p);
-	}
-
 	if (s) {
 		s = strip(s);
 		if (strncmp(s, "accept", 6) == 0)
