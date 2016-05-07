@@ -191,8 +191,7 @@ of accepting or rejecting the message.
 .Pp
 The function
 .Fn filter_api_on_reset
-is called on SMTP RSET command.
-The callback might be used to reset the current filter state.
+currently doesn't serve a useful purpose.
 .Pp
 The function
 .Fn filter_api_on_disconnect
@@ -206,8 +205,8 @@ is called on commit of the current message.
 .Pp
 The function
 .Fn filter_api_on_rollback
-is called on rollback of the SMTP session.
-The callback might be used to clean up earlier setup data structures.
+is called on SMTP RSET command or rollback of the SMTP session.
+The callback might be used to reset the current filter state.
 .Sh HELPER FUNCTIONS
 The function
 .Fn filter_api_setugid

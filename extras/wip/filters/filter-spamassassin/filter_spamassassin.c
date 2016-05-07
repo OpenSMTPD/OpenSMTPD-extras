@@ -30,8 +30,7 @@
 #include "log.h"
 #include "iobuf.h"
 
-#define SPAMASSASSIN_HOST "127.0.0.1"
-#define SPAMASSASSIN_PORT "783"
+static const char *spamassassin_host = "127.0.0.1", *spamassassin_port = "783";
 
 struct spamassassin {
 	int fd, r;
@@ -60,7 +59,7 @@ spamassassin_open(struct spamassassin *sa)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV; /* avoid failing name resolution in chroot() */
-	if ((r = getaddrinfo(SPAMASSASSIN_HOST, SPAMASSASSIN_PORT, &hints, &addresses))) {
+	if ((r = getaddrinfo(spamassassin_host, spamassassin_port, &hints, &addresses))) {
 		log_warnx("warn: open: getaddrinfo %s", gai_strerror(r));
 		return -1;
 	}
@@ -325,17 +324,23 @@ main(int argc, char **argv)
 {
 	int ch, d = 0, v = 0;
 	const char *errstr, *l = NULL;
-	char *s = NULL;
+	char *h = NULL, *p = NULL, *s = NULL;
 
 	log_init(1);
 
-	while ((ch = getopt(argc, argv, "dl:s:v")) != -1) {
+	while ((ch = getopt(argc, argv, "dh:l:p:s:v")) != -1) {
 		switch (ch) {
 		case 'd':
 			d = 1;
 			break;
+		case 'h':
+			h = optarg;
+			break;
 		case 'l':
 			l = optarg;
+			break;
+		case 'p':
+			p = optarg;
 			break;
 		case 's':
 			s = optarg;
@@ -357,6 +362,15 @@ main(int argc, char **argv)
 		if (errstr)
 			fatalx("limit option is %s: %s", errstr, l);
 	}
+	
+	if (h) {
+		spamassassin_host = strip(h);
+	}
+
+	if (p) {
+		spamassassin_port = strip(p);
+	}
+
 	if (s) {
 		s = strip(s);
 		if (strncmp(s, "accept", 6) == 0)

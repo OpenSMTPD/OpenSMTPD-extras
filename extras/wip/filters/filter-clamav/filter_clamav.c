@@ -30,8 +30,7 @@
 #include "log.h"
 #include "iobuf.h"
 
-#define CLAMAV_HOST "127.0.0.1"
-#define CLAMAV_PORT "3310"
+static const char *clamav_host = "127.0.0.1", *clamav_port = "3310";
 
 struct clamav {
 	int fd, r;
@@ -56,7 +55,7 @@ clamav_open(struct clamav *cl)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV; /* avoid failing name resolution in chroot() */
-	if ((r = getaddrinfo(CLAMAV_HOST, CLAMAV_PORT, &hints, &addresses))) {
+	if ((r = getaddrinfo(clamav_host, clamav_port, &hints, &addresses))) {
 		log_warnx("warn: open: getaddrinfo %s", gai_strerror(r));
 		return -1;
 	}
@@ -262,13 +261,20 @@ int
 main(int argc, char **argv)
 {
 	int ch, d = 0, v = 0;
+	char *h = NULL, *p = NULL;
 
 	log_init(1);
 
-	while ((ch = getopt(argc, argv, "dv")) != -1) {
+	while ((ch = getopt(argc, argv, "dh:p:v")) != -1) {
 		switch (ch) {
 		case 'd':
 			d = 1;
+			break;
+		case 'h':
+			h = optarg;
+			break;
+		case 'p':
+			p = optarg;
 			break;
 		case 'v':
 			v |= TRACE_DEBUG;
@@ -281,6 +287,11 @@ main(int argc, char **argv)
 	}
 	argc -= optind;
 	argv += optind;
+
+	if (h)
+		clamav_host = strip(h);
+	if (p)
+		clamav_port = strip(p);
 
 	log_init(d);
 	log_verbose(v);
