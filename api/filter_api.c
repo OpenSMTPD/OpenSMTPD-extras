@@ -1066,15 +1066,16 @@ filter_api_timer_cb(int fd, short evt, void *arg)
 }
 
 void
-filter_api_timer(uint64_t id, struct timeval *tv, void (*cb)(uint64_t, void *), void *arg)
+filter_api_timer(uint64_t id, uint32_t tmo, void (*cb)(uint64_t, void *), void *arg)
 {
 	struct filter_timer *ft = xcalloc(1, sizeof(struct filter_timer), "filter_api_timer");
+	struct timeval tv = { tmo / 1000, (tmo % 1000) * 1000 };
 
 	ft->id = id;
 	ft->cb = cb;
 	ft->arg = arg;
 	evtimer_set(&ft->ev, filter_api_timer_cb, ft);
-	evtimer_add(&ft->ev, tv);
+	evtimer_add(&ft->ev, &tv);
 }
 
 const char *

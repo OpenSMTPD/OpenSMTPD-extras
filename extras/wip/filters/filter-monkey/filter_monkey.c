@@ -95,7 +95,6 @@ static int
 monkey_defer(uint64_t id, const char *cmd)
 {
 	struct ruleset	*ruleset;
-	struct timeval tv;
 	uint32_t delay;
 
 	ruleset = dict_xget(&rulesets, cmd);
@@ -105,10 +104,7 @@ monkey_defer(uint64_t id, const char *cmd)
 	delay = arc4random_uniform(ruleset->delay_max - ruleset->delay_min);
 	delay += ruleset->delay_min;
 
-	tv.tv_sec = delay  / 1000;
-	tv.tv_usec = (delay % 1000) * 1000;
-
-	filter_api_timer(id, &tv, monkey_timer, (void *)cmd);
+	filter_api_timer(id, delay, monkey_timer, (void *)cmd);
 	return 0;
 }
 

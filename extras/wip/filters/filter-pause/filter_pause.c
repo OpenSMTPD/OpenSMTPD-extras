@@ -25,7 +25,7 @@
 #include "smtpd-api.h"
 #include "log.h"
 
-static unsigned int pause_seconds = 5;
+static unsigned short pause_seconds = 5;
 
 static void
 pause_timer(uint64_t id, void *p)
@@ -36,10 +36,8 @@ pause_timer(uint64_t id, void *p)
 static int
 pause_on_connect(uint64_t id, struct filter_connect *conn)
 {
-	struct timeval tv = { pause_seconds, 0 };
-
 	log_debug("debug: on_connect: sleeping %u", pause_seconds);
-	filter_api_timer(id, &tv, pause_timer, NULL);
+	filter_api_timer(id, pause_seconds * 1000, pause_timer, NULL);
 	return 1;
 }
 
