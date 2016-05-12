@@ -8,3 +8,4 @@ SRCS	 = $(api_srcdir)/log.c
 SRCS	+= $(api_srcdir)/tree.c
 SRCS	+= $(api_srcdir)/dict.c
 SRCS	+= $(api_srcdir)/util.c
+SRCS	+= $(api_srcdir)/iobuf.c

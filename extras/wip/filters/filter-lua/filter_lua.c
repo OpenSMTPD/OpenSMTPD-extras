@@ -380,9 +380,8 @@ main(int argc, char **argv)
 	lua_setglobal(L, "filter");
 
 	if (luaL_dofile(L, path) != 0) {
-		log_warnx("warn: error loading script: %s",
-		    path);
-		    return 1;
+		log_warnx("warn: error loading script: %s", path);
+		return 1;
 	}
 
 	lua_getglobal(L, "on_connect");

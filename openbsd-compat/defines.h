@@ -202,14 +202,4 @@ typedef uint16_t	in_port_t;
 # endif
 #endif
 
-/* chl parts */
-#ifndef EAI_NODATA
-# ifdef EAI_NONAME
-#  define EAI_NODATA EAI_NONAME
-# else
-#  error "Neither EAI_NODATA and EAI_NONAME are defined! :("
-# endif
-#endif
-/* end of chl */
-
 #endif /* _DEFINES_H */

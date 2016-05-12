@@ -94,7 +94,7 @@ main(int argc, char **argv)
 		switch (ch) {
 		default:
 			log_warnx("warn: table-mysql: bad option");
-			return (1);
+			return 1;
 			/* NOTREACHED */
 		}
 	}
@@ -103,7 +103,7 @@ main(int argc, char **argv)
 
 	if (argc != 1) {
 		log_warnx("warn: table-mysql: bogus argument(s)");
-		return (1);
+		return 1;
 	}
 
 	conffile = argv[0];
@@ -118,7 +118,7 @@ main(int argc, char **argv)
 	config = config_load(conffile);
 	if (config == NULL) {
 		log_warnx("warn: table-mysql: error parsing config file");
-		return (1);
+		return 1;
 	}
 	if (config_connect(config) == 0) {
 		log_warnx("warn: table-mysql: could not connect");
@@ -130,7 +130,7 @@ main(int argc, char **argv)
 	table_api_on_fetch(table_mysql_fetch);
 	table_api_dispatch();
 
-	return (0);
+	return 0;
 }
 
 static MYSQL_STMT *
@@ -163,13 +163,13 @@ table_mysql_prepare_stmt(MYSQL *_db, const char *query, unsigned long nparams,
 		goto end;
 	}
 
-	return (stmt);
+	return stmt;
 
     end:
 	if (stmt)
 		mysql_stmt_close(stmt);
 
-	return (NULL);
+	return NULL;
 }
 
 static struct config *
@@ -185,7 +185,7 @@ config_load(const char *path)
 
 	if ((conf = calloc(1, sizeof(*conf))) == NULL) {
 		log_warn("warn: table-mysql: calloc");
-		return (NULL);
+		return NULL;
 	}
 
 	dict_init(&conf->conf);
@@ -195,7 +195,7 @@ config_load(const char *path)
 	conf->source_expire = DEFAULT_EXPIRE;
 
 	if ((fp = fopen(path, "r")) == NULL) {
-		log_warn("warn: table-mysql: fopen");
+		log_warn("warn: table-mysql: \"%s\"", path);
 		goto end;
 	}
 
@@ -259,13 +259,13 @@ config_load(const char *path)
 
 	free(buf);
 	fclose(fp);
-	return (conf);
+	return conf;
 
     end:
 	free(buf);
 	fclose(fp);
 	config_free(conf);
-	return (NULL);
+	return NULL;
 }
 
 static void
@@ -352,11 +352,11 @@ config_connect(struct config *conf)
 
 	log_debug("debug: table-mysql: connected");
 
-	return (1);
+	return 1;
 
     end:
 	config_reset(conf);
-	return (0);
+	return 0;
 }
 
 static void
@@ -381,16 +381,16 @@ table_mysql_update(void)
 	struct config	*c;
 
 	if ((c = config_load(conffile)) == NULL)
-		return (0);
+		return 0;
 	if (config_connect(c) == 0) {
 		config_free(c);
-		return (0);
+		return 0;
 	}
 
 	config_free(config);
 	config = c;
 
-	return (1);
+	return 1;
 }
 
 static MYSQL_STMT *
@@ -412,11 +412,11 @@ table_mysql_query(const char *key, int service)
 		}
 
 	if (stmt == NULL)
-		return (NULL);
+		return NULL;
 
 	if (strlcpy(buffer, key, sizeof(buffer)) >= sizeof(buffer)) {
 		log_warnx("warn: table-mysql: key too long: \"%s\"", key);
-		return (NULL);
+		return NULL;
 	}
 
 	keylen = strlen(key);
@@ -430,7 +430,7 @@ table_mysql_query(const char *key, int service)
 	if (mysql_stmt_bind_param(stmt, param)) {
 		log_warnx("warn: table-mysql: mysql_stmt_bind_param: %s",
 		    mysql_stmt_error(stmt));
-		return (NULL);
+		return NULL;
 	}
 
 	if (mysql_stmt_execute(stmt)) {
@@ -441,14 +441,14 @@ table_mysql_query(const char *key, int service)
 			    mysql_stmt_error(stmt));
 			if (config_connect(config))
 				goto retry;
-			return (NULL);
+			return NULL;
 		}
 		log_warnx("warn: table-mysql: mysql_stmt_execute: %s",
 		    mysql_stmt_error(stmt));
-		return (NULL);
+		return NULL;
 	}
 
-	return (stmt);
+	return stmt;
 }
 
 static int
@@ -458,11 +458,11 @@ table_mysql_check(int service, struct dict *params, const char *key)
 	int		 r, s;
 
 	if (config->db == NULL && config_connect(config) == 0)
-		return (-1);
+		return -1;
 
 	stmt = table_mysql_query(key, service);
 	if (stmt == NULL)
-		return (-1);
+		return -1;
 
 	r = -1;
 	s = mysql_stmt_fetch(stmt);
@@ -479,7 +479,7 @@ table_mysql_check(int service, struct dict *params, const char *key)
 		log_warnx("warn: table-mysql: mysql_stmt_free_result: %s",
 		    mysql_stmt_error(stmt));
 
-	return (r);
+	return r;
 }
 
 static int
@@ -489,11 +489,11 @@ table_mysql_lookup(int service, struct dict *params, const char *key, char *dst,
 	int		 r, s;
 
 	if (config->db == NULL && config_connect(config) == 0)
-		return (-1);
+		return -1;
 
 	stmt = table_mysql_query(key, service);
 	if (stmt == NULL)
-		return (-1);
+		return -1;
 
 	s = mysql_stmt_fetch(stmt);
 	if (s == MYSQL_NO_DATA) {
@@ -571,7 +571,7 @@ table_mysql_lookup(int service, struct dict *params, const char *key, char *dst,
 		log_warnx("warn: table-mysql: mysql_stmt_free_result: %s",
 		    mysql_stmt_error(stmt));
 
-	return (r);
+	return r;
 }
 
 static int
@@ -582,17 +582,17 @@ table_mysql_fetch(int service, struct dict *params, char *dst, size_t sz)
 	int		 s;
 
 	if (config->db == NULL && config_connect(config) == 0)
-		return (-1);
+		return -1;
 
     retry:
 
 	if (service != K_SOURCE)
-		return (-1);
+		return -1;
 
 	stmt = config->stmt_fetch_source;
 
 	if (stmt == NULL)
-		return (-1);
+		return -1;
 
 	if (config->source_ncall < config->source_refresh &&
 	    time(NULL) - config->source_update < config->source_expire)
@@ -606,11 +606,11 @@ table_mysql_fetch(int service, struct dict *params, char *dst, size_t sz)
 			    mysql_stmt_error(stmt));
 			if (config_connect(config))
 				goto retry;
-			return (-1);
+			return -1;
 		}
 		log_warnx("warn: table-mysql: mysql_stmt_execute: %s",
 		    mysql_stmt_error(stmt));
-		return (-1);
+		return -1;
 	}
 
 	config->source_iter = NULL;
@@ -638,11 +638,11 @@ table_mysql_fetch(int service, struct dict *params, char *dst, size_t sz)
 	if (!dict_iter(&config->sources, &config->source_iter, &k, (void **)NULL)) {
 		config->source_iter = NULL;
 		if (!dict_iter(&config->sources, &config->source_iter, &k, (void **)NULL))
-			return (0);
+			return 0;
 	}
 
 	if (strlcpy(dst, k, sz) >= sz)
-		return (-1);
+		return -1;
 
-	return (1);
+	return 1;
 }

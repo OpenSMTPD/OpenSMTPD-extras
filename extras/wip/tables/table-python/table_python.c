@@ -67,7 +67,7 @@ dispatch(PyObject *handler, PyObject *args)
 		fatalx("warn: table-python: exception");
 	}
 
-	return (ret);
+	return ret;
 }
 
 static PyObject *
@@ -89,7 +89,7 @@ dict_to_py(struct dict *dict)
 			goto fail;
 	}
 
-	return (o);
+	return o;
 
     fail:
 	if (o)
@@ -97,7 +97,7 @@ dict_to_py(struct dict *dict)
 	if (s)
 		Py_DECREF(s);
 
-	return (NULL);
+	return NULL;
 }
 
 static int
@@ -106,19 +106,19 @@ table_python_update(void)
 	PyObject *ret;
 
 	if (py_on_update == NULL)
-		return (0);
+		return 0;
 
 	ret = dispatch(py_on_update, PyTuple_New(0));
 
 	if (ret == NULL) {
 		log_warnx("table-python: update failed");
-		return (-1);
+		return -1;
 	}
 
 	Py_DECREF(ret);
 
 	check_err("init");
-	return (1);
+	return 1;
 }
 
 static int
@@ -128,26 +128,26 @@ table_python_check(int service, struct dict *params, const char *key)
 	int r;
 
 	if (py_on_check == NULL)
-		return (-1);
+		return -1;
 
 	dict = dict_to_py(params);
 	if (dict == NULL)
-		return (-1);
+		return -1;
 
 	args = Py_BuildValue("iOs", service, dict, key);
 	if (args ==  NULL) {
 		Py_DECREF(dict);
-		return (-1);
+		return -1;
 	}
 
 	ret = dispatch(py_on_check, args);
 	if (ret == NULL)
-		return (-1);
+		return -1;
 
 	r = PyObject_IsTrue(ret);
 	Py_DECREF(ret);
 
-	return (r);
+	return r;
 }
 
 static int
@@ -158,22 +158,22 @@ table_python_lookup(int service, struct dict *params, const char *key, char *buf
 	int	  r;
 
 	if (py_on_lookup == NULL)
-		return (-1);
+		return -1;
 
 	dict = dict_to_py(params);
 	if (dict == NULL)
-		return (-1);
+		return -1;
 
 	args = Py_BuildValue("iOs", service, dict, key);
 	if (args ==  NULL) {
 		Py_DECREF(dict);
-		return (-1);
+		return -1;
 	}
 
 	ret = dispatch(py_on_lookup, args);
 
 	if (ret == NULL)
-		return (-1);
+		return -1;
 
 	if (ret == Py_None)
 		r = 0;
@@ -191,7 +191,7 @@ table_python_lookup(int service, struct dict *params, const char *key, char *buf
 
 	Py_DECREF(ret);
 
-	return (r);
+	return r;
 }
 
 static int
@@ -202,22 +202,22 @@ table_python_fetch(int service, struct dict *params, char *buf, size_t sz)
 	int	  r;
 	
 	if (py_on_fetch == NULL)
-		return (-1);
+		return -1;
 
 	dict = dict_to_py(params);
 	if (dict == NULL)
-		return (-1);
+		return -1;
 
 	args = Py_BuildValue("iO", service, dict);
 	if (args ==  NULL) {
 		Py_DECREF(dict);
-		return (-1);
+		return -1;
 	}
 
 	ret = dispatch(py_on_fetch, args);
 
 	if (ret == NULL)
-		return (-1);
+		return -1;
 
 	if (ret == Py_None)
 		r = 0;
@@ -235,7 +235,7 @@ table_python_fetch(int service, struct dict *params, char *buf, size_t sz)
 
 	Py_DECREF(ret);
 
-	return (r);
+	return r;
 }
 
 static char *
@@ -271,7 +271,7 @@ loadfile(const char * path)
 
 	fclose(f);
 
-	return (buf);
+	return buf;
 }
 
 static PyMethodDef py_methods[] = {
@@ -292,7 +292,7 @@ main(int argc, char **argv)
 		switch (ch) {
 		default:
 			log_warnx("warn: table-python: bad option");
-			return (1);
+			return 1;
 			/* NOTREACHED */
 		}
 	}
@@ -323,7 +323,7 @@ main(int argc, char **argv)
 	if (code == NULL) {
 		PyErr_Print();
 		log_warnx("warn: table-python: failed to compile %s", path);
-		return (1);
+		return 1;
 	}
 
 	module = PyImport_ExecCodeModuleEx("mytable", code, path);
@@ -331,7 +331,7 @@ main(int argc, char **argv)
 	if (module == NULL) {
 		PyErr_Print();
 		log_warnx("warn: table-python: failed to install module %s", path);
-		return (1);
+		return 1;
 	}
 
 	log_debug("debug: table-python: starting...");
@@ -351,5 +351,5 @@ main(int argc, char **argv)
 	log_debug("debug: table-python: exiting");
 	Py_Finalize();
 
-	return (1);
+	return 1;
 }

@@ -33,7 +33,6 @@
 #define CRLF		"\r\n"
 #define CRLF_LEN	2
 #define PRIVATE_KEY	"/etc/ssl/private/rsa.private"
-#define DEF_SELECTOR	"default"
 #define TEMPLATE	"DKIM-Signature: v=1; a=rsa-sha256; "	\
 			"c=simple/simple; d=%s; "		\
 			"h=%s; "				\
@@ -71,7 +70,7 @@ static void	 on_rollback(uint64_t);
 
 static RSA		*rsa;
 static const char	*domain;
-static const char	*selector;
+static const char	*selector = "default";
 
 static void
 cleanup(struct signer *s)
@@ -268,7 +267,8 @@ int
 main(int argc, char **argv)
 {
 	int ch, d = 0, v = 0;
-	const char *p = NULL;
+	const char *p = PRIVATE_KEY;
+	char *D = NULL, *s = NULL;
 	FILE *fp;
 	static char hostname[SMTPD_MAXHOSTNAMELEN];
 
@@ -277,7 +277,7 @@ main(int argc, char **argv)
 	while ((ch = getopt(argc, argv, "D:dp:s:v")) != -1) {
 		switch (ch) {
 		case 'D':
-			domain = optarg;
+			D = optarg;
 			break;
 		case 'd':
 			d = 1;
@@ -286,7 +286,7 @@ main(int argc, char **argv)
 			p = optarg;
 			break;
 		case 's':
-			selector = optarg;
+			s = optarg;
 			break;
 		case 'v':
 			v |= TRACE_DEBUG;
@@ -297,36 +297,29 @@ main(int argc, char **argv)
 			/* NOTREACHED */
 		}
 	}
-
 	argc -= optind;
 	argv += optind;
 
-	if (domain == NULL) {
-		if (gethostname(hostname, sizeof(hostname)) == -1)
-			fatal("main: gethostname");
-		domain = hostname;
-	}
-
-	if (selector == NULL)
-		selector = DEF_SELECTOR;
-
-	if (p == NULL)
-		p = PRIVATE_KEY;
+	if (D)
+		domain = strip(D);
+	if (s)
+		selector = strip(s);
 
 	log_init(d);
 	log_verbose(v);
 
 	log_debug("debug: starting...");
-
 	OpenSSL_add_all_algorithms();
 	OpenSSL_add_all_ciphers();
 	OpenSSL_add_all_digests();
-
+	if (domain == NULL) {
+		if (gethostname(hostname, sizeof(hostname)) == -1)
+			fatal("main: gethostname");
+		domain = hostname;
+	}
 	if ((fp = fopen(p, "r")) == NULL)
 		fatal("main: fopen %s", p);
-
-	rsa = PEM_read_RSAPrivateKey(fp, NULL, NULL, NULL);
-	if (rsa == NULL)
+	if ((rsa = PEM_read_RSAPrivateKey(fp, NULL, NULL, NULL)) == NULL)
 		fatalx("dkim_signer: PEM_read_RSAPrivateKey");
 
 	filter_api_on_data(on_data);
@@ -337,7 +330,6 @@ main(int argc, char **argv)
 	filter_api_on_rollback(on_rollback);
 
 	filter_api_loop();
-
 	log_debug("debug: exiting");
 
 	return 1;

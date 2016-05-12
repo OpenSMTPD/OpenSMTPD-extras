@@ -73,7 +73,7 @@ dispatch(PyObject *handler, PyObject *args)
 		fatalx("warn: scheduler-python: exception");
 	}
 
-	return (ret);
+	return ret;
 }
 
 
@@ -82,48 +82,48 @@ static int
 get_int(PyObject *o)
 {
 	if (PyLong_Check(o))
-		return (PyLong_AsLong(o));
+		return PyLong_AsLong(o);
 	if (PyInt_Check(o))
-		return (PyInt_AsLong(o));
+		return PyInt_AsLong(o);
 
 	PyErr_SetString(PyExc_TypeError, "int type expected");
-	return (0);
+	return 0;
 }
 
 static size_t
 get_size_t(PyObject *o)
 {
 	if (PyLong_Check(o))
-		return (PyLong_AsUnsignedLongLong(o));
+		return PyLong_AsUnsignedLongLong(o);
 	if (PyInt_Check(o))
-		return (PyInt_AsUnsignedLongLongMask(o));
+		return PyInt_AsUnsignedLongLongMask(o);
 
 	PyErr_SetString(PyExc_TypeError, "int type expected");
-	return (0);
+	return 0;
 }
 
 static size_t
 get_uint32_t(PyObject *o)
 {
 	if (PyLong_Check(o))
-		return (PyLong_AsUnsignedLong(o));
+		return PyLong_AsUnsignedLong(o);
 	if (PyInt_Check(o))
-		return (PyInt_AsUnsignedLongMask(o));
+		return PyInt_AsUnsignedLongMask(o);
 
 	PyErr_SetString(PyExc_TypeError, "int type expected");
-	return (0);
+	return 0;
 }
 
 static time_t
 get_time_t(PyObject *o)
 {
 	if (PyLong_Check(o))
-		return (PyLong_AsUnsignedLongLong(o));
+		return PyLong_AsUnsignedLongLong(o);
 	if (PyInt_Check(o))
-		return (PyInt_AsUnsignedLongLongMask(o));
+		return PyInt_AsUnsignedLongLongMask(o);
 
 	PyErr_SetString(PyExc_TypeError, "int type expected");
-	return (0);
+	return 0;
 }
 
 static int
@@ -138,7 +138,7 @@ scheduler_python_init(void)
 	Py_DECREF(py_ret);
 
 	check_err("init");
-	return (r);
+	return r;
 }
 
 static int
@@ -161,7 +161,7 @@ scheduler_python_insert(struct scheduler_info *info)
 	Py_DECREF(py_ret);
 
 	check_err("insert");
-	return (r);
+	return r;
 }
 
 static size_t
@@ -177,7 +177,7 @@ scheduler_python_commit(uint32_t msgid)
 	Py_DECREF(py_ret);
 
 	check_err("commit");
-	return (r);
+	return r;
 }
 
 static size_t
@@ -193,7 +193,7 @@ scheduler_python_rollback(uint32_t msgid)
 	Py_DECREF(py_ret);
 
 	check_err("rollback");
-	return (r);
+	return r;
 }
 
 static int
@@ -217,12 +217,12 @@ scheduler_python_update(struct scheduler_info *info)
 	check_err("update");
 
 	if (nexttry == -1)
-		return (-1);
+		return -1;
 	if (nexttry == 0)
-		return (0);
+		return 0;
 
 	info->nexttry = nexttry;
-	return (1);
+	return 1;
 }
 
 static int
@@ -238,7 +238,7 @@ scheduler_python_delete(uint64_t evpid)
 	Py_DECREF(py_ret);
 
 	check_err("delete");
-	return (r);
+	return r;
 }
 
 static int
@@ -255,7 +255,7 @@ scheduler_python_hold(uint64_t evpid, uint64_t holdq)
 	Py_DECREF(py_ret);
 
 	check_err("hold");
-	return (r);
+	return r;
 }
 
 static int
@@ -273,7 +273,7 @@ scheduler_python_release(int type, uint64_t holdq, int count)
 	Py_DECREF(py_ret);
 
 	check_err("release");
-	return (r);
+	return r;
 }
 
 static int
@@ -295,13 +295,13 @@ scheduler_python_batch(int mask, int *delay, size_t *count, uint64_t *evpids, in
 		*delay = PyInt_AsLong(py_ret);
 		*count = 0;
 		Py_DECREF(py_ret);
-		return (0);
+		return 0;
 	}
 	if (PyLong_Check(py_ret)) {
 		*delay = PyLong_AsLong(py_ret);
 		*count = 0;
 		Py_DECREF(py_ret);
-		return (0);
+		return 0;
 	}
 
 	*delay = 0;
@@ -324,7 +324,7 @@ scheduler_python_batch(int mask, int *delay, size_t *count, uint64_t *evpids, in
 
 	check_err("batch");
 
-	return (1);
+	return 1;
 }
 
 static size_t
@@ -353,7 +353,7 @@ scheduler_python_messages(uint32_t msgid, uint32_t *dst, size_t sz)
 
 	check_err("messages");
 
-	return (r);
+	return r;
 }
 
 static size_t
@@ -401,7 +401,7 @@ scheduler_python_envelopes(uint64_t evpid, struct evpstate *dst, size_t sz)
 
 	check_err("envelopes");
 
-	return (r);
+	return r;
 }
 
 static int
@@ -417,7 +417,7 @@ scheduler_python_schedule(uint64_t evpid)
 	Py_DECREF(py_ret);
 
 	check_err("schedule");
-	return (r);
+	return r;
 }
 
 static int
@@ -433,7 +433,7 @@ scheduler_python_remove(uint64_t evpid)
 	Py_DECREF(py_ret);
 
 	check_err("remove");
-	return (r);
+	return r;
 }
 
 static int
@@ -449,7 +449,7 @@ scheduler_python_suspend(uint64_t evpid)
 	Py_DECREF(py_ret);
 
 	check_err("suspend");
-	return (r);
+	return r;
 }
 
 static int
@@ -465,7 +465,7 @@ scheduler_python_resume(uint64_t evpid)
 	Py_DECREF(py_ret);
 
 	check_err("resume");
-	return (r);
+	return r;
 }
 
 static char *
@@ -501,7 +501,7 @@ loadfile(const char * path)
 
 	fclose(f);
 
-	return (buf);
+	return buf;
 }
 
 static PyMethodDef py_methods[] = {
@@ -522,7 +522,7 @@ main(int argc, char **argv)
 		switch (ch) {
 		default:
 			log_warnx("warn: scheduler-python: bad option");
-			return (1);
+			return 1;
 			/* NOTREACHED */
 		}
 	}
@@ -559,7 +559,7 @@ main(int argc, char **argv)
 	if (code == NULL) {
 		PyErr_Print();
 		log_warnx("warn: scheduler-python: failed to compile %s", path);
-		return (1);
+		return 1;
 	}
 
 	module = PyImport_ExecCodeModuleEx("myscheduler", code, path);
@@ -567,7 +567,7 @@ main(int argc, char **argv)
 	if (module == NULL) {
 		PyErr_Print();
 		log_warnx("warn: scheduler-python: failed to install module %s", path);
-		return (1);
+		return 1;
 	}
 
 	log_debug("debug: scheduler-python: starting...");
@@ -610,5 +610,5 @@ main(int argc, char **argv)
 	log_debug("debug: scheduler-python: exiting");
 	Py_Finalize();
 
-	return (1);
+	return 1;
 }

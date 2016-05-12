@@ -78,7 +78,7 @@ main(int argc, char **argv)
 		switch (ch) {
 		default:
 			log_warnx("warn: table-sqlite: bad option");
-			return (1);
+			return 1;
 			/* NOTREACHED */
 		}
 	}
@@ -87,7 +87,7 @@ main(int argc, char **argv)
 
 	if (argc != 1) {
 		log_warnx("warn: table-sqlite: bogus argument(s)");
-		return (1);
+		return 1;
 	}
 
 	config = argv[0];
@@ -96,7 +96,7 @@ main(int argc, char **argv)
 
 	if (table_sqlite_update() == 0) {
 		log_warnx("warn: table-sqlite: error parsing config file");
-		return (1);
+		return 1;
 	}
 
 	table_api_on_update(table_sqlite_update);
@@ -105,7 +105,7 @@ main(int argc, char **argv)
 	table_api_on_fetch(table_sqlite_fetch);
 	table_api_dispatch();
 
-	return (0);
+	return 0;
 }
 
 static int
@@ -118,9 +118,9 @@ table_sqlite_getconfstr(const char *key, const char *value, char **var)
 	*var = strdup(value);
 	if (*var == NULL) {
 		log_warn("warn: table-sqlite: strdup");
-		return (-1);
+		return -1;
 	}
-	return (0);
+	return 0;
 }
 
 static sqlite3_stmt *
@@ -138,10 +138,10 @@ table_sqlite_prepare_stmt(sqlite3 *_db, const char *query, int ncols)
 		goto end;
 	}
 
-	return (stmt);
+	return stmt;
     end:
 	sqlite3_finalize(stmt);
-	return (NULL);
+	return NULL;
 }
 
 static int
@@ -186,11 +186,11 @@ table_sqlite_update(void)
 
 	ret = 0;
 
-	/* Parse configuration */
-
-	if ((fp = fopen(config, "r")) == NULL)
-		return (0);
-
+	/* parse configuration */
+	if ((fp = fopen(config, "r")) == NULL) {
+		log_warn("warn: table-sqlite: \"%s\"", config);
+		return 0;
+	}
 	while ((flen = getline(&buf, &sz, fp)) != -1) {
 		if (buf[flen - 1] == '\n')
 			buf[flen - 1] = '\0';
@@ -329,7 +329,7 @@ table_sqlite_update(void)
 
 	free(buf);
 	fclose(fp);
-	return (ret);
+	return ret;
 }
 
 static sqlite3_stmt *
@@ -346,15 +346,15 @@ table_sqlite_query(const char *key, int service)
 		}
 
 	if (stmt == NULL)
-		return (NULL);
+		return NULL;
 
 	if (sqlite3_bind_text(stmt, 1, key, strlen(key), NULL) != SQLITE_OK) {
 		log_warnx("warn: table-sqlite: sqlite3_bind_text: %s",
 		    sqlite3_errmsg(db));
-		return (NULL);
+		return NULL;
 	}
 
-	return (stmt);
+	return stmt;
 }
 
 static int
@@ -365,18 +365,18 @@ table_sqlite_check(int service, struct dict *params, const char *key)
 
 	stmt = table_sqlite_query(key, service);
 	if (stmt == NULL)
-		return (-1);
+		return -1;
 
 	r = sqlite3_step(stmt);
 	sqlite3_reset(stmt);
 
 	if (r == SQLITE_ROW)
-		return (1);
+		return 1;
 
 	if (r == SQLITE_DONE)
-		return (0);
+		return 0;
 
-	return (-1);
+	return -1;
 }
 
 static int
@@ -388,19 +388,19 @@ table_sqlite_lookup(int service, struct dict *params, const char *key, char *dst
 
 	stmt = table_sqlite_query(key, service);
 	if (stmt == NULL)
-		return (-1);
+		return -1;
 
 	s = sqlite3_step(stmt);
 	if (s == SQLITE_DONE) {
 		sqlite3_reset(stmt);
-		return (0);
+		return 0;
 	}
 
 	if (s != SQLITE_ROW) {
 		log_warnx("warn: table-sqlite: sqlite3_step: %s",
 		    sqlite3_errmsg(db));
 		sqlite3_reset(stmt);
-		return (-1);
+		return -1;
 	}
 
 	r = 1;
@@ -461,7 +461,7 @@ table_sqlite_lookup(int service, struct dict *params, const char *key, char *dst
 	}
 
 	sqlite3_reset(stmt);
-	return (r);
+	return r;
 }
 
 static int
@@ -471,10 +471,10 @@ table_sqlite_fetch(int service, struct dict *params, char *dst, size_t sz)
 	int		 s;
 
 	if (service != K_SOURCE)
-		return (-1);
+		return -1;
 
 	if (stmt_fetch_source == NULL)
-		return (-1);
+		return -1;
 
 	if (source_ncall < source_refresh &&
 	    time(NULL) - source_update < source_expire)
@@ -503,11 +503,11 @@ table_sqlite_fetch(int service, struct dict *params, char *dst, size_t sz)
         if (!dict_iter(&sources, &source_iter, &k, (void **)NULL)) {
 		source_iter = NULL;
 		if (!dict_iter(&sources, &source_iter, &k, (void **)NULL))
-			return (0);
+			return 0;
 	}
 
 	if (strlcpy(dst, k, sz) >= sz)
-		return (-1);
+		return -1;
 
-	return (1);
+	return 1;
 }

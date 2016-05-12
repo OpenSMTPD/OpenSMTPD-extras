@@ -81,7 +81,7 @@ main(int argc, char **argv)
 		switch (ch) {
 		default:
 			log_warnx("warn: table-redis: bad option");
-			return (1);
+			return 1;
 			/* NOTREACHED */
 		}
 	}
@@ -90,7 +90,7 @@ main(int argc, char **argv)
 
 	if (argc != 1) {
 		log_warnx("warn: table-redis: bogus argument(s)");
-		return (1);
+		return 1;
 	}
 
 	conffile = argv[0];
@@ -98,11 +98,11 @@ main(int argc, char **argv)
 	config = config_load(conffile);
 	if (config == NULL) {
 		log_warnx("warn: table-redis: error parsing config file");
-		return (1);
+		return 1;
 	}
 	if (config_connect(config) == 0) {
 		log_warnx("warn: table-redis: could not connect");
-		return (1);
+		return 1;
 	}
 
 	table_api_on_update(table_redis_update);
@@ -111,7 +111,7 @@ main(int argc, char **argv)
 	table_api_on_fetch(table_redis_fetch);
 	table_api_dispatch();
 
-	return (0);
+	return 0;
 }
 
 static struct config *
@@ -125,13 +125,13 @@ config_load(const char *path)
 
 	if ((config = calloc(1, sizeof(*config))) == NULL) {
 		log_warn("warn: table-redis: calloc");
-		return (NULL);
+		return NULL;
 	}
 
 	dict_init(&config->conf);
 
 	if ((fp = fopen(path, "r")) == NULL) {
-		log_warn("warn: table-redis: fopen");
+		log_warn("warn: table-redis: \"%s\"", path);
 		goto end;
 	}
 
@@ -176,13 +176,13 @@ config_load(const char *path)
 
 	free(buf);
 	fclose(fp);
-	return (config);
+	return config;
 
 end:
 	free(buf);
 	fclose(fp);
 	config_free(config);
-	return (NULL);
+	return NULL;
 }
 
 static void
@@ -225,7 +225,7 @@ config_connect(struct config *config)
 	char	*slave = "NULL";
 	int	slave_port = 6380;
 	char	*password = NULL;
-	int	database;
+	int	database = 0;
 
 	char	*q;
 
@@ -365,13 +365,13 @@ config_connect(struct config *config)
 
 	log_debug("debug: table-redis: connected");
 
-	return (1);
+	return 1;
 
 end:
 	if (res)
 		freeReplyObject(res);
 	config_reset(config);
-	return (0);
+	return 0;
 }
 
 static void
@@ -393,15 +393,15 @@ table_redis_update(void)
 	struct config	*c;
 
 	if ((c = config_load(conffile)) == NULL)
-		return (0);
+		return 0;
 	if (config_connect(c) == 0) {
 		config_free(c);
-		return (0);
+		return 0;
 	}
 
 	config_free(config);
 	config = c;
-	return (1);
+	return 1;
 }
 
 static redisReply *
@@ -418,7 +418,7 @@ table_redis_query(const char *key, int service)
 	--retry_times;
 	if (retry_times < 0) {
 		log_warnx("warn: table-redis: giving up: too many retries");
-		return (NULL);
+		return NULL;
 	}
 
 	for(i = 0; i < REDIS_MAX; i++)
@@ -428,7 +428,7 @@ table_redis_query(const char *key, int service)
 		}
 
 	if (query == NULL)
-		return (NULL);
+		return NULL;
 
 	if (!config->master->err) {
 		log_debug("debug: table-redis: running query \"%s\" on master", query);
@@ -439,7 +439,7 @@ table_redis_query(const char *key, int service)
 		res = redisCommand(config->slave, query, key);
 	}
 	else
-		return (NULL);
+		return NULL;
 	if (res == NULL) {
 		log_warnx("warn: table-redis: redisCommand: %s",
 		    config->master->errstr);
@@ -447,10 +447,10 @@ table_redis_query(const char *key, int service)
 		if (config_connect(config))
 			goto retry;
 
-		return (NULL);
+		return NULL;
 	}
 
-	return (res);
+	return res;
 }
 
 static int
@@ -460,11 +460,11 @@ table_redis_check(int service, struct dict *params, const char *key)
 	redisReply	*reply;
 
 	if (config->master == NULL && config_connect(config) == 0)
-		return (-1);
+		return -1;
 
 	reply = table_redis_query(key, service);
 	if (reply == NULL)
-		return (-1);
+		return -1;
 
 	r = 0;
 	switch (reply->type) {
@@ -489,7 +489,7 @@ table_redis_check(int service, struct dict *params, const char *key)
 
 	freeReplyObject(reply);
 
-	return (r);
+	return r;
 }
 
 static int
@@ -500,11 +500,11 @@ table_redis_lookup(int service, struct dict *params, const char *key, char *dst,
 	int		r;
 
 	if (config->master == NULL && config_connect(config) == 0)
-		return (-1);
+		return -1;
 
 	reply = table_redis_query(key, service);
 	if (reply == NULL)
-		return (-1);
+		return -1;
 
 	r = 1;
 	switch(service) {
@@ -564,11 +564,11 @@ table_redis_lookup(int service, struct dict *params, const char *key, char *dst,
 
 	log_debug("debug: table_redis: table_redis_lookup return %d (result = \"%s\")", r, dst);
 	freeReplyObject(reply);
-	return (r);
+	return r;
 }
 
 static int
 table_redis_fetch(int service, struct dict *params, char *dst, size_t sz)
 {
-	return (-1);
+	return -1;
 }

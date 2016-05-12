@@ -30,12 +30,12 @@
 #include "log.h"
 #include "iobuf.h"
 
-static const char *clamav_host = "127.0.0.1", *clamav_port = "3310";
-
 struct clamav {
 	int fd, r;
 	struct iobuf iobuf;
 };
+
+static const char *clamav_host = "127.0.0.1", *clamav_port = "3310";
 
 static void
 clamav_init(struct clamav *cl)
