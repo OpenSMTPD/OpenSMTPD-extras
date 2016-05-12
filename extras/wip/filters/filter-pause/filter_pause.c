@@ -18,6 +18,7 @@
 
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "smtpd-defines.h"
@@ -26,17 +27,20 @@
 
 static unsigned int pause_seconds = 5;
 
+static void
+pause_timer(uint64_t id, void *p)
+{
+	filter_api_accept(id);
+}
+
 static int
 pause_on_connect(uint64_t id, struct filter_connect *conn)
 {
-	unsigned int r;
+	struct timeval tv = { pause_seconds, 0 };
 
 	log_debug("debug: on_connect: sleeping %u", pause_seconds);
-
-	if ((r = sleep(pause_seconds)) != 0)
-		log_warnx("warn: on_connect: wakeup %u seconds too early", r);
-
-	return filter_api_accept(id);
+	filter_api_timer(id, &tv, pause_timer, NULL);
+	return 1;
 }
 
 int

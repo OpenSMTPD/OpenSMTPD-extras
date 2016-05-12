@@ -58,7 +58,7 @@ if you require name-resolution.
 .Pp
 The default
 .Ar host
-value is localhost.
+value is 127.0.0.1.
 .It Fl l Ar limit
 Set the number of bytes
 .Ar limit
@@ -73,7 +73,9 @@ value is 0 (unlimited).
 .It Fl p Ar port
 Set the
 .Ar port
-spamassassin is listening on.
+that SpamAssassin's
+.Xr spamd 1
+listens on.
 .Pp
 The default
 .Ar port

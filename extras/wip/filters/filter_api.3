@@ -1,5 +1,5 @@
 .\"
-.\" Copyright (c) 2015 Joerg Jung <jung@openbsd.org>
+.\" Copyright (c) 2015, 2016 Joerg Jung <jung@openbsd.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
@@ -38,6 +38,7 @@
 .Nm filter_api_no_chroot ,
 .Nm filter_api_set_udata ,
 .Nm filter_api_get_udata ,
+.Nm filter_api_timer ,
 .Nm filter_api_sockaddr_to_text ,
 .Nm filter_api_mailaddr_to_text
 .Nd filter API for smtpd
@@ -87,6 +88,9 @@
 .Fn filter_api_set_udata "uint64_t id" "void *data"
 .Ft void *
 .Fn filter_api_get_udata "uint64_t id"
+.Ft void *
+.Fn filter_api_timer "uint64_t id" "struct timeval *tv" \
+    "void (*cb)(uint64_t, void *)" "void *arg"
 .Ft const char *
 .Fn filter_api_sockaddr_to_text "const struct sockaddr *sa"
 .Ft const char *
@@ -236,6 +240,15 @@ can be called to get the user data pointer for the current message with the
 given
 .Fa id
 from within a callback function.
+.Pp
+The function
+.Fn filter_api_timer
+can be called to set up a timeout
+.Fa tv
+after which
+.Fa cb
+is called with the given argument
+.Fa arg .
 .Pp
 The function
 .Fn filter_api_sockaddr_to_text

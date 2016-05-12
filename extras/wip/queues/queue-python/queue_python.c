@@ -68,43 +68,43 @@ dispatch(PyObject *handler, PyObject *args)
 		fatalx("fatal: queue-python: exception");
 	}
 
-	return (ret);
+	return ret;
 }
 
 static int
 get_int(PyObject *o)
 {
 	if (PyLong_Check(o))
-		return (PyLong_AsLong(o));
+		return PyLong_AsLong(o);
 	if (PyInt_Check(o))
-		return (PyInt_AsLong(o));
+		return PyInt_AsLong(o);
 
 	PyErr_SetString(PyExc_TypeError, "int type expected");
-	return (0);
+	return 0;
 }
 
 static size_t
 get_uint32_t(PyObject *o)
 {
         if (PyLong_Check(o))
-                return (PyLong_AsUnsignedLong(o));
+                return PyLong_AsUnsignedLong(o);
         if (PyInt_Check(o))
-                return (PyInt_AsUnsignedLongMask(o));
+                return PyInt_AsUnsignedLongMask(o);
 
         PyErr_SetString(PyExc_TypeError, "int type expected");
-        return (0);
+        return 0;
 }
 
 static size_t
 get_uint64_t(PyObject *o)
 {
         if (PyLong_Check(o))
-                return (PyLong_AsUnsignedLongLong(o));
+                return PyLong_AsUnsignedLongLong(o);
         if (PyInt_Check(o))
-                return (PyInt_AsUnsignedLongLongMask(o));
+                return PyInt_AsUnsignedLongLongMask(o);
 
         PyErr_SetString(PyExc_TypeError, "int type expected");
-        return (0);
+        return 0;
 }
 
 static int
@@ -365,7 +365,7 @@ queue_python_init(int server)
 	queue_api_on_envelope_walk(queue_python_envelope_walk);
 	queue_api_on_message_walk(queue_python_message_walk);
 
-	return (1);
+	return 1;
 }
 
 static PyMethodDef py_methods[] = {
@@ -405,7 +405,7 @@ loadfile(const char * path)
 
 	fclose(f);
 
-	return (buf);
+	return buf;
 }
 
 int
@@ -422,7 +422,7 @@ main(int argc, char **argv)
 		switch (ch) {
 		default:
 			log_warnx("warn: backend-queue-python: bad option");
-			return (1);
+			return 1;
 			/* NOTREACHED */
 		}
 	}
@@ -444,14 +444,14 @@ main(int argc, char **argv)
 	if (code == NULL) {
 		PyErr_Print();
 		log_warnx("warn: queue-python: failed to compile %s", path);
-		return (1);
+		return 1;
 	}
 
 	module = PyImport_ExecCodeModuleEx("queue_python", code, path);
 	if (module == NULL) {
 		PyErr_Print();
 		log_warnx("warn: queue-python: failed to install module %s", path);
-		return (1);
+		return 1;
 	}
 
 	log_debug("debug: queue-python: starting...");
@@ -486,9 +486,9 @@ main(int argc, char **argv)
 	queue_api_no_chroot();
 	queue_api_dispatch();
 
-	return (0);
+	return 0;
 
 nosuchmethod:
 	PyErr_Print();
-	return (1);
+	return 1;
 }
