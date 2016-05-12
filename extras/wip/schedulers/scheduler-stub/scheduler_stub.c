@@ -28,92 +28,92 @@
 static int
 scheduler_stub_init(void)
 {
-	return (1);
+	return 1;
 }
 
 static int
 scheduler_stub_insert(struct scheduler_info *info)
 {
-	return (0);
+	return 0;
 }
 
 static size_t
 scheduler_stub_commit(uint32_t msgid)
 {
-	return (0);
+	return 0;
 }
 
 static size_t
 scheduler_stub_rollback(uint32_t msgid)
 {
-	return (0);
+	return 0;
 }
 
 static int
 scheduler_stub_update(struct scheduler_info *info)
 {
-	return (0);
+	return 0;
 }
 
 static int
 scheduler_stub_delete(uint64_t evpid)
 {
-	return (0);
+	return 0;
 }
 
 static int
 scheduler_stub_hold(uint64_t evpid, uint64_t holdq)
 {
-	return (0);
+	return 0;
 }
 
 static int
 scheduler_stub_release(int type, uint64_t holdq, int count)
 {
-	return (0);
+	return 0;
 }
 
 static int
 scheduler_stub_batch(int mask, int *delay, size_t *count, uint64_t *evpids, int *types)
 {
 	*delay = -1;
-	return (0);
+	return 0;
 }
 
 static size_t
 scheduler_stub_messages(uint32_t msgid, uint32_t *dst, size_t sz)
 {
-	return (0);
+	return 0;
 }
 
 static size_t
 scheduler_stub_envelopes(uint64_t evpid, struct evpstate *dst, size_t sz)
 {
-	return (0);
+	return 0;
 }
 
 static int
 scheduler_stub_schedule(uint64_t evpid)
 {
-	return (0);
+	return 0;
 }
 
 static int
 scheduler_stub_remove(uint64_t evpid)
 {
-	return (0);
+	return 0;
 }
 
 static int
 scheduler_stub_suspend(uint64_t evpid)
 {
-	return (0);
+	return 0;
 }
 
 static int
 scheduler_stub_resume(uint64_t evpid)
 {
-	return (0);
+	return 0;
 }
 
 int
@@ -152,5 +152,5 @@ main(int argc, char **argv)
 
 	scheduler_api_dispatch();
 
-	return (0);
+	return 0;
 }

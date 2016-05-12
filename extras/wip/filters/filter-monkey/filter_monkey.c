@@ -47,12 +47,6 @@ struct ruleset {
 	struct tq_rules	rules;
 };
 
-struct deferred {
-	struct event	 ev;
-	const char	*cmd;
-	uint64_t	 id;
-};
-
 struct dict rulesets;
 
 static int
@@ -92,19 +86,15 @@ monkey(uint64_t id, const char *cmd)
 }
 
 static void
-monkey_cb(int fd, short evt, void *arg)
+monkey_timer(uint64_t id, void *p)
 {
-	struct deferred *d = arg;
-
-	(void)monkey(d->id, d->cmd);
-	free(d);
+	(void)monkey(id, (const char *)p);
 }
 
 static int
-defer_monkey(uint64_t id, const char *cmd)
+monkey_defer(uint64_t id, const char *cmd)
 {
 	struct ruleset	*ruleset;
-	struct deferred	*d;
 	struct timeval tv;
 	uint32_t delay;
 
@@ -115,50 +105,47 @@ defer_monkey(uint64_t id, const char *cmd)
 	delay = arc4random_uniform(ruleset->delay_max - ruleset->delay_min);
 	delay += ruleset->delay_min;
 
-	d = xcalloc(1, sizeof(*d), "deferred_monkey");
-	d->id = id;
-	d->cmd = cmd;
-	evtimer_set(&d->ev, monkey_cb, d);
 	tv.tv_sec = delay  / 1000;
 	tv.tv_usec = (delay % 1000) * 1000;
-	evtimer_add(&d->ev, &tv);
+
+	filter_api_timer(id, &tv, monkey_timer, (void *)cmd);
 	return 0;
 }
 
 static int
 on_connect(uint64_t id, struct filter_connect *conn)
 {
-	return defer_monkey(id, "connect");
+	return monkey_defer(id, "connect");
 }
 
 static int
 on_helo(uint64_t id, const char *helo)
 {
-	return defer_monkey(id, "helo");
+	return monkey_defer(id, "helo");
 }
 
 static int
 on_mail(uint64_t id, struct mailaddr *mail)
 {
-	return defer_monkey(id, "mail");
+	return monkey_defer(id, "mail");
 }
 
 static int
 on_rcpt(uint64_t id, struct mailaddr *rcpt)
 {
-	return defer_monkey(id, "rcpt");
+	return monkey_defer(id, "rcpt");
 }
 
 static int
 on_data(uint64_t id)
 {
-	return defer_monkey(id, "data");
+	return monkey_defer(id, "data");
 }
 
 static int
 on_eom(uint64_t id, size_t size)
 {
-	return defer_monkey(id, "eom");
+	return monkey_defer(id, "eom");
 }
 
 static void

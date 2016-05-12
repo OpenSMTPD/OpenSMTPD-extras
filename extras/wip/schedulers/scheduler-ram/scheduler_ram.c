@@ -153,7 +153,7 @@ duration_to_text(time_t t)
 
 	if (t == 0) {
 		(void)strlcpy(dst, "0s", sizeof dst);
-		return (dst);
+		return dst;
 	}
 
 	dst[0] = '\0';
@@ -186,7 +186,7 @@ duration_to_text(time_t t)
 		(void)strlcat(dst, buf, sizeof dst);
 	}
 
-	return (dst);
+	return dst;
 }
 
 #define BACKOFF_TRANSFER	400
@@ -208,7 +208,7 @@ scheduler_next(time_t t0, time_t base, uint32_t step)
 	while ((t = scheduler_backoff(t0, base, step)) <= currtime)
 		step++;
 
-	return (t);
+	return t;
 }
 
 static int
@@ -220,7 +220,7 @@ scheduler_ram_init(void)
 	tree_init(&holdqs[D_MTA]);
 	tree_init(&holdqs[D_BOUNCE]);
 
-	return (1);
+	return 1;
 }
 
 static int
@@ -271,7 +271,7 @@ scheduler_ram_insert(struct scheduler_info *si)
 
 	si->nexttry = envelope->sched;
 
-	return (1);
+	return 1;
 }
 
 static size_t
@@ -298,7 +298,7 @@ scheduler_ram_commit(uint32_t msgid)
 	free(update);
 	stat_decrement("scheduler.ramqueue.update", 1);
 
-	return (r);
+	return r;
 }
 
 static size_t
@@ -311,7 +311,7 @@ scheduler_ram_rollback(uint32_t msgid)
 	currtime = time(NULL);
 
 	if ((update = tree_pop(&updates, msgid)) == NULL)
-		return (0);
+		return 0;
 	r = update->evpcount;
 
 	while ((evp = TAILQ_FIRST(&update->q_pending))) {
@@ -322,7 +322,7 @@ scheduler_ram_rollback(uint32_t msgid)
 	free(update);
 	stat_decrement("scheduler.ramqueue.update", 1);
 
-	return (r);
+	return r;
 }
 
 static int
@@ -352,7 +352,7 @@ scheduler_ram_update(struct scheduler_info *si)
 		TAILQ_INSERT_TAIL(&ramqueue.q_removed, evp, entry);
 		evp->state = RQ_EVPSTATE_SCHEDULED;
 		evp->t_scheduled = currtime;
-		return (1);
+		return 1;
 	}
 
 	evp->sched = scheduler_next(evp->ctime,
@@ -364,7 +364,7 @@ scheduler_ram_update(struct scheduler_info *si)
 
 	si->nexttry = evp->sched;
 
-	return (1);
+	return 1;
 }
 
 static int
@@ -388,7 +388,7 @@ scheduler_ram_delete(uint64_t evpid)
 
 	rq_envelope_delete(&ramqueue, evp);
 
-	return (1);
+	return 1;
 }
 
 #define HOLDQ_MAXSIZE	1000
@@ -416,7 +416,7 @@ scheduler_ram_hold(uint64_t evpid, uint64_t holdq)
 	/* If the envelope is suspended, just mark it as pending */
 	if (evp->flags & RQ_ENVELOPE_SUSPEND) {
 		evp->state = RQ_EVPSTATE_PENDING;
-		return (0);
+		return 0;
 	}
 
 	hq = tree_get(&holdqs[evp->type], holdq);
@@ -434,7 +434,7 @@ scheduler_ram_hold(uint64_t evpid, uint64_t holdq)
 		evp->flags |= RQ_ENVELOPE_OVERFLOW;
 		sorted_insert(&ramqueue, evp);
 		stat_increment("scheduler.ramqueue.hold-overflow", 1);
-		return (0);
+		return 0;
 	}
 
 	evp->state = RQ_EVPSTATE_HELD;
@@ -449,7 +449,7 @@ scheduler_ram_hold(uint64_t evpid, uint64_t holdq)
 	hq->count += 1;
 	stat_increment("scheduler.ramqueue.hold", 1);
 
-	return (1);
+	return 1;
 }
 
 static int
@@ -463,7 +463,7 @@ scheduler_ram_release(int type, uint64_t holdq, int n)
 
 	hq = tree_get(&holdqs[type], holdq);
 	if (hq == NULL)
-		return (0);
+		return 0;
 
 	if (n == -1) {
 		n = 0;
@@ -498,7 +498,7 @@ scheduler_ram_release(int type, uint64_t holdq, int n)
 	}
 	stat_decrement("scheduler.ramqueue.hold", i);
 
-	return (i);
+	return i;
 }
 
 static int
@@ -609,7 +609,7 @@ scheduler_ram_batch(int mask, int *delay, size_t *count, uint64_t *evpids, int *
 
 	if (i) {
 		*count = i;
-		return (1);
+		return 1;
 	}
 
 	if ((evp = TAILQ_FIRST(&ramqueue.q_pending))) {
@@ -622,7 +622,7 @@ scheduler_ram_batch(int mask, int *delay, size_t *count, uint64_t *evpids, int *
 	else
 		*delay = -1;
 
-	return (0);
+	return 0;
 }
 
 static size_t
@@ -638,7 +638,7 @@ scheduler_ram_messages(uint32_t from, uint32_t *dst, size_t size)
 		dst[n] = id;
 	}
 
-	return (n);
+	return n;
 }
 
 static size_t
@@ -650,7 +650,7 @@ scheduler_ram_envelopes(uint64_t from, struct evpstate *dst, size_t size)
 	size_t			 n;
 
 	if ((msg = tree_get(&ramqueue.messages, evpid_to_msgid(from))) == NULL)
-		return (0);
+		return 0;
 
 	for (n = 0, i = NULL; n < size; ) {
 
@@ -690,7 +690,7 @@ scheduler_ram_envelopes(uint64_t from, struct evpstate *dst, size_t size)
 		n++;
 	}
 
-	return (n);
+	return n;
 }
 
 static int
@@ -707,18 +707,18 @@ scheduler_ram_schedule(uint64_t evpid)
 	if (evpid > 0xffffffff) {
 		msgid = evpid_to_msgid(evpid);
 		if ((msg = tree_get(&ramqueue.messages, msgid)) == NULL)
-			return (0);
+			return 0;
 		if ((evp = tree_get(&msg->envelopes, evpid)) == NULL)
-			return (0);
+			return 0;
 		if (evp->state == RQ_EVPSTATE_INFLIGHT)
-			return (0);
+			return 0;
 		rq_envelope_schedule(&ramqueue, evp);
-		return (1);
+		return 1;
 	}
 	else {
 		msgid = evpid;
 		if ((msg = tree_get(&ramqueue.messages, msgid)) == NULL)
-			return (0);
+			return 0;
 		i = NULL;
 		r = 0;
 		while (tree_iter(&msg->envelopes, &i, NULL, (void*)(&evp))) {
@@ -727,7 +727,7 @@ scheduler_ram_schedule(uint64_t evpid)
 			rq_envelope_schedule(&ramqueue, evp);
 			r++;
 		}
-		return (r);
+		return r;
 	}
 }
 
@@ -745,23 +745,23 @@ scheduler_ram_remove(uint64_t evpid)
 	if (evpid > 0xffffffff) {
 		msgid = evpid_to_msgid(evpid);
 		if ((msg = tree_get(&ramqueue.messages, msgid)) == NULL)
-			return (0);
+			return 0;
 		if ((evp = tree_get(&msg->envelopes, evpid)) == NULL)
-			return (0);
+			return 0;
 		if (rq_envelope_remove(&ramqueue, evp))
-			return (1);
-		return (0);
+			return 1;
+		return 0;
 	}
 	else {
 		msgid = evpid;
 		if ((msg = tree_get(&ramqueue.messages, msgid)) == NULL)
-			return (0);
+			return 0;
 		i = NULL;
 		r = 0;
 		while (tree_iter(&msg->envelopes, &i, NULL, (void*)(&evp)))
 			if (rq_envelope_remove(&ramqueue, evp))
 				r++;
-		return (r);
+		return r;
 	}
 }
 
@@ -779,23 +779,23 @@ scheduler_ram_suspend(uint64_t evpid)
 	if (evpid > 0xffffffff) {
 		msgid = evpid_to_msgid(evpid);
 		if ((msg = tree_get(&ramqueue.messages, msgid)) == NULL)
-			return (0);
+			return 0;
 		if ((evp = tree_get(&msg->envelopes, evpid)) == NULL)
-			return (0);
+			return 0;
 		if (rq_envelope_suspend(&ramqueue, evp))
-			return (1);
-		return (0);
+			return 1;
+		return 0;
 	}
 	else {
 		msgid = evpid;
 		if ((msg = tree_get(&ramqueue.messages, msgid)) == NULL)
-			return (0);
+			return 0;
 		i = NULL;
 		r = 0;
 		while (tree_iter(&msg->envelopes, &i, NULL, (void*)(&evp)))
 			if (rq_envelope_suspend(&ramqueue, evp))
 				r++;
-		return (r);
+		return r;
 	}
 }
 
@@ -813,23 +813,23 @@ scheduler_ram_resume(uint64_t evpid)
 	if (evpid > 0xffffffff) {
 		msgid = evpid_to_msgid(evpid);
 		if ((msg = tree_get(&ramqueue.messages, msgid)) == NULL)
-			return (0);
+			return 0;
 		if ((evp = tree_get(&msg->envelopes, evpid)) == NULL)
-			return (0);
+			return 0;
 		if (rq_envelope_resume(&ramqueue, evp))
-			return (1);
-		return (0);
+			return 1;
+		return 0;
 	}
 	else {
 		msgid = evpid;
 		if ((msg = tree_get(&ramqueue.messages, msgid)) == NULL)
-			return (0);
+			return 0;
 		i = NULL;
 		r = 0;
 		while (tree_iter(&msg->envelopes, &i, NULL, (void*)(&evp)))
 			if (rq_envelope_resume(&ramqueue, evp))
 				r++;
-		return (r);
+		return r;
 	}
 }
 
@@ -955,11 +955,11 @@ rq_envelope_list(struct rq_queue *rq, struct rq_envelope *evp)
 		return &rq->q_inflight;
 
 	case RQ_EVPSTATE_HELD:
-		return (NULL);
+		return NULL;
 	}
 
 	errx(1, "%016" PRIx64 " bad state %d", evp->evpid, evp->state);
-	return (NULL);
+	return NULL;
 }
 
 static void
@@ -1011,13 +1011,13 @@ rq_envelope_remove(struct rq_queue *rq, struct rq_envelope *evp)
 	struct evplist	*evl;
 
 	if (evp->flags & (RQ_ENVELOPE_REMOVED | RQ_ENVELOPE_EXPIRED))
-		return (0);
+		return 0;
 	/*
 	 * If envelope is inflight, mark it envelope for removal.
 	 */
 	if (evp->state == RQ_EVPSTATE_INFLIGHT) {
 		evp->flags |= RQ_ENVELOPE_REMOVED;
-		return (1);
+		return 1;
 	}
 
 	if (evp->state == RQ_EVPSTATE_HELD) {
@@ -1043,7 +1043,7 @@ rq_envelope_remove(struct rq_queue *rq, struct rq_envelope *evp)
 	evp->flags |= RQ_ENVELOPE_REMOVED;
 	evp->t_scheduled = currtime;
 
-	return (1);
+	return 1;
 }
 
 static int
@@ -1053,7 +1053,7 @@ rq_envelope_suspend(struct rq_queue *rq, struct rq_envelope *evp)
 	struct evplist	*evl;
 
 	if (evp->flags & RQ_ENVELOPE_SUSPEND)
-		return (0);
+		return 0;
 
 	if (evp->state == RQ_EVPSTATE_HELD) {
 		hq = tree_xget(&holdqs[evp->type], evp->holdq);
@@ -1076,7 +1076,7 @@ rq_envelope_suspend(struct rq_queue *rq, struct rq_envelope *evp)
 
 	evp->flags |= RQ_ENVELOPE_SUSPEND;
 
-	return (1);
+	return 1;
 }
 
 static int
@@ -1085,7 +1085,7 @@ rq_envelope_resume(struct rq_queue *rq, struct rq_envelope *evp)
 	struct evplist	*evl;
 
 	if (!(evp->flags & RQ_ENVELOPE_SUSPEND))
-		return (0);
+		return 0;
 
 	if (evp->state != RQ_EVPSTATE_INFLIGHT) {
 		evl = rq_envelope_list(rq, evp);
@@ -1097,7 +1097,7 @@ rq_envelope_resume(struct rq_queue *rq, struct rq_envelope *evp)
 
 	evp->flags &= ~RQ_ENVELOPE_SUSPEND;
 
-	return (1);
+	return 1;
 }
 
 static void
@@ -1172,7 +1172,7 @@ rq_envelope_to_text(struct rq_envelope *e)
 
 	(void)strlcat(buf, "]", sizeof buf);
 
-	return (buf);
+	return buf;
 }
 
 static void
@@ -1252,5 +1252,5 @@ main(int argc, char **argv)
 
 	scheduler_api_dispatch();
 
-	return (0);
+	return 0;
 }

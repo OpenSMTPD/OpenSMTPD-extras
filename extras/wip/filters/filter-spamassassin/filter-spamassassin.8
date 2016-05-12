@@ -21,7 +21,7 @@
 .Nd smtpd filter for SpamAssassin spamd
 .Sh SYNOPSIS
 .Nm
-.Op Fl dv
+.Op Fl cdv
 .Op Fl h Ar host
 .Op Fl l Ar limit
 .Op Fl p Ar port
@@ -38,20 +38,27 @@ according to its own configuration.
 .Pp
 The options are as follows:
 .Bl -tag -width "-s strategy"
+.It Fl c
+No chroot(), if this option is specififed,
+.Nm
+will not run chroot-ed allowing name resolution of the
+.Ar host
+parameter.
 .It Fl d
 Debug mode, if this option is specified,
 .Nm
 will run in the foreground and log to
 .Em stderr .
 .It Fl h Ar host
-Set the
+Set the spamassassin
 .Ar host
-that runs spamassassin's 
-.Xr spamd 1 .
+to be used. Use an IP-address or set
+.Ar -c
+if you require name-resolution.
 .Pp
 The default
 .Ar host
-value is localhost.
+value is 127.0.0.1.
 .It Fl l Ar limit
 Set the number of bytes
 .Ar limit
@@ -66,13 +73,17 @@ value is 0 (unlimited).
 .It Fl p Ar port
 Set the
 .Ar port
-that spamassassin's
+<<<<<<< HEAD
+spamassassin is listening on.
+=======
+that SpamAssassin's
 .Xr spamd 1
 listens on.
+>>>>>>> 165c0ebe8729ac1d49f4751d5d62f836239e8978
 .Pp
 The default
 .Ar port
-value is 783.
+is 783.
 .It Fl s Ar strategy
 Set the
 .Ar strategy

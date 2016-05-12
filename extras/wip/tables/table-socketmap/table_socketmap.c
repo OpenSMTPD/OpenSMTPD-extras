@@ -66,7 +66,7 @@ main(int argc, char **argv)
 		switch (ch) {
 		default:
 			log_warnx("warn: table-socketmap: bad option");
-			return (1);
+			return 1;
 			/* NOTREACHED */
 		}
 	}
@@ -75,14 +75,14 @@ main(int argc, char **argv)
 
 	if (argc != 1) {
 		log_warnx("warn: table-socketmap: bogus argument(s)");
-		return (1);
+		return 1;
 	}
 
 	config = argv[0];
 
 	if (table_socketmap_connect(config) == 0) {
 		log_warnx("warn: table-socketmap: error connecting to %s", config);
-		return (1);
+		return 1;
 	}
 
 	table_api_on_update(table_socketmap_update);
@@ -91,7 +91,7 @@ main(int argc, char **argv)
 	table_api_on_fetch(table_socketmap_fetch);
 	table_api_dispatch();
 
-	return (0);
+	return 0;
 }
 
 static int
@@ -200,7 +200,7 @@ table_socketmap_update(void)
 static int
 table_socketmap_check(int service, struct dict *params, const char *key)
 {
-	return (-1);
+	return -1;
 }
 
 static int
@@ -237,11 +237,11 @@ table_socketmap_lookup(int service, struct dict *params, const char *key, char *
 		r = -1;
 	}
 
-	return (r);
+	return r;
 }
 
 static int
 table_socketmap_fetch(int service, struct dict *params, char *key, size_t sz)
 {
-	return (-1);
+	return -1;
 }

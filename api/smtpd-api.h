@@ -385,6 +385,7 @@ int filter_api_reject(uint64_t, enum filter_status);
 int filter_api_reject_code(uint64_t, enum filter_status, uint32_t,
     const char *);
 void filter_api_writeln(uint64_t, const char *);
+void filter_api_timer(uint64_t, struct timeval *, void (*)(uint64_t, void *), void *);
 const char *filter_api_sockaddr_to_text(const struct sockaddr *);
 const char *filter_api_mailaddr_to_text(const struct mailaddr *);
 
