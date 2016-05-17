@@ -321,14 +321,20 @@ spamassassin_on_rollback(uint64_t id)
 int
 main(int argc, char **argv)
 {
-	int ch, d = 0, v = 0;
+	int ch, C = 0, d = 0, v = 0;
 	const char *errstr, *l = NULL;
-	char *h = NULL, *p = NULL, *s = NULL;
+	char *c = NULL, *h = NULL, *p = NULL, *s = NULL;
 
 	log_init(1);
 
 	while ((ch = getopt(argc, argv, "dh:l:p:s:v")) != -1) {
 		switch (ch) {
+		case 'C':
+			C = 1;
+			break;
+		case 'c':
+			c = optarg;
+			break;
 		case 'd':
 			d = 1;
 			break;
@@ -356,6 +362,8 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	if (c)
+		c = strip(c);
 	if (h)
 		spamassassin_host = strip(h);
 	if (p)
@@ -386,6 +394,10 @@ main(int argc, char **argv)
 	filter_api_on_reset(spamassassin_on_reset);
 	filter_api_on_disconnect(spamassassin_on_disconnect);
 	filter_api_on_rollback(spamassassin_on_rollback);
+	if (c)
+		filter_api_set_chroot(c);
+	if (C)
+		filter_api_no_chroot();
 
 	filter_api_loop();
 	log_debug("debug: exiting");

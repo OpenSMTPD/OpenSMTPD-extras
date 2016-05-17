@@ -1,5 +1,5 @@
 .\"
-.\" Copyright (c) 2015 Joerg Jung <jung@openbsd.org>
+.\" Copyright (c) 2015, 2016 Joerg Jung <jung@openbsd.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
@@ -13,7 +13,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: May 15 2015 $
+.Dd $Mdocdate: May 16 2016 $
 .Dt FILTER-PAUSE 8
 .Os
 .Sh NAME
@@ -52,6 +52,9 @@ value is 5s.
 .It Fl v
 Produce more verbose output.
 .El
+.Pp
+.Nm
+runs by default in a chroot.
 .Pp
 The debug and verbose options given with the
 .Xr smtpd 8

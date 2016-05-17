@@ -1,5 +1,5 @@
 .\"
-.\" Copyright (c) 2015 Joerg Jung <jung@openbsd.org>
+.\" Copyright (c) 2015, 2016 Joerg Jung <jung@openbsd.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
@@ -13,7 +13,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: May 15 2015 $
+.Dd $Mdocdate: May 16 2016 $
 .Dt FILTER-CLAMAV 8
 .Os
 .Sh NAME
@@ -21,7 +21,8 @@
 .Nd smtpd filter for Clam AntiVirus clamd
 .Sh SYNOPSIS
 .Nm
-.Op Fl dv
+.Op Fl Cdv
+.Op Fl c Ar path
 .Op Fl h Ar host
 .Op Fl p Ar port
 .Sh DESCRIPTION
@@ -34,7 +35,22 @@ daemon.
 Mails are piped to the daemon, which scans the mail for viruses.
 .Pp
 The options are as follows:
-.Bl -tag -width "-d"
+.Bl -tag -width "-c path"
+.It Fl C
+No
+.Xr chroot 2
+mode, if this option is specified,
+.Nm
+will not run in a chroot.
+.It Fl c Ar path
+Set the chroot
+.Ar path .
+.Pp
+The default
+.Ar path
+is
+.Pa /var/empty
+(compile option).
 .It Fl d
 Debug mode, if this option is specified,
 .Nm
@@ -60,6 +76,9 @@ is 3310.
 Produce more verbose output.
 .El
 .Pp
+.Nm
+runs by default in a chroot.
+.Pp
 The debug and verbose options given with the
 .Xr smtpd 8
 invocation are intially passed to
@@ -74,11 +93,12 @@ Non-virus mails are accepted.
 By default
 .Nm
 expects Clam AntiVirus'
-.Xr clamd 1
+.Xr clamd 8
 to listen on 127.0.0.1 port 3310 for incoming requests.
 This requires to uncomment the TCPAddr and TCPSocket option in the default
 configuration of the daemon.
 .Sh SEE ALSO
+.Xr chroot 2 ,
 .Xr filter_api 3 ,
 .Xr smtpd.conf 5 ,
 .Xr clamd 8 ,

@@ -13,7 +13,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: April 09 2016 $
+.Dd $Mdocdate: May 16 2016 $
 .Dt FILTER-DNSBL 8
 .Os
 .Sh NAME
@@ -21,7 +21,8 @@
 .Nd smtpd filter for DNSBL checks
 .Sh SYNOPSIS
 .Nm
-.Op Fl dv
+.Op Fl Cdv
+.Op Fl c Ar path
 .Op Fl h Ar host
 .Op Fl w Ar host
 .Sh DESCRIPTION
@@ -32,7 +33,22 @@ which can be used to check new connections against a
 DNS-based Blackhole List (DNSBL) and optional a DNS-based Whitelist (DNSWL).
 .Pp
 The options are as follows:
-.Bl -tag -width "-h host"
+.Bl -tag -width "-c path"
+.It Fl C
+No
+.Xr chroot 2
+mode, if this option is specified,
+.Nm
+will not run in a chroot.
+.It Fl c Ar path
+Set the chroot
+.Ar path .
+.Pp
+The default
+.Ar path
+is
+.Pa /var/empty
+(compile option).
 .It Fl d
 Debug mode, if this option is specified,
 .Nm
@@ -57,6 +73,12 @@ The default is to not query a DNSWL
 .Ar host .
 .El
 .Pp
+.Nm
+runs by default in a chroot.
+In order to make DNS queries working, a valid
+.Pa resolv.conf
+is required within the chroot.
+.Pp
 The debug and verbose options given with the
 .Xr smtpd 8
 invocation are intially passed to
@@ -69,6 +91,7 @@ otherwise accepted.
 If the optional DNSWL host is given, it is queried first and if the remote
 address is listed the connection is accepted (without checking the DNSBL).
 .Sh SEE ALSO
+.Xr chroot 2 ,
 .Xr filter_api 3 ,
 .Xr smtpd.conf 5 ,
 .Xr smtpd 8

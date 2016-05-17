@@ -130,13 +130,19 @@ dnsbl_on_connect(uint64_t id, struct filter_connect *conn)
 int
 main(int argc, char **argv)
 {
-	int ch, d = 0, v = 0;
-	char *h = NULL, *w = NULL;
+	int ch, C = 0, d = 0, v = 0;
+	char *c = NULL, *h = NULL, *w = NULL;
 
 	log_init(1);
 
-	while ((ch = getopt(argc, argv, "dh:vw:")) != -1) {
+	while ((ch = getopt(argc, argv, "Cc:dh:vw:")) != -1) {
 		switch (ch) {
+		case 'C':
+			C = 1;
+			break;
+		case 'c':
+			c = optarg;
+			break;
 		case 'd':
 			d = 1;
 			break;
@@ -158,6 +164,8 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	if (c)
+		c = strip(c);
 	if (h)
 		dnsbl_host = strip(h);
 	if (w)
@@ -169,9 +177,12 @@ main(int argc, char **argv)
 	log_debug("debug: starting...");
 
 	filter_api_on_connect(dnsbl_on_connect);
-	filter_api_no_chroot(); /* getaddrinfo requires resolv.conf */
-	filter_api_loop();
+	if (c)
+		filter_api_set_chroot(c); /* getaddrinfo requires resolv.conf */
+	if (C)
+		filter_api_no_chroot();
 
+	filter_api_loop();
 	log_debug("debug: exiting");
 
 	return 1;

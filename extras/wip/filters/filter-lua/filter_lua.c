@@ -330,12 +330,15 @@ int
 main(int argc, char **argv)
 {
 	int ch, d = 0, v = 0;
-	char *path;
+	char *c = NULL, *path;
 
 	log_init(1);
 
-	while ((ch = getopt(argc, argv, "dv")) != -1) {
+	while ((ch = getopt(argc, argv, "c:dv")) != -1) {
 		switch (ch) {
+		case 'c':
+			c = optarg;
+			break;
 		case 'd':
 			d = 1;
 			break;
@@ -350,9 +353,11 @@ main(int argc, char **argv)
 	}
 	argc -= optind;
 	argv += optind;
-
 	if (argc == 0)
 		errx(1, "missing path");
+
+	if (c)
+		c = strip(c);
 	path = argv[0];
 
 	log_init(d);
@@ -445,8 +450,10 @@ main(int argc, char **argv)
 	}
 
 	filter_api_no_chroot();
-	filter_api_loop();
+	if (c)
+		filter_api_set_chroot(c);
 
+	filter_api_loop();
 	log_debug("debug: exiting");
 
 	return 0;
