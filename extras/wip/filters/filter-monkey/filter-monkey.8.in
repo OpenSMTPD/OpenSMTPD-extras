@@ -52,8 +52,8 @@ invocation are intially passed to
 Depending on the configuration lines, mails are randomly delayed or rejected
 with an optionally given SMTP reply.
 .Sh FILES
-.Bl -tag -width "/etc/mail/filter-monkey.conf" -compact
-.It Pa /etc/mail/filter-monkey.conf
+.Bl -tag -width "@SYSCONFDIR@/filter-monkey.conf" -compact
+.It Pa @SYSCONFDIR@/filter-monkey.conf
 Default
 .Nm
 configuration file.

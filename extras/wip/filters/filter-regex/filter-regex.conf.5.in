@@ -101,8 +101,8 @@ for a detailed description of basic and extended regular expressions.
 The default filter-regex.conf file which ships with OpenSMTPD-extras contains
 commented examples.
 .Sh FILES
-.Bl -tag -width "/etc/mail/filter-regex.conf" -compact
-.It Pa /etc/mail/filter-regex.conf
+.Bl -tag -width "@SYSCONFDIR@/filter-regex.conf" -compact
+.It Pa @SYSCONFDIR@/filter-regex.conf
 Default
 .Xr filter-regex 8
 configuration file.

@@ -64,8 +64,8 @@ Depending if one of the regular expressions matches mails are either accepted
 or rejected with a SMTP 554 reply.
 Non-matching mails are always accepted.
 .Sh FILES
-.Bl -tag -width "/etc/mail/filter-regex.conf" -compact
-.It Pa /etc/mail/filter-regex.conf
+.Bl -tag -width "@SYSCONFDIR@/filter-regex.conf" -compact
+.It Pa @SYSCONFDIR@/filter-regex.conf
 Default
 .Nm
 configuration file.

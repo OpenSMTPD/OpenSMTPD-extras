@@ -29,7 +29,7 @@
 #include "smtpd-api.h"
 #include "log.h"
 
-#define MONKEY_CONF "/etc/mail/filter-monkey.conf"
+#define MONKEY_CONF SMTPD_CONFDIR "/filter-monkey.conf"
 
 struct rule {
 	uint32_t            limit;

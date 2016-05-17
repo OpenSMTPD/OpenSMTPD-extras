@@ -33,7 +33,7 @@
 #include "smtpd-api.h"
 #include "log.h"
 
-#define REGEX_CONF "/etc/mail/filter-regex.conf"
+#define REGEX_CONF SMTPD_CONFDIR "/filter-regex.conf"
 
 struct regex {
 	SIMPLEQ_ENTRY(regex) el;

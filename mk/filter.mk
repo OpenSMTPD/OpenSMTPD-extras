@@ -1,6 +1,7 @@
 AM_CPPFLAGS	 = -I$(api_srcdir)
 AM_CPPFLAGS	+= -I$(compat_srcdir)
 AM_CPPFLAGS	+= -I$(asr_srcdir)
+AM_CPPFLAGS	+= $(PATHS)
 
 SRCS	=  $(api_srcdir)/filter_api.c
 SRCS	+= $(api_srcdir)/mproc.c
