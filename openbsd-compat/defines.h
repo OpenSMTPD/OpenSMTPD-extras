@@ -202,4 +202,9 @@ typedef uint16_t	in_port_t;
 # endif
 #endif
 
+/* EAI_NODATA is obsolete and may not be defined */
+#ifndef EAI_NODATA
+#define EAI_NODATA EAI_NONAME
+#endif
+
 #endif /* _DEFINES_H */
