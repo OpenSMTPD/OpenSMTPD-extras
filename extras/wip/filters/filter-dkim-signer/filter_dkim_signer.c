@@ -266,16 +266,22 @@ on_disconnect(uint64_t id)
 int
 main(int argc, char **argv)
 {
-	int ch, d = 0, v = 0;
+	int ch, C = 0, d = 0, v = 0;
 	const char *p = PRIVATE_KEY;
-	char *D = NULL, *s = NULL;
+	char *c = NULL, *D = NULL, *s = NULL;
 	FILE *fp;
 	static char hostname[SMTPD_MAXHOSTNAMELEN];
 
 	log_init(1);
 
-	while ((ch = getopt(argc, argv, "D:dp:s:v")) != -1) {
+	while ((ch = getopt(argc, argv, "Cc:D:dp:s:v")) != -1) {
 		switch (ch) {
+		case 'C':
+			C = 1;
+			break;
+		case 'c':
+			c = optarg;
+			break;
 		case 'D':
 			D = optarg;
 			break;
@@ -300,6 +306,8 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	if (c)
+		c = strip(c);
 	if (D)
 		domain = strip(D);
 	if (s)
@@ -328,6 +336,10 @@ main(int argc, char **argv)
 	filter_api_on_eom(on_eom);
 	filter_api_on_reset(on_reset);
 	filter_api_on_rollback(on_rollback);
+	if (c)
+		filter_api_set_chroot(c);
+	if (C)
+		filter_api_no_chroot();
 
 	filter_api_loop();
 	log_debug("debug: exiting");
