@@ -441,8 +441,10 @@ main(int argc, char **argv)
 
 	if (argc) {
 		for (; *argv; ++argv) {
-			if (!(f = fopen(*argv, "r")))
+			if (!(f = fopen(*argv, "r"))) {
+				stats_clear(s);
 				err(1, "fopen");
+			}
 			stats_read(s, f);
 			fclose(f);
 		}
