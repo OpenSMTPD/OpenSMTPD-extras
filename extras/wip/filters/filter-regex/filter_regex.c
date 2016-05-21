@@ -23,9 +23,9 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <ctype.h>
-#include <limits.h>
 #include <regex.h>
 #include <unistd.h>
 
@@ -283,7 +283,7 @@ main(int argc, char **argv)
 		fatalx("bogus argument(s)");
 
 	if (l) {
-		regex_limit = strtonum(l, 1, SIZE_T_MAX, &errstr);
+		regex_limit = strtonum(l, 1, SIZE_MAX, &errstr);
 		if (errstr)
 			fatalx("limit option is %s: %s", errstr, l);
 	}

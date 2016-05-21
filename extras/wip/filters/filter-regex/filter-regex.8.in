@@ -43,7 +43,7 @@ Set the number of bytes
 .Ar limit
 after which the regular expression processing is stopped and the mail is
 accepted.
-The accepted values are within the range of 1 and SIZE_T_MAX.
+The accepted values are within the range of 1 and SIZE_MAX.
 .Pp
 The default
 .Ar limit

@@ -87,12 +87,8 @@
 # define ULLONG_MAX ((unsigned long long)-1)
 #endif
 
-#ifndef SIZE_T_MAX
-#define SIZE_T_MAX ULONG_MAX
-#endif /* SIZE_T_MAX */
-
 #ifndef SIZE_MAX
-#define SIZE_MAX SIZE_T_MAX
+#define SIZE_MAX ((size_t)-1)
 #endif
 
 #if !defined(HAVE_SS_FAMILY_IN_SS) && defined(HAVE___SS_FAMILY_IN_SS)
