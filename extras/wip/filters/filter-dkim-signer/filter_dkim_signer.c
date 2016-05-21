@@ -342,7 +342,14 @@ main(int argc, char **argv)
 	if (C)
 		filter_api_no_chroot();
 
-	/* initialize PRNG before chrooting */
+	/* XXX */
+	/*
+	 * OpenSSL will not be able to seed PRNG after chroot which will
+	 * lead to runtime failures if we don't seed PRNG pre-chroot. We
+	 * shouldn't have to do that, LibreSSL does not suffer from this
+	 * shortcoming but luckily provides RAND_status() as a no-op for
+	 * ABI compat...
+	 */
 	RAND_status();
 
 	filter_api_loop();
