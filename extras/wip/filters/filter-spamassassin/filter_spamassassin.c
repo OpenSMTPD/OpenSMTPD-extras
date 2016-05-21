@@ -19,6 +19,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
@@ -369,7 +370,7 @@ main(int argc, char **argv)
 	if (p)
 		spamassassin_port = strip(p);
 	if (l) {
-		spamassassin_limit = strtonum(l, 1, SIZE_T_MAX, &errstr);
+		spamassassin_limit = strtonum(l, 1, SIZE_MAX, &errstr);
 		if (errstr)
 			fatalx("limit option is %s: %s", errstr, l);
 	}
