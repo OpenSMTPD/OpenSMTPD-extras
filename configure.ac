@@ -541,8 +541,8 @@ AC_RUN_IFELSE(
 # Search for OpenSSL
 saved_CPPFLAGS="$CPPFLAGS"
 saved_LDFLAGS="$LDFLAGS"
-AC_ARG_WITH([ssl-dir],
-	[  --with-ssl-dir=PATH     Specify path to OpenSSL installation ],
+AC_ARG_WITH([libssl],
+	[  --with-libssl=PATH     Specify path to libssl installation ],
 	[
 		if test "x$withval" != "xno" ; then
 			case "$withval" in
@@ -630,8 +630,8 @@ AC_LINK_IFELSE(
 
 
 SMTPD_USER=_smtpd
-AC_ARG_WITH([privsep-user],
-	[  --with-privsep-user=user Specify non-privileged user for privilege separation],
+AC_ARG_WITH([user-smtpd],
+	[  --with-user-smtpd=user Specify non-privileged user for privilege separation (default=_smtpd)],
 	[
 		if test -n "$withval"  &&  test "x$withval" != "xno"  &&  \
 		    test "x${withval}" != "xyes"; then
@@ -921,8 +921,8 @@ fi
 # Looking for programs, paths and files
 
 PRIVSEP_PATH=/var/empty
-AC_ARG_WITH([privsep-path],
-	[  --with-privsep-path=xxx Path for privilege separation chroot (default=/var/empty)],
+AC_ARG_WITH([path-empty],
+	[  --with-path-empty=PATH  Specify path to empty directory (default=/var/empty)],
 	[
 		if test -n "$withval"  &&  test "x$withval" != "xno"  &&  \
 		    test "x${withval}" != "xyes"; then
@@ -1607,8 +1607,8 @@ AC_SUBST([REDIS_LDFLAGS])
 # Search for libevent
 saved_CPPFLAGS="$CPPFLAGS"
 saved_LDFLAGS="$LDFLAGS"
-AC_ARG_WITH([libevent-dir],
-	[  --with-libevent-dir=PATH     Specify path to libevent installation ],
+AC_ARG_WITH([libevent],
+	[  --with-libevent=PATH     Specify path to libevent installation ],
 	[
 		if test "x$withval" != "xno" ; then
 			case "$withval" in
