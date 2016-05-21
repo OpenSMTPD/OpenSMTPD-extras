@@ -23,6 +23,7 @@
 #include <unistd.h>
 
 #include <openssl/pem.h>
+#include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 
@@ -340,6 +341,9 @@ main(int argc, char **argv)
 		filter_api_set_chroot(c);
 	if (C)
 		filter_api_no_chroot();
+
+	/* initialize PRNG before chrooting */
+	RAND_status();
 
 	filter_api_loop();
 	log_debug("debug: exiting");
