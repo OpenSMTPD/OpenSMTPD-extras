@@ -326,7 +326,11 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 		fdout = imsg->fd;
 		fdin = -1;
 
-		if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, fds) == -1) {
+		if (fdout == -1) {
+			log_warnx("warn: %016"PRIx64" failed to receive pipe",
+			    id);
+		}
+		else if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, fds) == -1) {
 			log_warn("warn: filter-api:%s socketpair", filter_name);
 			close(fdout);
 		}
