@@ -186,27 +186,30 @@ body) content of the current message.
 The function
 .Fn filter_api_on_eom
 is called on the end (of DATA command) of the current message.
-The callback might be used to clean up data structures and finalize the decision
-of accepting or rejecting the message.
+The callback might be used to finalize the decision of accepting or rejecting
+the message.
 .Pp
 The function
 .Fn filter_api_on_reset
 is called whenever the RSET command has been issued in a session.
+The callback might be used to reset the current filter state.
 .Pp
 The function
 .Fn filter_api_on_disconnect
 is called on closed SMTP connections.
-The callback might be used to clean up earlier setup data structures.
+The callback might be used to reset the current filter state.
 .Pp
 The function
 .Fn filter_api_on_commit
 is called on commit of the current message.
-.\"The callback might be used to trigger further operations.
+The callback might be used to clean up earlier setup data structures.
 .Pp
 The function
 .Fn filter_api_on_rollback
-is called on SMTP RSET command or rollback of the SMTP session.
-The callback might be used to reset the current filter state.
+is called on rollback of the SMTP session, after the SMTP RSET and before
+disconnect.
+The callback might be used to clean up earlier setup data structures and to
+rollback the current filter state.
 .Sh HELPER FUNCTIONS
 The function
 .Fn filter_api_setugid
