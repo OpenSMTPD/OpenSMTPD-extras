@@ -439,6 +439,8 @@ filter_dispatch_data(uint64_t id)
 static void
 filter_dispatch_reset(uint64_t id)
 {
+	if (fi.cb.reset)
+		fi.cb.reset(id);
 	filter_dispatch_rollback(id);
 }
 
