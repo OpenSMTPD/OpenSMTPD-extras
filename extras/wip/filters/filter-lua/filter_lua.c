@@ -456,5 +456,5 @@ main(int argc, char **argv)
 	filter_api_loop();
 	log_debug("debug: exiting");
 
-	return 0;
+	return 1;
 }
