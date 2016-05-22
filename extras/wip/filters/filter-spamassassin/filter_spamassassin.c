@@ -275,7 +275,6 @@ static int
 spamassassin_on_eom(uint64_t id, size_t size)
 {
 	struct spamassassin *sa;
-	int r;
 
 	if ((sa = filter_api_get_udata(id)) == NULL)
 		return filter_api_accept(id);
@@ -284,10 +283,7 @@ spamassassin_on_eom(uint64_t id, size_t size)
 		filter_api_set_udata(id, NULL);
 		return filter_api_reject_code(id, FILTER_FAIL, 451, "4.7.1 Spam filter failed");
 	}
-	r = sa->r;
-	spamassassin_clear(sa);
-	filter_api_set_udata(id, NULL);
-	if (r) {
+	if (sa->r) {
 		if (spamassassin_strategy == SPAMASSASSIN_ACCEPT) {
 			log_warnx("warn: session %016"PRIx64": on_eom: ACCEPT spam", id);
 			return filter_api_accept(id);
@@ -301,14 +297,7 @@ spamassassin_on_eom(uint64_t id, size_t size)
 }
 
 static void
-spamassassin_on_reset(uint64_t id)
-{
-	spamassassin_clear(filter_api_get_udata(id));
-	filter_api_set_udata(id, NULL);
-}
-
-static void
-spamassassin_on_disconnect(uint64_t id)
+spamassassin_on_commit(uint64_t id)
 {
 	spamassassin_clear(filter_api_get_udata(id));
 	filter_api_set_udata(id, NULL);
@@ -394,8 +383,7 @@ main(int argc, char **argv)
 	filter_api_on_data(spamassassin_on_data);
 	filter_api_on_dataline(spamassassin_on_dataline);
 	filter_api_on_eom(spamassassin_on_eom);
-	filter_api_on_reset(spamassassin_on_reset);
-	filter_api_on_disconnect(spamassassin_on_disconnect);
+	filter_api_on_commit(spamassassin_on_commit);
 	filter_api_on_rollback(spamassassin_on_rollback);
 	if (c)
 		filter_api_set_chroot(c);

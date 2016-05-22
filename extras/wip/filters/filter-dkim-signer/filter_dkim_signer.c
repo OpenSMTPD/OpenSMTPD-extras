@@ -64,9 +64,8 @@ static void	 cleanup(struct signer *);
 static int	 add_hdr_line(struct signer *, const char *);
 static int	 on_data(uint64_t);
 static void	 on_dataline(uint64_t, const char *);
-static void	 on_disconnect(uint64_t);
 static int	 on_eom(uint64_t, size_t);
-static void	 on_reset(uint64_t);
+static void	 on_commit(uint64_t);
 static void	 on_rollback(uint64_t);
 
 static RSA		*rsa;
@@ -232,13 +231,11 @@ on_eom(uint64_t id, size_t size)
 	free(dkim_header);
 	free(dkim_sig);
 	free(rsa_sig);
-	cleanup(s);
-	filter_api_set_udata(id, NULL);
 	return filter_api_accept(id);
 }
 
 static void
-on_reset(uint64_t id)
+on_commit(uint64_t id)
 {
 	struct signer 	*s;
 
@@ -248,15 +245,6 @@ on_reset(uint64_t id)
 
 static void
 on_rollback(uint64_t id)
-{
-	struct signer 	*s;
-
-	if ((s = filter_api_get_udata(id)) != NULL)
-		cleanup(s);
-}
-
-static void
-on_disconnect(uint64_t id)
 {
 	struct signer 	*s;
 
@@ -333,9 +321,8 @@ main(int argc, char **argv)
 
 	filter_api_on_data(on_data);
 	filter_api_on_dataline(on_dataline);
-	filter_api_on_disconnect(on_disconnect);
 	filter_api_on_eom(on_eom);
-	filter_api_on_reset(on_reset);
+	filter_api_on_commit(on_commit);
 	filter_api_on_rollback(on_rollback);
 	if (c)
 		filter_api_set_chroot(c);

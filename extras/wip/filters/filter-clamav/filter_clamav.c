@@ -217,7 +217,6 @@ static int
 clamav_on_eom(uint64_t id, size_t size)
 {
 	struct clamav *cl;
-	int r;
 
 	if ((cl = filter_api_get_udata(id)) == NULL)
 		return filter_api_accept(id);
@@ -226,10 +225,7 @@ clamav_on_eom(uint64_t id, size_t size)
 		filter_api_set_udata(id, NULL);
 		return filter_api_reject_code(id, FILTER_FAIL, 451, "4.7.1 Virus filter failed");
 	}
-	r = cl->r;
-	clamav_clear(cl);
-	filter_api_set_udata(id, NULL);
-	if (r) {
+	if (cl->r) {
 		log_warnx("warn: session %016"PRIx64": on_eom: REJECT virus", id);
 		return filter_api_reject_code(id, FILTER_CLOSE, 554, "5.7.1 Virus found");
 	}
@@ -237,14 +233,7 @@ clamav_on_eom(uint64_t id, size_t size)
 }
 
 static void
-clamav_on_reset(uint64_t id)
-{
-	clamav_clear(filter_api_get_udata(id));
-	filter_api_set_udata(id, NULL);
-}
-
-static void
-clamav_on_disconnect(uint64_t id)
+clamav_on_commit(uint64_t id)
 {
 	clamav_clear(filter_api_get_udata(id));
 	filter_api_set_udata(id, NULL);
@@ -309,8 +298,7 @@ main(int argc, char **argv)
 	filter_api_on_data(clamav_on_data);
 	filter_api_on_dataline(clamav_on_dataline);
 	filter_api_on_eom(clamav_on_eom);
-	filter_api_on_reset(clamav_on_reset);
-	filter_api_on_disconnect(clamav_on_disconnect);
+	filter_api_on_commit(clamav_on_commit);
 	filter_api_on_rollback(clamav_on_rollback);
 	if (c)
 		filter_api_set_chroot(c);

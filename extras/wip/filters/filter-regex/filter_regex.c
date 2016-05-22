@@ -219,12 +219,11 @@ regex_on_dataline(uint64_t id, const char *l)
 static int
 regex_on_eom(uint64_t id, size_t size)
 {
-	int r, *m;
+	int *m;
 
 	if ((m = filter_api_get_udata(id)) == NULL)
 		return filter_api_accept(id);
-	r = *m, free(m), filter_api_set_udata(id, NULL);
-	if (r) {
+	if (*m) {
 		log_warnx("warn: session %016"PRIx64": on_eom: REJECT dataline", id);
 		return filter_api_reject_code(id, FILTER_CLOSE, 554, "5.7.1 Message content rejected");
 	}
@@ -232,14 +231,7 @@ regex_on_eom(uint64_t id, size_t size)
 }
 
 static void
-regex_on_reset(uint64_t id)
-{
-	free(filter_api_get_udata(id));
-	filter_api_set_udata(id, NULL);
-}
-
-static void
-regex_on_disconnect(uint64_t id)
+regex_on_commit(uint64_t id)
 {
 	free(filter_api_get_udata(id));
 	filter_api_set_udata(id, NULL);
@@ -301,8 +293,7 @@ main(int argc, char **argv)
 	filter_api_on_rcpt(regex_on_rcpt);
 	filter_api_on_dataline(regex_on_dataline);
 	filter_api_on_eom(regex_on_eom);
-	filter_api_on_reset(regex_on_reset);
-	filter_api_on_disconnect(regex_on_disconnect);
+	filter_api_on_commit(regex_on_commit);
 	filter_api_on_rollback(regex_on_rollback);
 
 	filter_api_loop();
