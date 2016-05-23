@@ -13,7 +13,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: May 22 2016 $
+.Dd $Mdocdate: May 23 2016 $
 .Dt FILTER_API 3
 .Os
 .Sh NAME
@@ -152,6 +152,7 @@ The function
 is called on new SMTP connections.
 The callback can be used to accept or reject messages based on the given
 connection information.
+Moreover, this might be used to set up a filter session state.
 .Pp
 The function
 .Fn filter_api_on_helo
@@ -174,8 +175,8 @@ TO address.
 The function
 .Fn filter_api_on_data
 is called on SMTP DATA command.
-The callback might be used to set up data structures for filtering the upcoming
-DATA lines.
+The callback might be used to set up message state data structures for
+filtering the upcoming DATA lines.
 .Pp
 The function
 .Fn filter_api_on_dataline
@@ -192,24 +193,31 @@ the message.
 The function
 .Fn filter_api_on_reset
 is called whenever the RSET command has been issued in a session.
-The callback might be used to reset the current filter state.
+The callback implictly calls the
+.Fn filter_api_on_rollback
+callback.
 .Pp
 The function
 .Fn filter_api_on_disconnect
 is called on closed SMTP connections.
-The callback might be used to reset the current filter state.
+The callback might be used to clean up earlier setup filter session state data
+structures.
+Moreover, the callback implictly calls the
+.Fn filter_api_on_rollback
+callback.
 .Pp
 The function
 .Fn filter_api_on_commit
 is called on commit of the current message.
-The callback might be used to clean up earlier setup data structures.
+The callback might be used to clean up earlier setup message state data
+structures.
 .Pp
 The function
 .Fn filter_api_on_rollback
 is called on rollback of the SMTP session, after the SMTP RSET and before
 disconnect.
-The callback might be used to clean up earlier setup data structures and to
-rollback the current filter state.
+The callback might be used to clean up earlier setup message state data
+structures and to rollback the current filter message state.
 .Sh HELPER FUNCTIONS
 The function
 .Fn filter_api_setugid
