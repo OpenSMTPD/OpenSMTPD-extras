@@ -31,22 +31,22 @@
 #include "smtpd-api.h"
 #include "log.h"
 
-#define CRLF		"\r\n"
-#define CRLF_LEN	2
-#define PRIVATE_KEY	"/etc/ssl/private/rsa.private"
-#define TEMPLATE	"DKIM-Signature: v=1; a=rsa-sha256; "	\
-			"c=simple/simple; d=%s; "		\
-			"h=%s; "				\
-			"s=%s; "				\
-			"bh=%s; "				\
-			"b="
+#define DKIM_SIGNER_CRLF "\r\n"
+#define DKIM_SIGNER_CRLF_LEN 2
+#define DKIM_SIGNER_PRIVATE_KEY	"/etc/ssl/private/rsa.private"
+#define DKIM_SIGNER_TEMPLATE	"DKIM-Signature: v=1; a=rsa-sha256; "	\
+				"c=simple/simple; d=%s; "		\
+				"h=%s; "				\
+				"s=%s; "				\
+				"bh=%s; "				\
+				"b="
 
 struct entry {
 	SIMPLEQ_ENTRY(entry)	 entries;
 	char			*line;
 };
 
-struct signer {
+struct dkim_signer {
 	SIMPLEQ_HEAD(, entry)	 lines;
 	SHA256_CTX		 hdr_ctx;
 	SHA256_CTX		 body_ctx;
@@ -60,62 +60,16 @@ struct signer {
 	size_t			 emptylines;
 };
 
-static void	 cleanup(struct signer *);
-static int	 add_hdr_line(struct signer *, const char *);
-static int	 on_data(uint64_t);
-static void	 on_dataline(uint64_t, const char *);
-static int	 on_eom(uint64_t, size_t);
-static void	 on_commit(uint64_t);
-static void	 on_rollback(uint64_t);
-
-static RSA		*rsa;
-static const char	*domain;
-static const char	*selector = "default";
-
-static void
-cleanup(struct signer *s)
-{
-	struct entry	*n;
-
-	while (!SIMPLEQ_EMPTY(&s->lines)) {
-		n = SIMPLEQ_FIRST(&s->lines);
-		SIMPLEQ_REMOVE_HEAD(&s->lines, entries);
-		free(n->line);
-		free(n);
-	}
-
-	free(s);
-}
+static RSA *dkim_signer_rsa;
+static const char *dkim_signer_domain, *dkim_signer_selector = "default";
 
 static int
-on_data(uint64_t id)
+dkim_signer_add_hdr_line(struct dkim_signer *s, const char *line)
 {
-	struct signer	*s;
-
-	s = xmalloc(sizeof *s, "dkim_signer: on_data");
-	SIMPLEQ_INIT(&s->lines);
-	SHA256_Init(&s->hdr_ctx);
-	SHA256_Init(&s->body_ctx);
-	s->ctx = &s->hdr_ctx;
-	s->nlines = 0;
-	s->emptylines = 0;
-	s->hdrs_list[0] = '\0';
-
-	filter_api_set_udata(id, s);
-	return filter_api_accept(id);
-}
-
-static int
-add_hdr_line(struct signer *s, const char *line)
-{
-	size_t		i;
-	const char	*want_hdrs[] = {
-	    "from:",
-	    "to:",
-	    "subject:",
-	    "date:",
-	    "message-id:"
-	    };
+	const char *want_hdrs[] = {
+	    "from:", "to:", "subject:", "date:", "message-id:"
+	};
+	size_t i;
 
 	for (i = 0; i < nitems(want_hdrs); i++) {
 		if (strncasecmp(want_hdrs[i], line, strlen(want_hdrs[i])))
@@ -132,12 +86,46 @@ add_hdr_line(struct signer *s, const char *line)
 }
 
 static void
-on_dataline(uint64_t id, const char *line)
+dkim_signer_clear(struct dkim_signer *s)
 {
-	struct signer	*s;
-	struct entry	*n;
+	struct entry *n;
 
-	s = filter_api_get_udata(id);
+	if (s == NULL)
+		return;
+	while (!SIMPLEQ_EMPTY(&s->lines)) {
+		n = SIMPLEQ_FIRST(&s->lines);
+		SIMPLEQ_REMOVE_HEAD(&s->lines, entries);
+		free(n->line);
+		free(n);
+	}
+	free(s);
+}
+
+static int
+dkim_signer_on_data(uint64_t id)
+{
+	struct dkim_signer *s = xmalloc(sizeof *s, "dkim_signer: on_data");
+
+	SIMPLEQ_INIT(&s->lines);
+	SHA256_Init(&s->hdr_ctx);
+	SHA256_Init(&s->body_ctx);
+	s->ctx = &s->hdr_ctx;
+	s->nlines = 0;
+	s->emptylines = 0;
+	s->hdrs_list[0] = '\0';
+
+	filter_api_set_udata(id, s);
+	return filter_api_accept(id);
+}
+
+static void
+dkim_signer_on_dataline(uint64_t id, const char *line)
+{
+	struct dkim_signer *s;
+	struct entry *n;
+
+	if ((s = filter_api_get_udata(id)) == NULL)
+		return;
 	n = xmalloc(sizeof *n, "dkim_signer: on_dataline");
 	n->line = xstrdup(line, "dkim_signer: on_dataline");
 	SIMPLEQ_INSERT_TAIL(&s->lines, n, entries);
@@ -149,7 +137,7 @@ on_dataline(uint64_t id, const char *line)
 	}
 
 	if (s->ctx == &s->hdr_ctx) {
-		if (add_hdr_line(s, line) == 0)
+		if (dkim_signer_add_hdr_line(s, line) == 0)
 			return; /* skip unwanted headers */
 	} else {
 		s->nlines += 1;
@@ -162,7 +150,7 @@ on_dataline(uint64_t id, const char *line)
 			return;
 		} else {
 			while (s->emptylines--)
-				SHA256_Update(s->ctx, CRLF, CRLF_LEN);
+				SHA256_Update(s->ctx, DKIM_SIGNER_CRLF, DKIM_SIGNER_CRLF_LEN);
 
 			s->emptylines = 0;
 		}
@@ -170,55 +158,59 @@ on_dataline(uint64_t id, const char *line)
 
 	SHA256_Update(s->ctx, line, strlen(line));
 	/* explicitly terminate with a CRLF */
-	SHA256_Update(s->ctx, CRLF, CRLF_LEN);
+	SHA256_Update(s->ctx, DKIM_SIGNER_CRLF, DKIM_SIGNER_CRLF_LEN);
 }
 
 static int
-on_eom(uint64_t id, size_t size)
+dkim_signer_on_eom(uint64_t id, size_t size)
 {
-	struct signer	*s;
-	struct entry	*n;
-	char		*dkim_header, *dkim_sig, *rsa_sig;
-	int		 dkim_sig_len, rsa_sig_len;
+	struct dkim_signer *s;
+	struct entry *n;
+	char *dkim_header = NULL, *dkim_sig = NULL, *rsa_sig = NULL;
+	int dkim_sig_len, rsa_sig_len, r = 0;
 
-	s = filter_api_get_udata(id);
+	if ((s = filter_api_get_udata(id)) == NULL) {
+		log_warnx("warn: on_eom: get_udata failed");
+		goto done;
+	}
 	/* empty body should be treated as a single CRLF */
 	if (s->nlines == 0)
-		SHA256_Update(&s->body_ctx, CRLF, CRLF_LEN);
+		SHA256_Update(&s->body_ctx, DKIM_SIGNER_CRLF, DKIM_SIGNER_CRLF_LEN);
 
 	SHA256_Final(s->body_hash, &s->body_ctx);
 	if (base64_encode(s->body_hash, sizeof(s->body_hash),
 	    s->b64_body_hash, sizeof(s->b64_body_hash)) == -1) {
 		log_warnx("warn: on_eom: __b64_ntop failed");
-		return filter_api_reject(id, FILTER_FAIL);
+		goto done;
 	}
 
 	/* trim trailing colon in the hdrs_list */
 	s->hdrs_list[strlen(s->hdrs_list) - 1] = '\0';
 
-	if ((dkim_sig_len = asprintf(&dkim_sig, TEMPLATE, domain, s->hdrs_list,
-	    selector, s->b64_body_hash)) == -1) {
+	if ((dkim_sig_len = asprintf(&dkim_sig, DKIM_SIGNER_TEMPLATE,
+	    dkim_signer_domain, s->hdrs_list, dkim_signer_selector,
+	    s->b64_body_hash)) == -1) {
 		log_warn("warn: on_eom: asprintf failed");
-		return filter_api_reject(id, FILTER_FAIL);
+		goto done;
 	}
 
 	SHA256_Update(&s->hdr_ctx, dkim_sig, dkim_sig_len);
 	SHA256_Final(s->hdr_hash, &s->hdr_ctx);
 
-	rsa_sig = xmalloc(RSA_size(rsa), "dkim_signer: on_eom");
+	rsa_sig = xmalloc(RSA_size(dkim_signer_rsa), "dkim_signer: on_eom");
 	if (RSA_sign(NID_sha256, s->hdr_hash, sizeof(s->hdr_hash),
-	    rsa_sig, &rsa_sig_len, rsa) == 0)
+	    rsa_sig, &rsa_sig_len, dkim_signer_rsa) == 0)
 		fatalx("dkim_signer: on_eom: RSA_sign");
 
 	if (base64_encode(rsa_sig, rsa_sig_len, s->b64_rsa_sig,
 	    sizeof(s->b64_rsa_sig)) == -1) {
 		log_warnx("warn: on_eom: __b64_ntop failed");
-		return filter_api_reject(id, FILTER_FAIL);
+		goto done;
 	}
 
 	if (asprintf(&dkim_header, "%s%s", dkim_sig, s->b64_rsa_sig) == -1) {
 		log_warn("warn: on_eom: asprintf failed");
-		return filter_api_reject(id, FILTER_FAIL);
+		goto done;
 	}
 
 	/* prepend dkim header to the mail */
@@ -227,36 +219,33 @@ on_eom(uint64_t id, size_t size)
 	/* write out message */
 	SIMPLEQ_FOREACH(n, &s->lines, entries)
 		filter_api_writeln(id, n->line);
-
+	r = 1;
+done:
 	free(dkim_header);
 	free(dkim_sig);
 	free(rsa_sig);
-	return filter_api_accept(id);
+	return r ? filter_api_accept(id) : filter_api_reject(id, FILTER_FAIL);
 }
 
 static void
-on_commit(uint64_t id)
+dkim_signer_on_commit(uint64_t id)
 {
-	struct signer 	*s;
-
-	if ((s = filter_api_get_udata(id)) != NULL)
-		cleanup(s);
+	dkim_signer_clear(filter_api_get_udata(id));
+	filter_api_set_udata(id, NULL);
 }
 
 static void
-on_rollback(uint64_t id)
+dkim_signer_on_rollback(uint64_t id)
 {
-	struct signer 	*s;
-
-	if ((s = filter_api_get_udata(id)) != NULL)
-		cleanup(s);
+	dkim_signer_clear(filter_api_get_udata(id));
+	filter_api_set_udata(id, NULL);
 }
 
 int
 main(int argc, char **argv)
 {
 	int ch, C = 0, d = 0, v = 0;
-	const char *p = PRIVATE_KEY;
+	const char *p = DKIM_SIGNER_PRIVATE_KEY;
 	char *c = NULL, *D = NULL, *s = NULL;
 	FILE *fp;
 	static char hostname[SMTPD_MAXHOSTNAMELEN];
@@ -298,9 +287,9 @@ main(int argc, char **argv)
 	if (c)
 		c = strip(c);
 	if (D)
-		domain = strip(D);
+		dkim_signer_domain = strip(D);
 	if (s)
-		selector = strip(s);
+		dkim_signer_selector = strip(s);
 
 	log_init(d);
 	log_verbose(v);
@@ -309,21 +298,21 @@ main(int argc, char **argv)
 	OpenSSL_add_all_algorithms();
 	OpenSSL_add_all_ciphers();
 	OpenSSL_add_all_digests();
-	if (domain == NULL) {
+	if (dkim_signer_domain == NULL) {
 		if (gethostname(hostname, sizeof(hostname)) == -1)
-			fatal("main: gethostname");
-		domain = hostname;
+			fatal("gethostname");
+		dkim_signer_domain = hostname;
 	}
 	if ((fp = fopen(p, "r")) == NULL)
-		fatal("main: fopen %s", p);
-	if ((rsa = PEM_read_RSAPrivateKey(fp, NULL, NULL, NULL)) == NULL)
-		fatalx("dkim_signer: PEM_read_RSAPrivateKey");
+		fatal("fopen %s", p);
+	if ((dkim_signer_rsa = PEM_read_RSAPrivateKey(fp, NULL, NULL, NULL)) == NULL)
+		fatalx("PEM_read_RSAPrivateKey");
 
-	filter_api_on_data(on_data);
-	filter_api_on_dataline(on_dataline);
-	filter_api_on_eom(on_eom);
-	filter_api_on_commit(on_commit);
-	filter_api_on_rollback(on_rollback);
+	filter_api_on_data(dkim_signer_on_data);
+	filter_api_on_dataline(dkim_signer_on_dataline);
+	filter_api_on_eom(dkim_signer_on_eom);
+	filter_api_on_commit(dkim_signer_on_commit);
+	filter_api_on_rollback(dkim_signer_on_rollback);
 	if (c)
 		filter_api_set_chroot(c);
 	if (C)
