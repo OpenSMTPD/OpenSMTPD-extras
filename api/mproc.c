@@ -180,11 +180,10 @@ mproc_dispatch(int fd, short event, void *arg)
 		if ((n = imsg_read(&p->imsgbuf)) == -1) {
 			log_warn("warn: %s -> %s: imsg_read",
 			    proc_name(smtpd_process),  p->name);
-			if (errno == EAGAIN)
-				return;
-			fatal("exiting");
+			if (errno != EAGAIN)
+				fatal("exiting");
 		}
-		if (n == 0) {
+		else if (n == 0) {
 			/* this pipe is dead, so remove the event handler */
 			if (smtpd_process != PROC_CONTROL ||
 			    p->proc != PROC_CLIENT)
@@ -193,7 +192,8 @@ mproc_dispatch(int fd, short event, void *arg)
 			p->handler(p, NULL);
 			return;
 		}
-		p->bytes_in += n;
+		else
+			p->bytes_in += n;
 	}
 
 	if (event & EV_WRITE) {
