@@ -1,3 +1,5 @@
+/*	$OpenBSD: util.c,v 1.127 2016/05/16 17:43:18 gilles Exp $	*/
+
 /*
  * Copyright (c) 2000,2001 Markus Friedl.  All rights reserved.
  * Copyright (c) 2008 Gilles Chehade <gilles@poolp.org>
@@ -69,11 +71,41 @@ xstrdup(const char *str, const char *where)
 	return (r);
 }
 
+void *
+xmemdup(const void *ptr, size_t size, const char *where)
+{
+	void	*r;
+
+	if ((r = malloc(size)) == NULL) {
+		log_warnx("%s: malloc(%zu)", where, size);
+		fatalx("exiting");
+	}
+	memmove(r, ptr, size);
+
+	return (r);
+}
+
 void
 iobuf_xinit(struct iobuf *io, size_t size, size_t max, const char *where)
 {
 	if (iobuf_init(io, size, max) == -1) {
 		log_warnx("%s: iobuf_init(%p, %zu, %zu)", where, io, size, max);
+		fatalx("exiting");
+	}
+}
+
+void
+iobuf_xfqueue(struct iobuf *io, const char *where, const char *fmt, ...)
+{
+	va_list	ap;
+	int	len;
+
+	va_start(ap, fmt);
+	len = iobuf_vfqueue(io, fmt, ap);
+	va_end(ap);
+
+	if (len == -1) {
+		log_warnx("%s: iobuf_xfqueue(%p, %s, ...)", where, io, fmt);
 		fatalx("exiting");
 	}
 }
@@ -107,4 +139,3 @@ base64_decode(char const *src, unsigned char *dest, size_t destsize)
 {
 	return __b64_pton(src, dest, destsize);
 }
-

@@ -524,7 +524,9 @@ struct iobuf; /* forward declaration */
 void	*xmalloc(size_t, const char *);
 void	*xcalloc(size_t, size_t, const char *);
 char	*xstrdup(const char *, const char *);
+void	*xmemdup(const void *, size_t, const char *);
 void	 iobuf_xinit(struct iobuf *, size_t, size_t, const char *);
+void	 iobuf_xfqueue(struct iobuf *, const char *, const char *, ...);
 char	*strip(char *);
 int	 base64_encode(unsigned char const *, size_t, char *, size_t);
 int	 base64_decode(char const *, unsigned char *, size_t);
