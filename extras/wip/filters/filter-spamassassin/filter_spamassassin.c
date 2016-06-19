@@ -51,32 +51,33 @@ static size_t spamassassin_limit;
 static enum { SPAMASSASSIN_ACCEPT, SPAMASSASSIN_REJECT } spamassassin_strategy;
 
 static void
-spamassassin_resolve(const char *h, const char *p)
+spamassassin_clear(struct spamassassin *sa)
 {
-	struct addrinfo hints, *addresses, *ai;
-	int fd, r;
+	if (sa == NULL)
+		return;
+	io_clear(&sa->io);
+	iobuf_clear(&sa->iobuf);
+	free(sa);
+}
 
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = PF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
-	if ((r = getaddrinfo(h, p, &hints, &addresses)))
-		fatalx("resolve: getaddrinfo %s", gai_strerror(r));
-	for (ai = addresses; ai; ai = ai->ai_next) {
-		if ((fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)) == -1)
-			continue;
-		if (connect(fd, ai->ai_addr, ai->ai_addrlen) == -1) {
-			close(fd);
-			continue;
-		}
-		write(fd, "PING SPAMC/1.5\r\n", 16); /* avoid warning in log */
-		close(fd);
-		memmove(&spamassassin_ss, ai->ai_addr, ai->ai_addrlen);
-		break;
+static int
+spamassassin_result(struct spamassassin *sa)
+{
+	if (sa->r == INT_MIN) {
+		log_warnx("warn: result: failed");
+		return -1;
 	}
-	freeaddrinfo(addresses);
-	if (!ai)
-		fatalx("resolve: failed");
+	if (sa->r) {
+		if (spamassassin_strategy == SPAMASSASSIN_ACCEPT) {
+			log_warnx("warn: session %016"PRIx64": result: ACCEPT spam", sa->id);
+			filter_api_accept(sa->id);
+		}
+		if (spamassassin_strategy == SPAMASSASSIN_REJECT) {
+			log_warnx("warn: session %016"PRIx64": result: REJECT spam", sa->id);
+			filter_api_reject_code(sa->id, FILTER_CLOSE, 554, "5.7.1 Message considered spam");
+		}
+	}
+	return filter_api_accept(sa->id);
 }
 
 #define SPAMASSASSIN_EXPAND(tok) #tok
@@ -139,36 +140,6 @@ spamassassin_response(struct spamassassin *sa, const char *l)
 	return 0;
 }
 
-static int
-spamassassin_result(struct spamassassin *sa)
-{
-	if (sa->r == INT_MIN) {
-		log_warnx("warn: result: failed");
-		return -1;
-	}
-	if (sa->r) {
-		if (spamassassin_strategy == SPAMASSASSIN_ACCEPT) {
-			log_warnx("warn: session %016"PRIx64": result: ACCEPT spam", sa->id);
-			filter_api_accept(sa->id);
-		}
-		if (spamassassin_strategy == SPAMASSASSIN_REJECT) {
-			log_warnx("warn: session %016"PRIx64": result: REJECT spam", sa->id);
-			filter_api_reject_code(sa->id, FILTER_CLOSE, 554, "5.7.1 Message considered spam");
-		}
-	}
-	return filter_api_accept(sa->id);
-}
-
-static void
-spamassassin_clear(struct spamassassin *sa)
-{
-	if (sa == NULL)
-		return;
-	io_clear(&sa->io);
-	iobuf_clear(&sa->iobuf);
-	free(sa);
-}
-
 static void
 spamassassin_io(struct io *io, int evt)
 {
@@ -178,7 +149,6 @@ spamassassin_io(struct io *io, int evt)
 	switch (evt) {
 	case IO_CONNECTED:
 		io_set_write(io);
-		iobuf_xfqueue(&sa->iobuf, "io", "PROCESS SPAMC/1.5\r\n\r\n"); /* spamd.raw source: content length header is optional */
 		break;
 	case IO_LOWAT:
 		if (sa->s == SA_EOM) {
@@ -210,9 +180,8 @@ spamassassin_io(struct io *io, int evt)
 			if (spamassassin_result(sa) == -1)
 				goto fail;
 			io_clear(io);
-			break;	
-		}
-		/* FALLTHROUGH */
+			break;
+		} /* FALLTHROUGH */
 	case IO_TIMEOUT:
 	case IO_ERROR:
 		log_warnx("warn: io: %s %s", io_strevent(evt), sa->io.error);
@@ -247,6 +216,9 @@ spamassassin_on_data(uint64_t id)
 		spamassassin_clear(sa);
 		return filter_api_accept(id);
 	}
+	iobuf_xfqueue(&sa->iobuf, "io", "PROCESS SPAMC/1.5\r\n\r\n"); /* spamd.raw source: content length header is optional */
+	if (spamassassin_limit)
+		io_pause(&sa->io, IO_PAUSE_OUT); /* pause io until eom or limit is reached */
 	filter_api_set_udata(id, sa);
 	return filter_api_accept(id);
 }
@@ -255,6 +227,7 @@ static void
 spamassassin_on_dataline(uint64_t id, const char *l)
 {
 	struct spamassassin *sa;
+	struct ioqbuf *q;
 
 	if ((sa = filter_api_get_udata(id)) == NULL) {
 		filter_api_writeln(id, l);
@@ -262,14 +235,17 @@ spamassassin_on_dataline(uint64_t id, const char *l)
 	}
 	sa->l += strlen(l);
 	if (spamassassin_limit && sa->l >= spamassassin_limit) {
-		log_info("info: dataline: limit reached");
-#if 0 /* todo */
-		spamassassin_response(sa, id);
+		write(sa->io.sock, "SKIP SPAMC/1.5\r\n\r\n", 18);
+		if (iobuf_queued(&sa->iobuf)) { /* get lines back, but skip first request line */
+			for (q = sa->iobuf.outq->next; q; q = q->next) {
+				q->buf[q->wpos - q->rpos - 1] = '\0';
+				filter_api_writeln(id, q->buf + q->rpos);
+			}
+		}
 		filter_api_writeln(id, l);
 		spamassassin_clear(sa);
 		filter_api_set_udata(id, NULL);
 		return;
-#endif
 	}
 	iobuf_xfqueue(&sa->iobuf, "on_dataline", "%s\n", l);
         io_reload(&sa->io);
@@ -282,6 +258,8 @@ spamassassin_on_eom(uint64_t id, size_t size)
 
 	if ((sa = filter_api_get_udata(id)) == NULL)
 		return filter_api_accept(id);
+	if (spamassassin_limit)
+		io_resume(&sa->io, IO_PAUSE_OUT);
 	sa->s++;
 	if (iobuf_queued(&sa->iobuf) == 0)
 		spamassassin_io(&sa->io, IO_LOWAT);
@@ -300,6 +278,35 @@ spamassassin_on_rollback(uint64_t id)
 {
 	spamassassin_clear(filter_api_get_udata(id));
 	filter_api_set_udata(id, NULL);
+}
+
+static void
+spamassassin_resolve(const char *h, const char *p)
+{
+	struct addrinfo hints, *addresses, *ai;
+	int fd, r;
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = PF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+	if ((r = getaddrinfo(h, p, &hints, &addresses)))
+		fatalx("resolve: getaddrinfo %s", gai_strerror(r));
+	for (ai = addresses; ai; ai = ai->ai_next) {
+		if ((fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)) == -1)
+			continue;
+		if (connect(fd, ai->ai_addr, ai->ai_addrlen) == -1) {
+			close(fd);
+			continue;
+		}
+		write(fd, "PING SPAMC/1.5\r\n\r\n", 18); /* avoid warning in log */
+		close(fd);
+		memmove(&spamassassin_ss, ai->ai_addr, ai->ai_addrlen);
+		break;
+	}
+	freeaddrinfo(addresses);
+	if (!ai)
+		fatalx("resolve: failed");
 }
 
 int
@@ -353,7 +360,7 @@ main(int argc, char **argv)
 	if (p)
 		p = strip(p);
 	if (l) {
-		spamassassin_limit = strtonum(l, 1, SIZE_MAX, &errstr);
+		spamassassin_limit = strtonum(l, 1, UINT_MAX, &errstr); /* todo: SIZE_MAX here? */
 		if (errstr)
 			fatalx("limit option is %s: %s", errstr, l);
 	}
