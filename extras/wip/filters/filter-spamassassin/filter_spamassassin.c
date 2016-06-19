@@ -312,20 +312,14 @@ spamassassin_resolve(const char *h, const char *p)
 int
 main(int argc, char **argv)
 {
-	int ch, C = 0, d = 0, v = 0;
+	int ch, d = 0, v = 0;
 	const char *errstr, *l = NULL;
-	char *c = NULL, *h = SPAMASSASSIN_HOST, *p = SPAMASSASSIN_PORT, *s = NULL;
+	char *h = SPAMASSASSIN_HOST, *p = SPAMASSASSIN_PORT, *s = NULL;
 
 	log_init(1);
 
 	while ((ch = getopt(argc, argv, "dh:l:p:s:v")) != -1) {
 		switch (ch) {
-		case 'C':
-			C = 1;
-			break;
-		case 'c':
-			c = optarg;
-			break;
 		case 'd':
 			d = 1;
 			break;
@@ -353,8 +347,6 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (c)
-		c = strip(c);
 	if (h)
 		h = strip(h);
 	if (p)
@@ -385,10 +377,6 @@ main(int argc, char **argv)
 	filter_api_on_eom(spamassassin_on_eom);
 	filter_api_on_commit(spamassassin_on_commit);
 	filter_api_on_rollback(spamassassin_on_rollback);
-	if (c)
-		filter_api_set_chroot(c);
-	if (C)
-		filter_api_no_chroot();
 
 	filter_api_loop();
 	log_debug("debug: exiting");

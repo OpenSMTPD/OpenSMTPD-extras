@@ -21,8 +21,7 @@
 .Nd smtpd filter for SpamAssassin spamd
 .Sh SYNOPSIS
 .Nm
-.Op Fl Cdv
-.Op Fl c Ar path
+.Op Fl dv
 .Op Fl h Ar host
 .Op Fl l Ar limit
 .Op Fl p Ar port
@@ -39,21 +38,6 @@ according to its own configuration.
 .Pp
 The options are as follows:
 .Bl -tag -width "-s strategy"
-.It Fl C
-No
-.Xr chroot 2
-mode, if this option is specified,
-.Nm
-will not run in a chroot.
-.It Fl c Ar path
-Set the chroot
-.Ar path .
-.Pp
-The default
-.Ar path
-is
-.Pa /var/empty
-(compile option).
 .It Fl d
 Debug mode, if this option is specified,
 .Nm
@@ -135,7 +119,6 @@ to listen on 127.0.0.1 port 783 for incoming requests.
 This matches to the default configuration of the daemon.
 .Sh SEE ALSO
 .Xr spamd 1 ,
-.Xr chroot 2 ,
 .Xr filter_api 3 ,
 .Xr smtpd.conf 5 ,
 .Xr smtpd 8
