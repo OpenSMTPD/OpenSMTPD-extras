@@ -275,7 +275,7 @@ main(int argc, char **argv)
 		fatalx("bogus argument(s)");
 
 	if (l) {
-		regex_limit = strtonum(l, 1, SIZE_MAX, &errstr);
+		regex_limit = strtonum(l, 1, UINT_MAX, &errstr); /* todo: SIZE_MAX here? */
 		if (errstr)
 			fatalx("limit option is %s: %s", errstr, l);
 	}
