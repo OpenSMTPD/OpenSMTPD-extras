@@ -216,7 +216,7 @@ spamassassin_on_data(uint64_t id)
 		spamassassin_clear(sa);
 		return filter_api_accept(id);
 	}
-	iobuf_xfqueue(&sa->iobuf, "io", "PROCESS SPAMC/1.5\r\n\r\n"); /* spamd.raw source: content length header is optional */
+	iobuf_xfqueue(&sa->iobuf, "on_data", "PROCESS SPAMC/1.5\r\n\r\n"); /* spamd.raw source: content length header is optional */
 	if (spamassassin_limit)
 		io_pause(&sa->io, IO_PAUSE_OUT); /* pause io until eom or limit is reached */
 	filter_api_set_udata(id, sa);
