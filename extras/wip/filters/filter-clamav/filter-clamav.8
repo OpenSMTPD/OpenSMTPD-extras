@@ -35,28 +35,13 @@ daemon.
 Mails are piped to the daemon, which scans the mail for viruses.
 .Pp
 The options are as follows:
-.Bl -tag -width "-c path"
-.It Fl C
-No
-.Xr chroot 2
-mode, if this option is specified,
-.Nm
-will not run in a chroot.
-.It Fl c Ar path
-Set the chroot
-.Ar path .
-.Pp
-The default
-.Ar path
-is
-.Pa /var/empty
-(compile option).
+.Bl -tag -width "-h host"
 .It Fl d
 Debug mode, if this option is specified,
 .Nm
 will run in the foreground and log to
 .Em stderr .
-.It Fl h
+.It Fl h Ar host
 Set the ClamAV
 .Ar host
 to be used.
@@ -98,7 +83,6 @@ to listen on 127.0.0.1 port 3310 for incoming requests.
 This requires to uncomment the TCPAddr and TCPSocket option in the default
 configuration of the daemon.
 .Sh SEE ALSO
-.Xr chroot 2 ,
 .Xr filter_api 3 ,
 .Xr smtpd.conf 5 ,
 .Xr clamd 8 ,
