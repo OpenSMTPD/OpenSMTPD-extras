@@ -103,7 +103,6 @@ clamav_io(struct io *io, int evt)
 {
 	struct clamav *cl = io->arg;
 	char *l;
-	uint32_t n = htonl(0);
 
 	switch (evt) {
 	case IO_CONNECTED:
@@ -111,10 +110,6 @@ clamav_io(struct io *io, int evt)
 		break;
 	case IO_LOWAT:
 		if (cl->s == CL_EOM) {
-			if (iobuf_queue(&cl->iobuf, &n, sizeof(uint32_t)) != (int)sizeof(uint32_t)) {
-				log_warn("warn: io: iobuf_queue");
-				goto fail;
-			}
 			cl->s++;
 			io_set_read(io);
 		}
@@ -150,7 +145,8 @@ clamav_io(struct io *io, int evt)
 	}
 	return;
 fail:
-	filter_api_reject_code(cl->id, FILTER_FAIL, 451, "4.7.1 Virus filter failed");
+	if (cl->s > CL_DATA)
+		filter_api_reject_code(cl->id, FILTER_FAIL, 451, "4.7.1 Virus filter failed");
 	filter_api_set_udata(cl->id, NULL);
 	clamav_clear(cl);
 }
@@ -184,15 +180,14 @@ static void
 clamav_on_dataline(uint64_t id, const char *l)
 {
 	struct clamav *cl;
-	uint32_t n;
+	uint32_t n = htonl(strlen(l) + 1);
 
 	filter_api_writeln(id, l);
 	if ((cl = filter_api_get_udata(id)) == NULL)
 		return;
-	n = htonl(strlen(l) + 1);
 	if (iobuf_queue(&cl->iobuf, &n, sizeof(uint32_t)) != (int)sizeof(uint32_t))
 		fatalx("on_dataline: iobuf_queue");
-	iobuf_xfqueue(&cl->iobuf, "%s\n", l);
+	iobuf_xfqueue(&cl->iobuf, "on_dataline", "%s\n", l);
 	io_reload(&cl->io);
 }
 
@@ -200,12 +195,14 @@ static int
 clamav_on_eom(uint64_t id, size_t size)
 {
 	struct clamav *cl;
+	uint32_t n = htonl(0);
 
 	if ((cl = filter_api_get_udata(id)) == NULL)
 		return filter_api_accept(id);
+	if (iobuf_queue(&cl->iobuf, &n, sizeof(uint32_t)) != (int)sizeof(uint32_t))
+		fatalx("on_eom: iobuf_queue");
+	io_reload(&cl->io);
 	cl->s++;
-	if (iobuf_queued(&cl->iobuf) == 0)
-		clamav_io(&cl->io, IO_LOWAT);
 	return 1; /* defer accept or reject */
 }
 
