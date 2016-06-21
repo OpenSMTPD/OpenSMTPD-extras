@@ -191,7 +191,8 @@ spamassassin_io(struct io *io, int evt)
 	}
 	return;
 fail:
-	filter_api_reject_code(sa->id, FILTER_FAIL, 451, "4.7.1 Spam filter failed");
+	if (sa->s > SA_DATA)
+		filter_api_reject_code(sa->id, FILTER_FAIL, 451, "4.7.1 Spam filter failed");
 	filter_api_set_udata(sa->id, NULL);
 	spamassassin_clear(sa);
 }
