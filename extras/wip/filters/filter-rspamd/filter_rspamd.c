@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <limits.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "smtpd-defines.h"
@@ -38,12 +39,12 @@
 #define RSPAMD_PORT "11333"
 
 struct transaction {
+	FILE	       *fp;
+	size_t		len;
+	char	       *line;
+
 	char	       *from;
 	char	       *rcpt;
-
-	int		inbody;
-	struct iobuf	headers;
-	struct iobuf	body;
 };
 
 struct session {
@@ -112,7 +113,18 @@ on_rcpt(uint64_t id, struct mailaddr *rcpt)
 static int
 on_data(uint64_t id)
 {
-	log_debug("debug: on_data");
+	struct session *rs = filter_api_get_udata(id);
+	char		pathname[] = "/tmp/filter-rspamd.XXXXXX";
+	int		fd;
+
+	fd = mkstemp(pathname);
+	unlink(pathname);
+	log_debug("### fd: %d", fd);
+	rs->tx.fp = fdopen(fd, "w+b");
+	if (rs->tx.fp == NULL) {
+		close(fd);
+	}
+	log_debug("### fp: %p", rs->tx.fp);
 	return filter_api_accept(id);
 }
 
@@ -121,29 +133,24 @@ on_dataline(uint64_t id, const char *line)
 {
 	struct session	*rs = filter_api_get_udata(id);
 
-	if (!strlen(line))
-		rs->tx.inbody = 1;
-
-	if (! rs->tx.inbody)
-		iobuf_xfqueue(&rs->tx.headers, "io", "%s\r\n", line);
-	else
-		iobuf_xfqueue(&rs->tx.body, "io", "%s\r\n", line);
-
-	log_debug("%.*s [%s]", iobuf_len(&rs->tx.headers), iobuf_data(&rs->tx.headers), line);
+	fprintf(rs->tx.fp, "%s\r\n", line);
+	fflush(rs->tx.fp);
 }
 
 static int
 on_eom(uint64_t id, size_t size)
 {
 	struct session	*rs = filter_api_get_udata(id);
+
+	rs->tx.len = ftell(rs->tx.fp);
+	fseek(rs->tx.fp, 0, 0);
 	
 	iobuf_xinit(&rs->iobuf, LINE_MAX, LINE_MAX, "on_eom");
 	io_init(&rs->io, -1, rs, rspamd_io, &rs->iobuf);
 	if (io_connect(&rs->io, (struct sockaddr *)&ss, NULL) == -1)
 		return filter_api_accept(id);
 
-//	iobuf_xfqueue(&rs->iobuf, "io",
-	log_debug(
+	iobuf_xfqueue(&rs->iobuf, "io",
 	    "POST /check HTTP/1.0\r\n"
 	    "IP: %s\r\n"
 	    "Helo: %s\r\n"
@@ -151,15 +158,13 @@ on_eom(uint64_t id, size_t size)
 	    "From: %s\r\n"
 	    "Rcpt: %s\r\n"
 	    "Pass: all\r\n"
-	    "Content-Length: %d\r\n\r\n%.*s%.*s",
+	    "Content-Length: %d\r\n\r\n",
 	    rs->ip,
 	    rs->helo,
 	    rs->hostname,
 	    rs->tx.from,
 	    rs->tx.rcpt,
-	    iobuf_len(&rs->tx.headers) + iobuf_len(&rs->tx.body),
-	    iobuf_len(&rs->tx.headers), iobuf_data(&rs->tx.headers),
-	    iobuf_len(&rs->tx.body), iobuf_data(&rs->tx.body));
+	    rs->tx.len);
 }
 
 static void
@@ -188,9 +193,6 @@ rspamd_session_init(uint64_t id)
 	rs = xcalloc(1, sizeof *rs, "on_connect");
 	rs->id = id;
 
-	iobuf_xinit(&rs->tx.headers, LINE_MAX, LINE_MAX, "on_eom");
-	iobuf_xinit(&rs->tx.body, LINE_MAX, LINE_MAX, "on_eom");
-
 	return rs;
 }
 
@@ -199,6 +201,10 @@ rspamd_transaction_clear(struct transaction *tx)
 {
 	free(tx->from);
 	free(tx->rcpt);
+	if (tx->fp) {
+		fclose(tx->fp);
+		tx->fp = NULL;
+	}
 }
 
 static void
@@ -216,34 +222,60 @@ rspamd_session_free(struct session *rs)
 }
 
 static void
+rspamd_response(struct session *rs)
+{
+	char		*line = NULL;
+	size_t		sz = 0;
+	ssize_t		len;
+
+	rs->tx.len = ftell(rs->tx.fp);
+	fseek(rs->tx.fp, 0, 0);
+
+	while ((len = getline(&line, &sz, rs->tx.fp)) != -1) {
+		line[len-2] = '\0';
+		filter_api_writeln(rs->id, line);
+	}
+	filter_api_writeln(rs->id, ".");
+}
+
+static void
 rspamd_io(struct io *io, int evt)
 {
-	struct session	*r = io->arg;
-	char		*l;
+	struct session *rs = io->arg;
+	char	       *line;
+	size_t		sz = 0;
+	ssize_t		len;
 
 	switch (evt) {
 	case IO_CONNECTED:
 		log_debug("debug: CONNECTED");
 		io_set_write(io);
 		break;
+
 	case IO_LOWAT:
-		log_debug("debug: LOWAT");
-		io_set_read(io);
+		len = getline(&rs->tx.line, &sz, rs->tx.fp);
+		if (len == -1) {
+			io_set_read(io);
+			break;
+		}
+		iobuf_xfqueue(&rs->iobuf, "io", "%.*s", len, rs->tx.line);
 		break;
+
 	case IO_DATAIN:
 		log_debug("debug: DATAIN");
-		while ((l = iobuf_getline(&r->iobuf, NULL)) != NULL)
-			log_debug("debug: DATAIN: [%s]", l);
-		if (iobuf_len(&r->iobuf) != 0) {
+		while ((line = iobuf_getline(&rs->iobuf, NULL)))
+			log_debug("debug: DATAIN: [%s]", line);
+		if (iobuf_len(&rs->iobuf) != 0) {
 			log_debug("debug: DATAIN: [%.*s]",
-			    iobuf_len(&r->iobuf),
-			    iobuf_data(&r->iobuf));
+			    (int)iobuf_len(&rs->iobuf),
+			    iobuf_data(&rs->iobuf));
+			rspamd_response(rs);
 		}
-		iobuf_normalize(&r->iobuf);		
+		iobuf_normalize(&rs->iobuf);
 		break;
 	case IO_DISCONNECTED:
 		log_debug("debug: DISCONNECT");
-		exit(1);
+		rspamd_session_free(rs);
 		break;
 	case IO_TIMEOUT:
 		log_debug("debug: TIMEOUT");
@@ -356,10 +388,13 @@ main(int argc, char **argv)
 	filter_api_on_rollback(on_rollback);
 	filter_api_on_disconnect(on_disconnect);
 
+	/*
 	if (c)
 		filter_api_set_chroot(c);
 	if (C)
 		filter_api_no_chroot();
+	*/
+	filter_api_no_chroot();
 
 	filter_api_loop();
 	log_debug("debug: exiting");
