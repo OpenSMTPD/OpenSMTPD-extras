@@ -1119,6 +1119,19 @@ AC_ARG_WITH([filter-regex],
 )
 AM_CONDITIONAL([HAVE_FILTER_REGEX], [test $HAVE_FILTER_REGEX = yes])
 
+HAVE_FILTER_RSPAMD=no
+AC_ARG_WITH([filter-rspamd],
+	[  --with-filter-rspamd	Enable filter rspamd],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_FILTER_RSPAMD], [1],
+				[Define if you have filter rspamd])
+			HAVE_FILTER_RSPAMD=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_FILTER_RSPAMD], [test $HAVE_FILTER_RSPAMD = yes])
+
 HAVE_FILTER_SPAMASSASSIN=no
 AC_ARG_WITH([filter-spamassassin],
 	[  --with-filter-spamassassin	Enable filter spamassassin],
@@ -1691,6 +1704,7 @@ AC_CONFIG_FILES([Makefile
 		extras/wip/filters/filter-perl/Makefile
 		extras/wip/filters/filter-python/Makefile
 		extras/wip/filters/filter-regex/Makefile
+		extras/wip/filters/filter-rspamd/Makefile
 		extras/wip/filters/filter-spamassassin/Makefile
 		extras/wip/filters/filter-stub/Makefile
 		extras/wip/filters/filter-trace/Makefile

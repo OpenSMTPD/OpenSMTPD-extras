@@ -36,6 +36,10 @@ if HAVE_FILTER_REGEX
 SUBDIRS	+=	filter-regex
 endif
 
+if HAVE_FILTER_RSPAMD
+SUBDIRS	+=	filter-rspamd
+endif
+
 if HAVE_FILTER_SPAMASSASSIN
 SUBDIRS	+=	filter-spamassassin
 endif
