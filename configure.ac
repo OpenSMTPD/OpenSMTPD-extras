@@ -995,6 +995,7 @@ AC_SUBST([pkglibexecdir])
 #
 # individual modules
 #
+experimental_filter=no
 
 #
 # FILTERS
@@ -1007,6 +1008,7 @@ AC_ARG_WITH([experimental-filter-clamav],
 			AC_DEFINE([HAVE_FILTER_CLAMAV], [1],
 				[Define if you have filter clamav])
 			HAVE_FILTER_CLAMAV=yes
+			experimental_filter=yes
 		fi
 	]
 )
@@ -1020,6 +1022,7 @@ AC_ARG_WITH([experimental-filter-dkim-signer],
 			AC_DEFINE([HAVE_FILTER_DKIM_SIGNER], [1],
 				[Define if you have filter dkim-signer])
 			HAVE_FILTER_DKIM_SIGNER=yes
+			experimental_filter=yes
 		fi
 	]
 )
@@ -1033,6 +1036,7 @@ AC_ARG_WITH([experimental-filter-dnsbl],
 			AC_DEFINE([HAVE_FILTER_DNSBL], [1],
 				[Define if you have filter dnsbl])
 			HAVE_FILTER_DNSBL=yes
+			experimental_filter=yes
 		fi
 	]
 )
@@ -1047,6 +1051,7 @@ AC_ARG_WITH([experimental-filter-lua],
 				[Define if you have filter lua])
 			HAVE_FILTER_LUA=yes
 			need_lua=yes
+			experimental_filter=yes
 		fi
 	]
 )
@@ -1060,6 +1065,7 @@ AC_ARG_WITH([experimental-filter-monkey],
 			AC_DEFINE([HAVE_FILTER_MONKEY], [1],
 				[Define if you have filter monkey])
 			HAVE_FILTER_MONKEY=yes
+			experimental_filter=yes
 		fi
 	]
 )
@@ -1073,6 +1079,7 @@ AC_ARG_WITH([experimental-filter-pause],
 			AC_DEFINE([HAVE_FILTER_PAUSE], [1],
 				[Define if you have filter pause])
 			HAVE_FILTER_PAUSE=yes
+			experimental_filter=yes
 		fi
 	]
 )
@@ -1087,6 +1094,7 @@ AC_ARG_WITH([experimental-filter-perl],
 				[Define if you have filter perl])
 			HAVE_FILTER_PERL=yes
 			need_perl=yes
+			experimental_filter=yes
 		fi
 	]
 )
@@ -1101,6 +1109,7 @@ AC_ARG_WITH([experimental-filter-python],
 				[Define if you have filter python])
 			HAVE_FILTER_PYTHON=yes
 			need_python=yes
+			experimental_filter=yes
 		fi
 	]
 )
@@ -1114,6 +1123,7 @@ AC_ARG_WITH([experimental-filter-regex],
 			AC_DEFINE([HAVE_FILTER_REGEX], [1],
 				[Define if you have filter regex])
 			HAVE_FILTER_REGEX=yes
+			experimental_filter=yes
 		fi
 	]
 )
@@ -1127,6 +1137,7 @@ AC_ARG_WITH([experimental-filter-spamassassin],
 			AC_DEFINE([HAVE_FILTER_SPAMASSASSIN], [1],
 				[Define if you have filter spamassassin])
 			HAVE_FILTER_SPAMASSASSIN=yes
+			experimental_filter=yes
 		fi
 	]
 )
@@ -1140,6 +1151,7 @@ AC_ARG_WITH([experimental-filter-stub],
 			AC_DEFINE([HAVE_FILTER_STUB], [1],
 				[Define if you have filter stub])
 			HAVE_FILTER_STUB=yes
+			experimental_filter=yes
 		fi
 	]
 )
@@ -1153,6 +1165,7 @@ AC_ARG_WITH([experimental-filter-trace],
 			AC_DEFINE([HAVE_FILTER_TRACE], [1],
 				[Define if you have filter trace])
 			HAVE_FILTER_TRACE=yes
+			experimental_filter=yes
 		fi
 	]
 )
@@ -1166,6 +1179,7 @@ AC_ARG_WITH([experimental-filter-void],
 			AC_DEFINE([HAVE_FILTER_VOID], [1],
 				[Define if you have filter void])
 			HAVE_FILTER_VOID=yes
+			experimental_filter=yes
 		fi
 	]
 )
@@ -1722,6 +1736,28 @@ AC_CONFIG_FILES([Makefile
 
 #l4761
 AC_OUTPUT
+
+
+if test "$experimental_filter" = "yes"; then
+   echo
+   echo
+   echo
+
+   echo "YOU HAVE CONFIGURED AN EXPERIMENTAL FILTER."
+   echo
+   echo "EXPERIMENTAL FILTERS ARE MEANT FOR DEVELOPERS AND TESTERS."
+   echo
+   echo "THE FILTER MAY CRASH, HANG, LEAK RESOURCES OR LOSE YOUR MAILS."
+   echo
+   echo "YOU HAVE BEEN WARNED, YOU'RE ON YOUR OWN"
+
+echo
+   echo
+   echo
+
+   sleep 10
+fi
+
 
 # Print summary of options
 
