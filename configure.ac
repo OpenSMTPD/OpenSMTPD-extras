@@ -995,125 +995,135 @@ AC_SUBST([pkglibexecdir])
 #
 # individual modules
 #
+experimental_filter=no
 
 #
 # FILTERS
 #
 HAVE_FILTER_CLAMAV=no
-AC_ARG_WITH([filter-clamav],
-	[  --with-filter-clamav	Enable filter clamav],
+AC_ARG_WITH([experimental-filter-clamav],
+	[  --with-experimental-filter-clamav	Enable filter clamav],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_CLAMAV], [1],
 				[Define if you have filter clamav])
 			HAVE_FILTER_CLAMAV=yes
+			experimental_filter=yes
 		fi
 	]
 )
 AM_CONDITIONAL([HAVE_FILTER_CLAMAV], [test $HAVE_FILTER_CLAMAV = yes])
 
 HAVE_FILTER_DKIM_SIGNER=no
-AC_ARG_WITH([filter-dkim-signer],
-	[  --with-filter-dkim-signer	Enable filter dkim-signer],
+AC_ARG_WITH([experimental-filter-dkim-signer],
+	[  --with-experimental-filter-dkim-signer	Enable filter dkim-signer],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_DKIM_SIGNER], [1],
 				[Define if you have filter dkim-signer])
 			HAVE_FILTER_DKIM_SIGNER=yes
+			experimental_filter=yes
 		fi
 	]
 )
 AM_CONDITIONAL([HAVE_FILTER_DKIM_SIGNER], [test $HAVE_FILTER_DKIM_SIGNER = yes])
 
 HAVE_FILTER_DNSBL=no
-AC_ARG_WITH([filter-dnsbl],
-	[  --with-filter-dnsbl	Enable filter dnsbl],
+AC_ARG_WITH([experimental-filter-dnsbl],
+	[  --with-experimental-filter-dnsbl	Enable filter dnsbl],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_DNSBL], [1],
 				[Define if you have filter dnsbl])
 			HAVE_FILTER_DNSBL=yes
+			experimental_filter=yes
 		fi
 	]
 )
 AM_CONDITIONAL([HAVE_FILTER_DNSBL], [test $HAVE_FILTER_DNSBL = yes])
 
 HAVE_FILTER_LUA=no
-AC_ARG_WITH([filter-lua],
-	[  --with-filter-lua	Enable filter lua],
+AC_ARG_WITH([experimental-filter-lua],
+	[  --with-experimental-filter-lua	Enable filter lua],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_LUA], [1],
 				[Define if you have filter lua])
 			HAVE_FILTER_LUA=yes
 			need_lua=yes
+			experimental_filter=yes
 		fi
 	]
 )
 AM_CONDITIONAL([HAVE_FILTER_LUA], [test $HAVE_FILTER_LUA = yes])
 
 HAVE_FILTER_MONKEY=no
-AC_ARG_WITH([filter-monkey],
-	[  --with-filter-monkey	Enable filter monkey],
+AC_ARG_WITH([experimental-filter-monkey],
+	[  --with-experimental-filter-monkey	Enable filter monkey],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_MONKEY], [1],
 				[Define if you have filter monkey])
 			HAVE_FILTER_MONKEY=yes
+			experimental_filter=yes
 		fi
 	]
 )
 AM_CONDITIONAL([HAVE_FILTER_MONKEY], [test $HAVE_FILTER_MONKEY = yes])
 
 HAVE_FILTER_PAUSE=no
-AC_ARG_WITH([filter-pause],
-	[  --with-filter-pause	Enable filter pause],
+AC_ARG_WITH([experimental-filter-pause],
+	[  --with-experimental-filter-pause	Enable filter pause],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_PAUSE], [1],
 				[Define if you have filter pause])
 			HAVE_FILTER_PAUSE=yes
+			experimental_filter=yes
 		fi
 	]
 )
 AM_CONDITIONAL([HAVE_FILTER_PAUSE], [test $HAVE_FILTER_PAUSE = yes])
 
 HAVE_FILTER_PERL=no
-AC_ARG_WITH([filter-perl],
-	[  --with-filter-perl	Enable filter perl],
+AC_ARG_WITH([experimental-filter-perl],
+	[  --with-experimental-filter-perl	Enable filter perl],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_PERL], [1],
 				[Define if you have filter perl])
 			HAVE_FILTER_PERL=yes
 			need_perl=yes
+			experimental_filter=yes
 		fi
 	]
 )
 AM_CONDITIONAL([HAVE_FILTER_PERL], [test $HAVE_FILTER_PERL = yes])
 
 HAVE_FILTER_PYTHON=no
-AC_ARG_WITH([filter-python],
-	[  --with-filter-python	Enable filter python],
+AC_ARG_WITH([experimental-filter-python],
+	[  --with-experimental-filter-python	Enable filter python],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_PYTHON], [1],
 				[Define if you have filter python])
 			HAVE_FILTER_PYTHON=yes
 			need_python=yes
+			experimental_filter=yes
 		fi
 	]
 )
 AM_CONDITIONAL([HAVE_FILTER_PYTHON], [test $HAVE_FILTER_PYTHON = yes])
 
 HAVE_FILTER_REGEX=no
-AC_ARG_WITH([filter-regex],
-	[  --with-filter-regex	Enable filter regex],
+AC_ARG_WITH([experimental-filter-regex],
+	[  --with-experimental-filter-regex	Enable filter regex],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_REGEX], [1],
 				[Define if you have filter regex])
 			HAVE_FILTER_REGEX=yes
+			experimental_filter=yes
 		fi
 	]
 )
@@ -1133,52 +1143,56 @@ AC_ARG_WITH([filter-rspamd],
 AM_CONDITIONAL([HAVE_FILTER_RSPAMD], [test $HAVE_FILTER_RSPAMD = yes])
 
 HAVE_FILTER_SPAMASSASSIN=no
-AC_ARG_WITH([filter-spamassassin],
-	[  --with-filter-spamassassin	Enable filter spamassassin],
+AC_ARG_WITH([experimental-filter-spamassassin],
+	[  --with-experimental-filter-spamassassin	Enable filter spamassassin],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_SPAMASSASSIN], [1],
 				[Define if you have filter spamassassin])
 			HAVE_FILTER_SPAMASSASSIN=yes
+			experimental_filter=yes
 		fi
 	]
 )
 AM_CONDITIONAL([HAVE_FILTER_SPAMASSASSIN], [test $HAVE_FILTER_SPAMASSASSIN = yes])
 
 HAVE_FILTER_STUB=no
-AC_ARG_WITH([filter-stub],
-	[  --with-filter-stub	Enable filter stub],
+AC_ARG_WITH([experimental-filter-stub],
+	[  --with-experimental-filter-stub	Enable filter stub],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_STUB], [1],
 				[Define if you have filter stub])
 			HAVE_FILTER_STUB=yes
+			experimental_filter=yes
 		fi
 	]
 )
 AM_CONDITIONAL([HAVE_FILTER_STUB], [test $HAVE_FILTER_STUB = yes])
 
 HAVE_FILTER_TRACE=no
-AC_ARG_WITH([filter-trace],
-	[  --with-filter-trace	Enable filter trace],
+AC_ARG_WITH([experimental-filter-trace],
+	[  --with-experimental-filter-trace	Enable filter trace],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_TRACE], [1],
 				[Define if you have filter trace])
 			HAVE_FILTER_TRACE=yes
+			experimental_filter=yes
 		fi
 	]
 )
 AM_CONDITIONAL([HAVE_FILTER_TRACE], [test $HAVE_FILTER_TRACE = yes])
 
 HAVE_FILTER_VOID=no
-AC_ARG_WITH([filter-void],
-	[  --with-filter-void	Enable filter void],
+AC_ARG_WITH([experimental-filter-void],
+	[  --with-experimental-filter-void	Enable filter void],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_VOID], [1],
 				[Define if you have filter void])
 			HAVE_FILTER_VOID=yes
+			experimental_filter=yes
 		fi
 	]
 )
@@ -1691,53 +1705,73 @@ AC_CONFIG_FILES([Makefile
 		openbsd-compat/Makefile
 
 		extras/Makefile
-		extras/stable/Makefile
-		extras/wip/Makefile
 
-		extras/wip/filters/Makefile
-		extras/wip/filters/filter-clamav/Makefile
-		extras/wip/filters/filter-dkim-signer/Makefile
-		extras/wip/filters/filter-dnsbl/Makefile
-		extras/wip/filters/filter-lua/Makefile
-		extras/wip/filters/filter-monkey/Makefile
-		extras/wip/filters/filter-pause/Makefile
-		extras/wip/filters/filter-perl/Makefile
-		extras/wip/filters/filter-python/Makefile
-		extras/wip/filters/filter-regex/Makefile
-		extras/wip/filters/filter-rspamd/Makefile
-		extras/wip/filters/filter-spamassassin/Makefile
-		extras/wip/filters/filter-stub/Makefile
-		extras/wip/filters/filter-trace/Makefile
-		extras/wip/filters/filter-void/Makefile
+		extras/filters/Makefile
+		extras/filters/filter-clamav/Makefile
+		extras/filters/filter-dkim-signer/Makefile
+		extras/filters/filter-dnsbl/Makefile
+		extras/filters/filter-lua/Makefile
+		extras/filters/filter-monkey/Makefile
+		extras/filters/filter-pause/Makefile
+		extras/filters/filter-perl/Makefile
+		extras/filters/filter-python/Makefile
+		extras/filters/filter-regex/Makefile
+		extras/filters/filter-rspamd/Makefile
+		extras/filters/filter-spamassassin/Makefile
+		extras/filters/filter-stub/Makefile
+		extras/filters/filter-trace/Makefile
+		extras/filters/filter-void/Makefile
 
-		extras/wip/queues/Makefile
-		extras/wip/queues/queue-null/Makefile
-		extras/wip/queues/queue-python/Makefile
-		extras/wip/queues/queue-ram/Makefile
-		extras/wip/queues/queue-stub/Makefile
+		extras/queues/Makefile
+		extras/queues/queue-null/Makefile
+		extras/queues/queue-python/Makefile
+		extras/queues/queue-ram/Makefile
+		extras/queues/queue-stub/Makefile
 
-		extras/wip/schedulers/Makefile
-		extras/wip/schedulers/scheduler-python/Makefile
-		extras/wip/schedulers/scheduler-ram/Makefile
-		extras/wip/schedulers/scheduler-stub/Makefile
+		extras/schedulers/Makefile
+		extras/schedulers/scheduler-python/Makefile
+		extras/schedulers/scheduler-ram/Makefile
+		extras/schedulers/scheduler-stub/Makefile
 
-		extras/wip/tables/Makefile
-		extras/wip/tables/table-passwd/Makefile
-		extras/wip/tables/table-ldap/Makefile
-		extras/wip/tables/table-mysql/Makefile
-		extras/wip/tables/table-postgres/Makefile
-		extras/wip/tables/table-python/Makefile
-		extras/wip/tables/table-redis/Makefile
-		extras/wip/tables/table-socketmap/Makefile
-		extras/wip/tables/table-sqlite/Makefile
-		extras/wip/tables/table-stub/Makefile
+		extras/tables/Makefile
+		extras/tables/table-passwd/Makefile
+		extras/tables/table-ldap/Makefile
+		extras/tables/table-mysql/Makefile
+		extras/tables/table-postgres/Makefile
+		extras/tables/table-python/Makefile
+		extras/tables/table-redis/Makefile
+		extras/tables/table-socketmap/Makefile
+		extras/tables/table-sqlite/Makefile
+		extras/tables/table-stub/Makefile
 
-		extras/wip/tools/Makefile
-		extras/wip/tools/tool-stats/Makefile
+		extras/tools/Makefile
+		extras/tools/tool-stats/Makefile
 		])
 
 #l4761
 AC_OUTPUT
+
+
+if test "$experimental_filter" = "yes"; then
+   echo
+   echo
+   echo
+
+   echo "YOU HAVE CONFIGURED AN EXPERIMENTAL FILTER."
+   echo
+   echo "EXPERIMENTAL FILTERS ARE MEANT FOR DEVELOPERS AND TESTERS."
+   echo
+   echo "THE FILTER MAY CRASH, HANG, LEAK RESOURCES OR LOSE YOUR MAILS."
+   echo
+   echo "YOU HAVE BEEN WARNED, YOU'RE ON YOUR OWN"
+
+echo
+   echo
+   echo
+
+   sleep 10
+fi
+
 
 # Print summary of options
 
