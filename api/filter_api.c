@@ -209,6 +209,10 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 	int			 type;
 	int			 fds[2], fdin, fdout;
 
+#ifdef EXPERIMENTAL
+	log_warnx("filter is EXPERIMENTAL and NOT meant to be used in production.");
+#endif
+
 	if (imsg == NULL) {
 		log_trace(TRACE_FILTERS, "filter-api:%s server closed", filter_name);
 		exit(0);
