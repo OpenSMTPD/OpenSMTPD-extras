@@ -38,14 +38,6 @@
 #define RSPAMD_HOST "127.0.0.1"
 #define RSPAMD_PORT "11333"
 
-struct transaction {
-	FILE	       *fp;
-	size_t		len;
-	char	       *line;
-
-	char	       *from;
-	char	       *rcpt;
-};
 
 struct session {
 	uint64_t	id;
@@ -57,14 +49,22 @@ struct session {
 	char	       *hostname;
 	char	       *helo;
 
-	struct transaction	tx;
+
+	/* transaction specific */
+	FILE	       *fp;
+
+	int		eom;
+	int		reply;
+
+	char	       *from;
+	char	       *rcpt;
 };
 
 struct sockaddr_storage	ss;
 
 static struct session  *rspamd_session_init(uint64_t);
+static void		rspamd_session_reset(struct session *);
 static void		rspamd_session_free(struct session *);
-static void		rspamd_transaction_clear(struct transaction *);
 static void		rspamd_io(struct io *, int);
 
 static int
@@ -95,8 +95,7 @@ on_mail(uint64_t id, struct mailaddr *mail)
 {
 	struct session	*rs = filter_api_get_udata(id);
 
-	rspamd_transaction_clear(&rs->tx);
-	rs->tx.from = xstrdup("gilles@poolp.org", "on_mail");
+	rs->from = xstrdup("gilles@poolp.org", "on_mail");
 	return filter_api_accept(id);
 }
 
@@ -106,7 +105,7 @@ on_rcpt(uint64_t id, struct mailaddr *rcpt)
 	struct session	*rs = filter_api_get_udata(id);
 
 	log_debug("debug: on_rcpt");
-	rs->tx.rcpt = xstrdup("gilles+rcpt@poolp.org", "on_rcpt");
+	rs->rcpt = xstrdup("gilles+rcpt@poolp.org", "on_rcpt");
 	return filter_api_accept(id);
 }
 
@@ -114,41 +113,22 @@ static int
 on_data(uint64_t id)
 {
 	struct session *rs = filter_api_get_udata(id);
-	char		pathname[] = "/tmp/filter-rspamd.XXXXXX";
+	char		pathname[1024] = "/tmp/filter-rspamd.XXXXXX";
 	int		fd;
-
-	fd = mkstemp(pathname);
-	unlink(pathname);
-	log_debug("### fd: %d", fd);
-	rs->tx.fp = fdopen(fd, "w+b");
-	if (rs->tx.fp == NULL) {
-		close(fd);
-	}
-	log_debug("### fp: %p", rs->tx.fp);
-	return filter_api_accept(id);
-}
-
-static void
-on_dataline(uint64_t id, const char *line)
-{
-	struct session	*rs = filter_api_get_udata(id);
-
-	fprintf(rs->tx.fp, "%s\r\n", line);
-	fflush(rs->tx.fp);
-}
-
-static int
-on_eom(uint64_t id, size_t size)
-{
-	struct session	*rs = filter_api_get_udata(id);
-
-	rs->tx.len = ftell(rs->tx.fp);
-	fseek(rs->tx.fp, 0, 0);
 	
 	iobuf_xinit(&rs->iobuf, LINE_MAX, LINE_MAX, "on_eom");
 	io_init(&rs->io, -1, rs, rspamd_io, &rs->iobuf);
 	if (io_connect(&rs->io, (struct sockaddr *)&ss, NULL) == -1)
 		return filter_api_accept(id);
+
+	fd = mkstemp(pathname);
+	if (fd == -1) {
+	}
+	unlink(pathname);
+	rs->fp = fdopen(fd, "w+b");
+	if (rs->fp == NULL) {
+		close(fd);
+	}
 
 	iobuf_xfqueue(&rs->iobuf, "io",
 	    "POST /check HTTP/1.0\r\n"
@@ -158,25 +138,52 @@ on_eom(uint64_t id, size_t size)
 	    "From: %s\r\n"
 	    "Rcpt: %s\r\n"
 	    "Pass: all\r\n"
-	    "Content-Length: %d\r\n\r\n",
+	    "Transfer-Encoding: chunked\r\n\r\n",
 	    rs->ip,
 	    rs->helo,
 	    rs->hostname,
-	    rs->tx.from,
-	    rs->tx.rcpt,
-	    rs->tx.len);
+	    rs->from,
+	    rs->rcpt);
+
+	io_reload(&rs->io);
+	return filter_api_accept(id);
+}
+
+static void
+on_dataline(uint64_t id, const char *line)
+{
+	struct session	*rs = filter_api_get_udata(id);
+
+	fprintf(rs->fp, "%s\n", line);
+	iobuf_xfqueue(&rs->iobuf, "io", "%x\r\n%s\r\n\r\n",
+	    strlen(line)+2, line);
+	io_reload(&rs->io);
+}
+
+static int
+on_eom(uint64_t id, size_t size)
+{
+	struct session	*rs = filter_api_get_udata(id);
+
+	iobuf_xfqueue(&rs->iobuf, "io", "0\r\n\r\n");
+	rs->eom = 1;
+	io_reload(&rs->io);
 }
 
 static void
 on_commit(uint64_t id)
 {
-	log_debug("debug: on_commit");
+	struct session	*rs = filter_api_get_udata(id);
+
+	rspamd_session_reset(rs);
 }
 
 static void
 on_rollback(uint64_t id)
 {
-	log_debug("debug: on_rollback");
+	struct session	*rs = filter_api_get_udata(id);
+
+	rspamd_session_reset(rs);
 }
 
 static void
@@ -196,15 +203,18 @@ rspamd_session_init(uint64_t id)
 	return rs;
 }
 
-static void
-rspamd_transaction_clear(struct transaction *tx)
+static struct session *
+rspamd_session_reset(uint64_t id)
 {
-	free(tx->from);
-	free(tx->rcpt);
-	if (tx->fp) {
-		fclose(tx->fp);
-		tx->fp = NULL;
+	free(rs->from);
+	free(rs->rcpt);
+
+	if (rs->fp) {
+		fclose(rs->fp);
+		rs->fp = NULL;
 	}
+	rs->eom = 0;
+	rs->reply = 0;
 }
 
 static void
@@ -213,7 +223,7 @@ rspamd_session_free(struct session *rs)
 	iobuf_clear(&rs->iobuf);
 	io_clear(&rs->io);
 
-	rspamd_transaction_clear(&rs->tx);
+	rspamd_session_reset(rs);
 
 	free(rs->ip);
 	free(rs->hostname);
@@ -224,55 +234,64 @@ rspamd_session_free(struct session *rs)
 static void
 rspamd_response(struct session *rs)
 {
-	char		*line = NULL;
-	size_t		sz = 0;
+	char	       *line;
+
+	while ((line = iobuf_getline(&rs->iobuf, NULL)))
+		log_debug("debug: DATAIN: [%s]", line);
+	if (iobuf_len(&rs->iobuf) != 0) {
+		log_debug("debug: DATAIN: [%.*s]",
+		    (int)iobuf_len(&rs->iobuf),
+		    iobuf_data(&rs->iobuf));
+		
+	}
+	iobuf_normalize(&rs->iobuf);
+
+	rs->reply = 1;
+}
+
+static void
+rspamd_streamback(struct session *rs)
+{
+	char	       *line;
+	size_t		sz;
 	ssize_t		len;
 
-	rs->tx.len = ftell(rs->tx.fp);
-	fseek(rs->tx.fp, 0, 0);
-
-	while ((len = getline(&line, &sz, rs->tx.fp)) != -1) {
-		line[len-2] = '\0';
+	log_debug("debug: STREAM BACK");
+	fseek(rs->fp, 0, 0);
+	line = NULL;
+	while ((len = getline(&line, &sz, rs->fp)) != -1) {
+		line[len-1] = 0;
+		log_debug("debug: STREAM BACK: [%s]", line);
 		filter_api_writeln(rs->id, line);
 	}
-	filter_api_writeln(rs->id, ".");
+	filter_api_accept(rs->id);
 }
 
 static void
 rspamd_io(struct io *io, int evt)
 {
 	struct session *rs = io->arg;
-	char	       *line;
-	size_t		sz = 0;
-	ssize_t		len;
 
 	switch (evt) {
 	case IO_CONNECTED:
-		log_debug("debug: CONNECTED");
 		io_set_write(io);
 		break;
 
 	case IO_LOWAT:
-		len = getline(&rs->tx.line, &sz, rs->tx.fp);
-		if (len == -1) {
+		if (rs->eom)
 			io_set_read(io);
-			break;
-		}
-		iobuf_xfqueue(&rs->iobuf, "io", "%.*s", len, rs->tx.line);
 		break;
 
 	case IO_DATAIN:
 		log_debug("debug: DATAIN");
-		while ((line = iobuf_getline(&rs->iobuf, NULL)))
-			log_debug("debug: DATAIN: [%s]", line);
-		if (iobuf_len(&rs->iobuf) != 0) {
-			log_debug("debug: DATAIN: [%.*s]",
-			    (int)iobuf_len(&rs->iobuf),
-			    iobuf_data(&rs->iobuf));
-			rspamd_response(rs);
+		rspamd_response(rs);
+		if (rs->reply) {
+			log_debug("debug: REPLY DONE");
+			io_set_write(io);
+			rspamd_streamback(rs);
 		}
-		iobuf_normalize(&rs->iobuf);
 		break;
+
 	case IO_DISCONNECTED:
 		log_debug("debug: DISCONNECT");
 		rspamd_session_free(rs);
