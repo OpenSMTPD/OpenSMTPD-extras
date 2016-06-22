@@ -203,8 +203,8 @@ rspamd_session_init(uint64_t id)
 	return rs;
 }
 
-static struct session *
-rspamd_session_reset(uint64_t id)
+static void
+rspamd_session_reset(struct session *rs)
 {
 	free(rs->from);
 	free(rs->rcpt);
