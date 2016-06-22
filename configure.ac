@@ -1678,48 +1678,46 @@ AC_CONFIG_FILES([Makefile
 		openbsd-compat/Makefile
 
 		extras/Makefile
-		extras/stable/Makefile
-		extras/wip/Makefile
 
-		extras/wip/filters/Makefile
-		extras/wip/filters/filter-clamav/Makefile
-		extras/wip/filters/filter-dkim-signer/Makefile
-		extras/wip/filters/filter-dnsbl/Makefile
-		extras/wip/filters/filter-lua/Makefile
-		extras/wip/filters/filter-monkey/Makefile
-		extras/wip/filters/filter-pause/Makefile
-		extras/wip/filters/filter-perl/Makefile
-		extras/wip/filters/filter-python/Makefile
-		extras/wip/filters/filter-regex/Makefile
-		extras/wip/filters/filter-spamassassin/Makefile
-		extras/wip/filters/filter-stub/Makefile
-		extras/wip/filters/filter-trace/Makefile
-		extras/wip/filters/filter-void/Makefile
+		extras/filters/Makefile
+		extras/filters/filter-clamav/Makefile
+		extras/filters/filter-dkim-signer/Makefile
+		extras/filters/filter-dnsbl/Makefile
+		extras/filters/filter-lua/Makefile
+		extras/filters/filter-monkey/Makefile
+		extras/filters/filter-pause/Makefile
+		extras/filters/filter-perl/Makefile
+		extras/filters/filter-python/Makefile
+		extras/filters/filter-regex/Makefile
+		extras/filters/filter-spamassassin/Makefile
+		extras/filters/filter-stub/Makefile
+		extras/filters/filter-trace/Makefile
+		extras/filters/filter-void/Makefile
 
-		extras/wip/queues/Makefile
-		extras/wip/queues/queue-null/Makefile
-		extras/wip/queues/queue-python/Makefile
-		extras/wip/queues/queue-ram/Makefile
-		extras/wip/queues/queue-stub/Makefile
+		extras/queues/Makefile
+		extras/queues/queue-null/Makefile
+		extras/queues/queue-python/Makefile
+		extras/queues/queue-ram/Makefile
+		extras/queues/queue-stub/Makefile
 
-		extras/wip/schedulers/Makefile
-		extras/wip/schedulers/scheduler-python/Makefile
-		extras/wip/schedulers/scheduler-ram/Makefile
-		extras/wip/schedulers/scheduler-stub/Makefile
+		extras/schedulers/Makefile
+		extras/schedulers/scheduler-python/Makefile
+		extras/schedulers/scheduler-ram/Makefile
+		extras/schedulers/scheduler-stub/Makefile
 
-		extras/wip/tables/Makefile
-		extras/wip/tables/table-passwd/Makefile
-		extras/wip/tables/table-ldap/Makefile
-		extras/wip/tables/table-mysql/Makefile
-		extras/wip/tables/table-postgres/Makefile
-		extras/wip/tables/table-python/Makefile
-		extras/wip/tables/table-redis/Makefile
-		extras/wip/tables/table-socketmap/Makefile
-		extras/wip/tables/table-sqlite/Makefile
-		extras/wip/tables/table-stub/Makefile
+		extras/tables/Makefile
+		extras/tables/table-passwd/Makefile
+		extras/tables/table-ldap/Makefile
+		extras/tables/table-mysql/Makefile
+		extras/tables/table-postgres/Makefile
+		extras/tables/table-python/Makefile
+		extras/tables/table-redis/Makefile
+		extras/tables/table-socketmap/Makefile
+		extras/tables/table-sqlite/Makefile
+		extras/tables/table-stub/Makefile
 
-		extras/wip/tools/Makefile
-		extras/wip/tools/tool-stats/Makefile
+		extras/tools/Makefile
+		extras/tools/tool-stats/Makefile
 		])
 
 #l4761
