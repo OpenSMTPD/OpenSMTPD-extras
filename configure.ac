@@ -1000,8 +1000,8 @@ AC_SUBST([pkglibexecdir])
 # FILTERS
 #
 HAVE_FILTER_CLAMAV=no
-AC_ARG_WITH([filter-clamav],
-	[  --with-filter-clamav	Enable filter clamav],
+AC_ARG_WITH([experimental-filter-clamav],
+	[  --with-experimental-filter-clamav	Enable filter clamav],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_CLAMAV], [1],
@@ -1013,8 +1013,8 @@ AC_ARG_WITH([filter-clamav],
 AM_CONDITIONAL([HAVE_FILTER_CLAMAV], [test $HAVE_FILTER_CLAMAV = yes])
 
 HAVE_FILTER_DKIM_SIGNER=no
-AC_ARG_WITH([filter-dkim-signer],
-	[  --with-filter-dkim-signer	Enable filter dkim-signer],
+AC_ARG_WITH([experimental-filter-dkim-signer],
+	[  --with-experimental-filter-dkim-signer	Enable filter dkim-signer],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_DKIM_SIGNER], [1],
@@ -1026,8 +1026,8 @@ AC_ARG_WITH([filter-dkim-signer],
 AM_CONDITIONAL([HAVE_FILTER_DKIM_SIGNER], [test $HAVE_FILTER_DKIM_SIGNER = yes])
 
 HAVE_FILTER_DNSBL=no
-AC_ARG_WITH([filter-dnsbl],
-	[  --with-filter-dnsbl	Enable filter dnsbl],
+AC_ARG_WITH([experimental-filter-dnsbl],
+	[  --with-experimental-filter-dnsbl	Enable filter dnsbl],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_DNSBL], [1],
@@ -1039,8 +1039,8 @@ AC_ARG_WITH([filter-dnsbl],
 AM_CONDITIONAL([HAVE_FILTER_DNSBL], [test $HAVE_FILTER_DNSBL = yes])
 
 HAVE_FILTER_LUA=no
-AC_ARG_WITH([filter-lua],
-	[  --with-filter-lua	Enable filter lua],
+AC_ARG_WITH([experimental-filter-lua],
+	[  --with-experimental-filter-lua	Enable filter lua],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_LUA], [1],
@@ -1053,8 +1053,8 @@ AC_ARG_WITH([filter-lua],
 AM_CONDITIONAL([HAVE_FILTER_LUA], [test $HAVE_FILTER_LUA = yes])
 
 HAVE_FILTER_MONKEY=no
-AC_ARG_WITH([filter-monkey],
-	[  --with-filter-monkey	Enable filter monkey],
+AC_ARG_WITH([experimental-filter-monkey],
+	[  --with-experimental-filter-monkey	Enable filter monkey],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_MONKEY], [1],
@@ -1066,8 +1066,8 @@ AC_ARG_WITH([filter-monkey],
 AM_CONDITIONAL([HAVE_FILTER_MONKEY], [test $HAVE_FILTER_MONKEY = yes])
 
 HAVE_FILTER_PAUSE=no
-AC_ARG_WITH([filter-pause],
-	[  --with-filter-pause	Enable filter pause],
+AC_ARG_WITH([experimental-filter-pause],
+	[  --with-experimental-filter-pause	Enable filter pause],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_PAUSE], [1],
@@ -1079,8 +1079,8 @@ AC_ARG_WITH([filter-pause],
 AM_CONDITIONAL([HAVE_FILTER_PAUSE], [test $HAVE_FILTER_PAUSE = yes])
 
 HAVE_FILTER_PERL=no
-AC_ARG_WITH([filter-perl],
-	[  --with-filter-perl	Enable filter perl],
+AC_ARG_WITH([experimental-filter-perl],
+	[  --with-experimental-filter-perl	Enable filter perl],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_PERL], [1],
@@ -1093,8 +1093,8 @@ AC_ARG_WITH([filter-perl],
 AM_CONDITIONAL([HAVE_FILTER_PERL], [test $HAVE_FILTER_PERL = yes])
 
 HAVE_FILTER_PYTHON=no
-AC_ARG_WITH([filter-python],
-	[  --with-filter-python	Enable filter python],
+AC_ARG_WITH([experimental-filter-python],
+	[  --with-experimental-filter-python	Enable filter python],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_PYTHON], [1],
@@ -1107,8 +1107,8 @@ AC_ARG_WITH([filter-python],
 AM_CONDITIONAL([HAVE_FILTER_PYTHON], [test $HAVE_FILTER_PYTHON = yes])
 
 HAVE_FILTER_REGEX=no
-AC_ARG_WITH([filter-regex],
-	[  --with-filter-regex	Enable filter regex],
+AC_ARG_WITH([experimental-filter-regex],
+	[  --with-experimental-filter-regex	Enable filter regex],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_REGEX], [1],
@@ -1120,8 +1120,8 @@ AC_ARG_WITH([filter-regex],
 AM_CONDITIONAL([HAVE_FILTER_REGEX], [test $HAVE_FILTER_REGEX = yes])
 
 HAVE_FILTER_SPAMASSASSIN=no
-AC_ARG_WITH([filter-spamassassin],
-	[  --with-filter-spamassassin	Enable filter spamassassin],
+AC_ARG_WITH([experimental-filter-spamassassin],
+	[  --with-experimental-filter-spamassassin	Enable filter spamassassin],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_SPAMASSASSIN], [1],
@@ -1133,8 +1133,8 @@ AC_ARG_WITH([filter-spamassassin],
 AM_CONDITIONAL([HAVE_FILTER_SPAMASSASSIN], [test $HAVE_FILTER_SPAMASSASSIN = yes])
 
 HAVE_FILTER_STUB=no
-AC_ARG_WITH([filter-stub],
-	[  --with-filter-stub	Enable filter stub],
+AC_ARG_WITH([experimental-filter-stub],
+	[  --with-experimental-filter-stub	Enable filter stub],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_STUB], [1],
@@ -1146,8 +1146,8 @@ AC_ARG_WITH([filter-stub],
 AM_CONDITIONAL([HAVE_FILTER_STUB], [test $HAVE_FILTER_STUB = yes])
 
 HAVE_FILTER_TRACE=no
-AC_ARG_WITH([filter-trace],
-	[  --with-filter-trace	Enable filter trace],
+AC_ARG_WITH([experimental-filter-trace],
+	[  --with-experimental-filter-trace	Enable filter trace],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_TRACE], [1],
@@ -1159,8 +1159,8 @@ AC_ARG_WITH([filter-trace],
 AM_CONDITIONAL([HAVE_FILTER_TRACE], [test $HAVE_FILTER_TRACE = yes])
 
 HAVE_FILTER_VOID=no
-AC_ARG_WITH([filter-void],
-	[  --with-filter-void	Enable filter void],
+AC_ARG_WITH([experimental-filter-void],
+	[  --with-experimental-filter-void	Enable filter void],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_VOID], [1],
