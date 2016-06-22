@@ -1130,13 +1130,14 @@ AC_ARG_WITH([experimental-filter-regex],
 AM_CONDITIONAL([HAVE_FILTER_REGEX], [test $HAVE_FILTER_REGEX = yes])
 
 HAVE_FILTER_RSPAMD=no
-AC_ARG_WITH([filter-rspamd],
-	[  --with-filter-rspamd	Enable filter rspamd],
+AC_ARG_WITH([experimental-filter-rspamd],
+	[  --with-experimental-filter-rspamd	Enable filter rspamd],
 	[
 		if test "x$withval" != "xno" ; then
 			AC_DEFINE([HAVE_FILTER_RSPAMD], [1],
 				[Define if you have filter rspamd])
 			HAVE_FILTER_RSPAMD=yes
+			experimental_filter=yes
 		fi
 	]
 )
