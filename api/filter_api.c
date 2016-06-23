@@ -1131,7 +1131,7 @@ filter_api_datahold_open(uint64_t id, void (*callback)(uint64_t, FILE *, void *)
 	struct filter_session	*s;
 	FILE   *fp;
 	int	fd;
-	char	pathname[] = "XXXXXXXXXX";
+	char	pathname[] = "/tmp/XXXXXXXXXX";
 
 	s = tree_xget(&sessions, id);
 
@@ -1162,6 +1162,17 @@ filter_api_datahold_open(uint64_t id, void (*callback)(uint64_t, FILE *, void *)
 	s->datahold_arg = arg;
 
 	return (fp);
+}
+
+void
+filter_api_datahold_start(uint64_t id)
+{
+	struct filter_session	*s;
+
+	s = tree_xget(&sessions, id);
+	if (s->datahold)
+		fseek(s->datahold, 0, 0);
+	io_callback(&s->pipe.oev, IO_LOWAT);
 }
 
 void
