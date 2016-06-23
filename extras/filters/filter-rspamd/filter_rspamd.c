@@ -34,198 +34,7 @@
 #include "log.h"
 #include "iobuf.h"
 #include "ioev.h"
-
-#define RSPAMD_HOST "127.0.0.1"
-#define RSPAMD_PORT "11333"
-
-
-struct session {
-	uint64_t	id;
-
-	struct iobuf	iobuf;
-	struct io	io;
-	
-	char	       *ip;
-	char	       *hostname;
-	char	       *helo;
-
-	struct tx {
-		FILE   *fp;
-		char   *line;
-		int	error;
-		int	eom;
-
-		char   *from;
-		char   *rcpt;
-		struct rfc2822_parser	rfc2822_parser;
-	} tx;
-
-};
-
-struct sockaddr_storage	ss;
-
-static struct session  *session_init(uint64_t);
-static void		session_reset(struct session *);
-static void		session_free(struct session *);
-
-static int		rspamd_connect(struct session *);
-static void		rspamd_connected(struct session *);
-static void		rspamd_error(struct session *);
-static void		rspamd_io(struct io *, int);
-static void		rspamd_send_query(struct session *);
-static void		rspamd_send_chunk(struct session *, const char *);
-static void		rspamd_read_response(struct session *);
-
-static void		datahold_stream(uint64_t, FILE *, void *);
-
-/* XXX
- * this needs to be handled differently, but lets focus on the filter for now
- */
-static void
-rspamd_resolve(const char *h, const char *p)
-{
-	struct addrinfo hints, *addresses, *ai;
-	int fd, r;
-
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = PF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
-	if ((r = getaddrinfo(h, p, &hints, &addresses)))
-		fatalx("resolve: getaddrinfo %s", gai_strerror(r));
-	for (ai = addresses; ai; ai = ai->ai_next) {
-		if ((fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)) == -1)
-			continue;
-		if (connect(fd, ai->ai_addr, ai->ai_addrlen) == -1) {
-			close(fd);
-			continue;
-		}
-		close(fd);
-		memmove(&ss, ai->ai_addr, ai->ai_addrlen);
-		break;
-	}
-	freeaddrinfo(addresses);
-	if (!ai)
-		fatalx("resolve: failed");
-}
-
-static struct session *
-session_init(uint64_t id)
-{
-	struct session	*rs;
-
-	rs = xcalloc(1, sizeof *rs, "on_connect");
-	rs->id = id;
-	return rs;
-}
-
-static void
-session_reset(struct session *rs)
-{
-	iobuf_clear(&rs->iobuf);
-	io_clear(&rs->io);
-
-	filter_api_datahold_close(rs->id);
-
-	free(rs->tx.from);
-	free(rs->tx.rcpt);
-
-	rs->tx.eom = 0;
-	rs->tx.error = 0;
-	rs->tx.from = NULL;
-	rs->tx.rcpt = NULL;
-}
-
-static void
-session_free(struct session *rs)
-{
-	session_reset(rs);
-
-	free(rs->ip);
-	free(rs->hostname);
-	free(rs->helo);
-	free(rs);
-}
-
-static int
-rspamd_connect(struct session *rs)
-{
-	iobuf_xinit(&rs->iobuf, LINE_MAX, LINE_MAX, "on_eom");
-	io_init(&rs->io, -1, rs, rspamd_io, &rs->iobuf);
-	if (io_connect(&rs->io, (struct sockaddr *)&ss, NULL) == -1)
-		return 0;
-	return 1;
-}
-
-static void
-rspamd_disconnect(struct session *rs)
-{
-	iobuf_clear(&rs->iobuf);
-	io_clear(&rs->io);
-}
-
-static void
-rspamd_connected(struct session *rs)
-{
-	filter_api_accept(rs->id);
-}
-
-static void
-rspamd_error(struct session *rs)
-{
-	filter_api_reject_code(rs->id, FILTER_FAIL, 421, "temporary failure");
-	session_reset(rs);
-}
-
-static void
-rspamd_send_query(struct session *rs)
-{
-	iobuf_xfqueue(&rs->iobuf, "io",
-	    "POST /check HTTP/1.0\r\n"
-	    "Transfer-Encoding: chunked\r\n"
-	    "Pass: all\r\n"
-	    "IP: %s\r\n"
-	    "Helo: %s\r\n"
-	    "Hostname: %s\r\n"
-	    "From: %s\r\n"
-	    "Rcpt: %s\r\n"
-	    "\r\n",
-	    rs->ip,
-	    rs->helo,
-	    rs->hostname,
-	    rs->tx.from,
-	    rs->tx.rcpt);
-	io_reload(&rs->io);
-}
-
-static void
-rspamd_send_chunk(struct session *rs, const char *line)
-{
-	if (line)
-		iobuf_xfqueue(&rs->iobuf, "io", "%x\r\n%s\r\n\r\n",
-		    strlen(line)+2, line);
-	else {
-		iobuf_xfqueue(&rs->iobuf, "io", "0\r\n\r\n");
-		rs->tx.eom = 1;
-	}
-		
-	io_reload(&rs->io);
-}
-
-static void
-rspamd_read_response(struct session *rs)
-{
-	char	       *line;
-
-	while ((line = iobuf_getline(&rs->iobuf, NULL)))
-		log_debug("debug: DATAIN: [%s]", line);
-	if (iobuf_len(&rs->iobuf) != 0) {
-		log_debug("debug: DATAIN: [%.*s]",
-		    (int)iobuf_len(&rs->iobuf),
-		    iobuf_data(&rs->iobuf));		
-	}
-	iobuf_normalize(&rs->iobuf);
-}
+#include "rspamd.h"
 
 static void
 datahold_stream(uint64_t id, FILE *fp, void *arg)
@@ -233,7 +42,8 @@ datahold_stream(uint64_t id, FILE *fp, void *arg)
 	struct session *rs = arg;
 	size_t		sz;
 	ssize_t		len;
-
+	int		ret;
+	
 	errno = 0;
 	if ((len = getline(&rs->tx.line, &sz, fp)) == -1) {
 		if (errno) {
@@ -246,61 +56,10 @@ datahold_stream(uint64_t id, FILE *fp, void *arg)
 	}
 
 	rs->tx.line[strcspn(rs->tx.line, "\n")] = '\0';
-	log_debug("debug: STREAM BACK: [%s]", rs->tx.line);
-	filter_api_writeln(rs->id, rs->tx.line);
+	ret = rfc2822_parser_feed(&rs->tx.rfc2822_parser,
+	    rs->tx.line);
+	datahold_stream(id, fp, arg);
 }
-
-static void
-rspamd_io(struct io *io, int evt)
-{
-	struct session *rs = io->arg;
-
-	switch (evt) {
-	case IO_CONNECTED:
-		rspamd_connected(rs);
-		rspamd_send_query(rs);
-		io_set_write(io);
-		break;
-
-	case IO_LOWAT:
-		/* we've hit EOM and no more data, toggle to read */
-		if (rs->tx.eom)
-			io_set_read(io);
-		break;
-
-	case IO_DATAIN:
-		/* accumulate reply */
-		rspamd_read_response(rs);
-		break;
-
-	case IO_DISCONNECTED:
-		rspamd_disconnect(rs);
-
-		/* we're done with rspamd, if there was a local error
-		 * during transaction, reject now, else move forward.
-		 */
-		if (rs->tx.error) {
-			rspamd_error(rs);
-			break;
-		}
-		/* process rspamd reply and start processing datahold */
-		filter_api_datahold_start(rs->id);
-		break;
-
-	case IO_TIMEOUT:
-	case IO_ERROR:
-	default:
-		//rspamd_error(rs);
-		break;
-	}
-	return;
-}
-
-
-
-
-
-/* callbacks */
 
 static int
 on_connect(uint64_t id, struct filter_connect *conn)
@@ -385,7 +144,6 @@ on_eom(uint64_t id, size_t size)
 
 	rspamd_send_chunk(rs, NULL);
 
-	rfc2822_parser_init(&rs->tx.rfc2822_parser);
 	return 1;
 }
 
