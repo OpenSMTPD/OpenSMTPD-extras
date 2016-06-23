@@ -57,6 +57,7 @@ struct session {
 
 		char   *from;
 		char   *rcpt;
+		struct rfc2822_parser	rfc2822_parser;
 	} tx;
 
 };
@@ -383,6 +384,9 @@ on_eom(uint64_t id, size_t size)
 	struct session	*rs = filter_api_get_udata(id);
 
 	rspamd_send_chunk(rs, NULL);
+
+	rfc2822_parser_init(&rs->tx.rfc2822_parser);
+	return 1;
 }
 
 static void

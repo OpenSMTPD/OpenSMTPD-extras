@@ -11,6 +11,7 @@ SRCS	+= $(api_srcdir)/dict.c
 SRCS	+= $(api_srcdir)/util.c
 SRCS	+= $(api_srcdir)/iobuf.c
 SRCS	+= $(api_srcdir)/ioev.c
+SRCS	+= $(api_srcdir)/rfc2822.c
 
 LIBCOMPAT	= $(top_builddir)/openbsd-compat/libopenbsd-compat.a
 LDADD		= $(LIBCOMPAT)
