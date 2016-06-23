@@ -49,15 +49,16 @@ struct session {
 	char	       *hostname;
 	char	       *helo;
 
+	struct tx {
+		FILE   *fp;
+		char	*line;
+		int		eom;
+		int		rspamd_done;
 
-	/* transaction specific */
-	FILE	       *fp;
+		char	       *from;
+		char	       *rcpt;
+	} tx;
 
-	int		eom;
-	int		reply;
-
-	char	       *from;
-	char	       *rcpt;
 };
 
 struct sockaddr_storage	ss;
@@ -66,250 +67,11 @@ static struct session  *rspamd_session_init(uint64_t);
 static void		rspamd_session_reset(struct session *);
 static void		rspamd_session_free(struct session *);
 static void		rspamd_io(struct io *, int);
-
-static int
-on_connect(uint64_t id, struct filter_connect *conn)
-{
-	struct session	*rs;
-
-	rs = rspamd_session_init(id);
-
-	//r->ip = xstrdup(sockaddr_to_text(&conn->local), "on_connect");
-	rs->ip = xstrdup("192.168.1.1", "on_connect");
-	rs->hostname = xstrdup(conn->hostname, "on_connect");
-	filter_api_set_udata(id, rs);
-	return filter_api_accept(id);
-}
-
-static int
-on_helo(uint64_t id, const char *helo)
-{
-	struct session	*rs = filter_api_get_udata(id);
-
-	rs->helo = xstrdup(helo, "on_helo");
-	return filter_api_accept(id);
-}
-
-static int
-on_mail(uint64_t id, struct mailaddr *mail)
-{
-	struct session	*rs = filter_api_get_udata(id);
-
-	rs->from = xstrdup("gilles@poolp.org", "on_mail");
-	return filter_api_accept(id);
-}
-
-static int
-on_rcpt(uint64_t id, struct mailaddr *rcpt)
-{
-	struct session	*rs = filter_api_get_udata(id);
-
-	log_debug("debug: on_rcpt");
-	rs->rcpt = xstrdup("gilles+rcpt@poolp.org", "on_rcpt");
-	return filter_api_accept(id);
-}
-
-static int
-on_data(uint64_t id)
-{
-	struct session *rs = filter_api_get_udata(id);
-	char		pathname[1024] = "/tmp/filter-rspamd.XXXXXX";
-	int		fd;
+static void		rspamd_send_query(struct session *);
 	
-	iobuf_xinit(&rs->iobuf, LINE_MAX, LINE_MAX, "on_eom");
-	io_init(&rs->io, -1, rs, rspamd_io, &rs->iobuf);
-	if (io_connect(&rs->io, (struct sockaddr *)&ss, NULL) == -1)
-		return filter_api_accept(id);
-
-	fd = mkstemp(pathname);
-	if (fd == -1) {
-	}
-	unlink(pathname);
-	rs->fp = fdopen(fd, "w+b");
-	if (rs->fp == NULL) {
-		close(fd);
-	}
-
-	iobuf_xfqueue(&rs->iobuf, "io",
-	    "POST /check HTTP/1.0\r\n"
-	    "IP: %s\r\n"
-	    "Helo: %s\r\n"
-	    "Hostname: %s\r\n"
-	    "From: %s\r\n"
-	    "Rcpt: %s\r\n"
-	    "Pass: all\r\n"
-	    "Transfer-Encoding: chunked\r\n\r\n",
-	    rs->ip,
-	    rs->helo,
-	    rs->hostname,
-	    rs->from,
-	    rs->rcpt);
-
-	io_reload(&rs->io);
-	return filter_api_accept(id);
-}
-
-static void
-on_dataline(uint64_t id, const char *line)
-{
-	struct session	*rs = filter_api_get_udata(id);
-
-	fprintf(rs->fp, "%s\n", line);
-	iobuf_xfqueue(&rs->iobuf, "io", "%x\r\n%s\r\n\r\n",
-	    strlen(line)+2, line);
-	io_reload(&rs->io);
-}
-
-static int
-on_eom(uint64_t id, size_t size)
-{
-	struct session	*rs = filter_api_get_udata(id);
-
-	iobuf_xfqueue(&rs->iobuf, "io", "0\r\n\r\n");
-	rs->eom = 1;
-	io_reload(&rs->io);
-}
-
-static void
-on_commit(uint64_t id)
-{
-	struct session	*rs = filter_api_get_udata(id);
-
-	rspamd_session_reset(rs);
-}
-
-static void
-on_rollback(uint64_t id)
-{
-	struct session	*rs = filter_api_get_udata(id);
-
-	rspamd_session_reset(rs);
-}
-
-static void
-on_disconnect(uint64_t id)
-{
-	rspamd_session_free((struct session *)filter_api_get_udata(id));
-}
-
-static struct session *
-rspamd_session_init(uint64_t id)
-{
-	struct session	*rs;
-
-	rs = xcalloc(1, sizeof *rs, "on_connect");
-	rs->id = id;
-
-	return rs;
-}
-
-static void
-rspamd_session_reset(struct session *rs)
-{
-	free(rs->from);
-	free(rs->rcpt);
-
-	if (rs->fp) {
-		fclose(rs->fp);
-		rs->fp = NULL;
-	}
-	rs->eom = 0;
-	rs->reply = 0;
-}
-
-static void
-rspamd_session_free(struct session *rs)
-{
-	iobuf_clear(&rs->iobuf);
-	io_clear(&rs->io);
-
-	rspamd_session_reset(rs);
-
-	free(rs->ip);
-	free(rs->hostname);
-	free(rs->helo);
-	free(rs);
-}
-
-static void
-rspamd_response(struct session *rs)
-{
-	char	       *line;
-
-	while ((line = iobuf_getline(&rs->iobuf, NULL)))
-		log_debug("debug: DATAIN: [%s]", line);
-	if (iobuf_len(&rs->iobuf) != 0) {
-		log_debug("debug: DATAIN: [%.*s]",
-		    (int)iobuf_len(&rs->iobuf),
-		    iobuf_data(&rs->iobuf));
-		
-	}
-	iobuf_normalize(&rs->iobuf);
-
-	rs->reply = 1;
-}
-
-static void
-rspamd_streamback(struct session *rs)
-{
-	char	       *line;
-	size_t		sz;
-	ssize_t		len;
-
-	log_debug("debug: STREAM BACK");
-	fseek(rs->fp, 0, 0);
-	line = NULL;
-	while ((len = getline(&line, &sz, rs->fp)) != -1) {
-		line[len-1] = 0;
-		log_debug("debug: STREAM BACK: [%s]", line);
-		filter_api_writeln(rs->id, line);
-	}
-	filter_api_accept(rs->id);
-}
-
-static void
-rspamd_io(struct io *io, int evt)
-{
-	struct session *rs = io->arg;
-
-	switch (evt) {
-	case IO_CONNECTED:
-		io_set_write(io);
-		break;
-
-	case IO_LOWAT:
-		if (rs->eom)
-			io_set_read(io);
-		break;
-
-	case IO_DATAIN:
-		log_debug("debug: DATAIN");
-		rspamd_response(rs);
-		if (rs->reply) {
-			log_debug("debug: REPLY DONE");
-			io_set_write(io);
-			rspamd_streamback(rs);
-		}
-		break;
-
-	case IO_DISCONNECTED:
-		log_debug("debug: DISCONNECT");
-		rspamd_session_free(rs);
-		break;
-	case IO_TIMEOUT:
-		log_debug("debug: TIMEOUT");
-		break;
-	case IO_ERROR:
-		log_debug("debug: ERROR");
-		break;
-	default:
-		log_debug("debug: WTF");
-		break;
-	}
-	return;
-}
-
-
+/* XXX
+ * this needs to be handled differently, but lets focus on the filter for now
+ */
 static void
 rspamd_resolve(const char *h, const char *p)
 {
@@ -336,6 +98,293 @@ rspamd_resolve(const char *h, const char *p)
 	freeaddrinfo(addresses);
 	if (!ai)
 		fatalx("resolve: failed");
+}
+
+static struct session *
+rspamd_session_init(uint64_t id)
+{
+	struct session	*rs;
+
+	rs = xcalloc(1, sizeof *rs, "on_connect");
+	rs->id = id;
+	return rs;
+}
+
+static void
+rspamd_session_reset(struct session *rs)
+{
+	free(rs->tx.from);
+	free(rs->tx.rcpt);
+
+	filter_api_datahold_close(rs->id);
+
+	rs->tx.eom = 0;
+	rs->tx.rspamd_done = 0;
+}
+
+static void
+rspamd_session_free(struct session *rs)
+{
+	iobuf_clear(&rs->iobuf);
+	io_clear(&rs->io);
+
+	rspamd_session_reset(rs);
+
+	free(rs->ip);
+	free(rs->hostname);
+	free(rs->helo);
+	free(rs);
+}
+
+static int
+rspamd_connect(struct session *rs)
+{
+	iobuf_xinit(&rs->iobuf, LINE_MAX, LINE_MAX, "on_eom");
+	io_init(&rs->io, -1, rs, rspamd_io, &rs->iobuf);
+	if (io_connect(&rs->io, (struct sockaddr *)&ss, NULL) == -1)
+		return 0;
+	return 1;
+}
+
+static void
+rspamd_connected(struct session *rs)
+{
+	filter_api_accept(rs->id);
+}
+
+static void
+rspamd_error(struct session *rs)
+{
+	/* XXX */
+	filter_api_accept(rs->id);
+}
+
+static void
+rspamd_send_query(struct session *rs)
+{
+	iobuf_xfqueue(&rs->iobuf, "io",
+	    "POST /check HTTP/1.0\r\n"
+	    "IP: %s\r\n"
+	    "Helo: %s\r\n"
+	    "Hostname: %s\r\n"
+	    "From: %s\r\n"
+	    "Rcpt: %s\r\n"
+	    "Pass: all\r\n"
+	    "Transfer-Encoding: chunked\r\n\r\n",
+	    rs->ip,
+	    rs->helo,
+	    rs->hostname,
+	    rs->tx.from,
+	    rs->tx.rcpt);
+	io_reload(&rs->io);
+}
+
+static void
+rspamd_send_chunk(struct session *rs, const char *line)
+{
+	iobuf_xfqueue(&rs->iobuf, "io", "%x\r\n%s\r\n\r\n",
+	    strlen(line)+2, line);
+	io_reload(&rs->io);
+}
+
+static void
+rspamd_send_eom(struct session *rs)
+{
+	iobuf_xfqueue(&rs->iobuf, "io", "0\r\n\r\n");
+	rs->tx.eom = 1;
+	io_reload(&rs->io);
+}
+
+static void
+rspamd_response(struct session *rs)
+{
+	char	       *line;
+
+	while ((line = iobuf_getline(&rs->iobuf, NULL)))
+		log_debug("debug: DATAIN: [%s]", line);
+	if (iobuf_len(&rs->iobuf) != 0) {
+		log_debug("debug: DATAIN: [%.*s]",
+		    (int)iobuf_len(&rs->iobuf),
+		    iobuf_data(&rs->iobuf));		
+	}
+	iobuf_normalize(&rs->iobuf);
+
+	rs->tx.rspamd_done = 1;
+}
+
+static void
+smtpd_stream_back(uint64_t id, FILE *fp, void *arg)
+{
+	struct session *rs = arg;
+	size_t		sz;
+	ssize_t		len;
+
+	len = getline(&rs->tx.line, &sz, fp);
+
+	/* XXX */
+	if (len == -1) {
+		filter_api_accept(rs->id);
+		return;
+	}
+
+	if (strcmp(rs->tx.line, "\n") == 0)
+		filter_api_writeln(rs->id, "X-MangeDes: Bites");
+
+	rs->tx.line[len-1] = 0;
+	log_debug("debug: STREAM BACK: [%s]", rs->tx.line);
+	filter_api_writeln(rs->id, rs->tx.line);
+}
+
+static void
+rspamd_io(struct io *io, int evt)
+{
+	struct session *rs = io->arg;
+
+	switch (evt) {
+	case IO_CONNECTED:
+		rspamd_connected(rs);
+		rspamd_send_query(rs);
+		io_set_write(io);
+		break;
+
+	case IO_LOWAT:
+		/* we've hit EOM and no more data, toggle to read */
+		if (rs->tx.eom)
+			io_set_read(io);
+		break;
+
+	case IO_DATAIN:
+		rspamd_response(rs);
+		if (rs->tx.rspamd_done) {
+			log_debug("debug: ####### WILL STREAM BACK");
+			filter_api_datahold_start(rs->id);
+			io_set_write(io);
+		}
+		break;
+
+	case IO_DISCONNECTED:
+		log_debug("debug: DISCONNECT");
+		rspamd_session_free(rs);
+		break;
+	case IO_TIMEOUT:
+		log_debug("debug: TIMEOUT");
+		break;
+	case IO_ERROR:
+		log_debug("debug: ERROR");
+		break;
+	default:
+		log_debug("debug: WTF");
+		break;
+	}
+	return;
+}
+
+
+
+
+
+/* callbacks */
+
+static int
+on_connect(uint64_t id, struct filter_connect *conn)
+{
+	struct session	*rs;
+	const char	*ip;
+
+	rs = rspamd_session_init(id);
+
+	//ip = filter_api_sockaddr_to_text((struct sockaddr *)&conn->local);
+	ip = "127.0.0.1";
+	rs->ip = xstrdup(ip, "on_connect");
+	rs->hostname = xstrdup(conn->hostname, "on_connect");
+	filter_api_set_udata(id, rs);
+	return filter_api_accept(id);
+}
+
+static int
+on_helo(uint64_t id, const char *helo)
+{
+	struct session	*rs = filter_api_get_udata(id);
+
+	rs->helo = xstrdup(helo, "on_helo");
+	return filter_api_accept(id);
+}
+
+static int
+on_mail(uint64_t id, struct mailaddr *mail)
+{
+	struct session	*rs = filter_api_get_udata(id);
+	const char	*address;
+
+	address = filter_api_mailaddr_to_text(mail);
+	rs->tx.from = xstrdup(address, "on_mail");
+	return filter_api_accept(id);
+}
+
+static int
+on_rcpt(uint64_t id, struct mailaddr *rcpt)
+{
+	struct session	*rs = filter_api_get_udata(id);
+	const char	*address;
+
+	address = filter_api_mailaddr_to_text(rcpt);
+	rs->tx.rcpt = xstrdup(address, "on_rcpt");
+	return filter_api_accept(id);
+}
+
+static int
+on_data(uint64_t id)
+{
+	struct session *rs = filter_api_get_udata(id);
+
+	rs->tx.fp = filter_api_datahold_open(id, smtpd_stream_back, rs);
+	if (rs->tx.fp == NULL)
+		return filter_api_accept(id); /* XXX */
+
+	if (! rspamd_connect(rs))
+		return filter_api_accept(id); /* XXX */
+
+	return 1;
+}
+
+static void
+on_dataline(uint64_t id, const char *line)
+{
+	struct session	*rs = filter_api_get_udata(id);
+
+	/* XXX - tempfail here */
+	fprintf(rs->tx.fp, "%s\n", line);
+	rspamd_send_chunk(rs, line);
+}
+
+static int
+on_eom(uint64_t id, size_t size)
+{
+	struct session	*rs = filter_api_get_udata(id);
+
+	rspamd_send_eom(rs);
+}
+
+static void
+on_commit(uint64_t id)
+{
+	struct session	*rs = filter_api_get_udata(id);
+
+	rspamd_session_reset(rs);
+}
+
+static void
+on_rollback(uint64_t id)
+{
+	struct session	*rs = filter_api_get_udata(id);
+
+	rspamd_session_reset(rs);
+}
+
+static void
+on_disconnect(uint64_t id)
+{
+	rspamd_session_free((struct session *)filter_api_get_udata(id));
 }
 
 int
