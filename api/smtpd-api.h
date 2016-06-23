@@ -30,6 +30,8 @@
 #include <event.h>
 #include <imsg.h>
 
+#include "rfc2822.h"
+
 #define	FILTER_API_VERSION	 50
 
 enum blockmodes {
