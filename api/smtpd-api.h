@@ -389,6 +389,9 @@ void filter_api_timer(uint64_t, uint32_t, void (*)(uint64_t, void *), void *);
 const char *filter_api_sockaddr_to_text(const struct sockaddr *);
 const char *filter_api_mailaddr_to_text(const struct mailaddr *);
 
+FILE *filter_api_datahold_open(uint64_t, void (*callback)(uint64_t, FILE *, void *), void *);
+void filter_api_datahold_close(uint64_t);
+
 void filter_api_on_connect(int(*)(uint64_t, struct filter_connect *));
 void filter_api_on_helo(int(*)(uint64_t, const char *));
 void filter_api_on_mail(int(*)(uint64_t, struct mailaddr *));

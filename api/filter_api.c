@@ -72,6 +72,10 @@ struct filter_session {
 		char		*line;
 	} response;
 
+	FILE			*datahold;
+	void			(*datahold_cb)(uint64_t, FILE *, void *);
+	void			*datahold_arg;
+
 	void			*udata;
 };
 
@@ -463,6 +467,8 @@ filter_dispatch_commit(uint64_t id)
 	io_clear(&s->pipe.iev);
 	iobuf_clear(&s->pipe.ibuf);
 
+	filter_api_datahold_close(id);
+
 	if (fi.cb.commit)
 		fi.cb.commit(id);
 }
@@ -481,6 +487,8 @@ filter_dispatch_rollback(uint64_t id)
 	iobuf_clear(&s->pipe.obuf);
 	io_clear(&s->pipe.iev);
 	iobuf_clear(&s->pipe.ibuf);
+
+	filter_api_datahold_close(id);
 
 	if (fi.cb.rollback)
 		fi.cb.rollback(id);
@@ -654,7 +662,9 @@ filter_io_out(struct io *io, int evt)
 		if (s->pipe.iev.sock == -1 && s->response.ready)
 			break;
 
-		/* just wait for more data to send */
+		/* just wait for more data to send or feed through callback */
+		if (s->datahold_cb)
+			s->datahold_cb(s->id, s->datahold, s->datahold_arg);
 		return;
 
 	default:
@@ -1113,4 +1123,56 @@ filter_api_mailaddr_to_text(const struct mailaddr *maddr)
 		return (NULL);
 
 	return (buffer);
+}
+
+FILE *
+filter_api_datahold_open(uint64_t id, void (*callback)(uint64_t, FILE *, void *), void *arg)
+{
+	struct filter_session	*s;
+	FILE   *fp;
+	int	fd;
+	char	pathname[] = "XXXXXXXXXX";
+
+	s = tree_xget(&sessions, id);
+
+	if (s->datahold) {
+		log_warnx("warn: filter-api:%s filter_api_datahold_open: already opened !",
+		    filter_name);
+		fatalx("filter-api: exiting");
+	}
+
+	if (!s->tx) {
+		log_warnx("warn: filter-api:%s filter_api_datahold_open: not in transaction !",
+		    filter_name);
+		fatalx("filter-api: exiting");
+	}
+
+	fd = mkstemp(pathname);
+	if (fd == -1)
+		return (NULL);
+
+	fp = fdopen(fd, "w+b");
+	if (fp == NULL) {
+		close(fd);
+		return (NULL);
+	}
+
+	s->datahold = fp;
+	s->datahold_cb = callback;
+	s->datahold_arg = arg;
+
+	return (fp);
+}
+
+void
+filter_api_datahold_close(uint64_t id)
+{
+	struct filter_session	*s;
+
+	s = tree_xget(&sessions, id);
+	if (s->datahold)
+		fclose(s->datahold);
+	s->datahold = NULL;
+	s->datahold_cb = NULL;
+	s->datahold_arg = NULL;
 }
