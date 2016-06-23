@@ -282,7 +282,6 @@ rspamd_io(struct io *io, int evt)
 			rspamd_error(rs);
 			break;
 		}
-		log_debug("debug: DISCONNECT");
 		/* process rspamd reply and start processing datahold */
 		filter_api_datahold_start(rs->id);
 		break;
