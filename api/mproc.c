@@ -39,9 +39,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
+
 
 /* from filter_api.c */
 const char *proc_name(enum smtp_proc_type);

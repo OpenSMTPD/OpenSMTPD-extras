@@ -25,8 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
+#include <smtpd-api.h>
 
 struct dictentry {
 	SPLAY_ENTRY(dictentry)	entry;

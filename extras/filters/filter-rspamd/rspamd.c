@@ -29,17 +29,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
-#include "iobuf.h"
-#include "ioev.h"
+#include <smtpd-api.h>
 
-#include "rfc2822.h"
 #include "rspamd.h"
 #include "json.h"
 
 struct sockaddr_storage	ss;
+
+static void	datahold_stream(uint64_t, FILE *, void *);
 
 /* XXX
  * this needs to be handled differently, but lets focus on the filter for now
@@ -137,6 +134,15 @@ session_free(struct session *rs)
 	free(rs->hostname);
 	free(rs->helo);
 	free(rs);
+}
+
+int
+rspamd_buffer(struct session *rs)
+{
+	rs->tx.fp = filter_api_datahold_open(rs->id, datahold_stream, rs);
+	if (rs->tx.fp == NULL)
+		return 0;
+	return 1;
 }
 
 int
@@ -433,3 +439,27 @@ rspamd_io(struct io *io, int evt)
 	return;
 }
 
+static void
+datahold_stream(uint64_t id, FILE *fp, void *arg)
+{
+	struct session *rs = arg;
+	size_t		sz;
+	ssize_t		len;
+	int		ret;
+	
+	errno = 0;
+	if ((len = getline(&rs->tx.line, &sz, fp)) == -1) {
+		if (errno) {
+			filter_api_reject_code(rs->id, FILTER_FAIL, 421,
+			    "temporary failure");
+			return;
+		}
+		filter_api_accept(rs->id);
+		return;
+	}
+
+	rs->tx.line[strcspn(rs->tx.line, "\n")] = '\0';
+	ret = rfc2822_parser_feed(&rs->tx.rfc2822_parser,
+	    rs->tx.line);
+	datahold_stream(id, fp, arg);
+}

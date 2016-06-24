@@ -30,8 +30,7 @@
 #include <inttypes.h>
 #include <stdlib.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
+#include <smtpd-api.h>
 
 struct treeentry {
 	SPLAY_ENTRY(treeentry)	 entry;

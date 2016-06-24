@@ -35,11 +35,7 @@
 #include <unistd.h>
 #include <grp.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "ioev.h"
-#include "iobuf.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 #define FILTER_HIWAT 65536
 

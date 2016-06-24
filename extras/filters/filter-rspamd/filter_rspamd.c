@@ -29,37 +29,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
-#include "iobuf.h"
-#include "ioev.h"
+#include <smtpd-api.h>
+
 #include "rspamd.h"
-
-static void
-datahold_stream(uint64_t id, FILE *fp, void *arg)
-{
-	struct session *rs = arg;
-	size_t		sz;
-	ssize_t		len;
-	int		ret;
-	
-	errno = 0;
-	if ((len = getline(&rs->tx.line, &sz, fp)) == -1) {
-		if (errno) {
-			filter_api_reject_code(rs->id, FILTER_FAIL, 421,
-			    "temporary failure");
-			return;
-		}
-		filter_api_accept(rs->id);
-		return;
-	}
-
-	rs->tx.line[strcspn(rs->tx.line, "\n")] = '\0';
-	ret = rfc2822_parser_feed(&rs->tx.rfc2822_parser,
-	    rs->tx.line);
-	datahold_stream(id, fp, arg);
-}
 
 static int
 on_connect(uint64_t id, struct filter_connect *conn)
@@ -74,6 +46,7 @@ on_connect(uint64_t id, struct filter_connect *conn)
 	rs->ip = xstrdup(ip, "on_connect");
 	rs->hostname = xstrdup(conn->hostname, "on_connect");
 	filter_api_set_udata(id, rs);
+
 	return filter_api_accept(id);
 }
 
@@ -83,6 +56,7 @@ on_helo(uint64_t id, const char *helo)
 	struct session	*rs = filter_api_get_udata(id);
 
 	rs->helo = xstrdup(helo, "on_helo");
+
 	return filter_api_accept(id);
 }
 
@@ -94,6 +68,7 @@ on_mail(uint64_t id, struct mailaddr *mail)
 
 	address = filter_api_mailaddr_to_text(mail);
 	rs->tx.from = xstrdup(address, "on_mail");
+
 	return filter_api_accept(id);
 }
 
@@ -105,6 +80,7 @@ on_rcpt(uint64_t id, struct mailaddr *rcpt)
 
 	address = filter_api_mailaddr_to_text(rcpt);
 	rs->tx.rcpt = xstrdup(address, "on_rcpt");
+
 	return filter_api_accept(id);
 }
 
@@ -113,8 +89,7 @@ on_data(uint64_t id)
 {
 	struct session *rs = filter_api_get_udata(id);
 
-	rs->tx.fp = filter_api_datahold_open(id, datahold_stream, rs);
-	if (rs->tx.fp == NULL)
+	if (! rspamd_buffer(rs))
 		return filter_api_reject_code(rs->id, FILTER_FAIL, 421,
 		    "temporary failure");
 
@@ -134,6 +109,7 @@ on_dataline(uint64_t id, const char *line)
 	sz = fprintf(rs->tx.fp, "%s\n", line);
 	if (sz == -1 || sz < (ssize_t)strlen(line) + 1)
 		rs->tx.error = 1;
+
 	rspamd_send_chunk(rs, line);
 }
 
@@ -146,7 +122,6 @@ on_eom(uint64_t id, size_t size)
 
 	return 1;
 }
-
 static void
 on_commit(uint64_t id)
 {

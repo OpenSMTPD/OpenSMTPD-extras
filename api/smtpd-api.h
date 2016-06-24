@@ -30,6 +30,10 @@
 #include <event.h>
 #include <imsg.h>
 
+#include "smtpd-defines.h"
+#include "ioev.h"
+#include "iobuf.h"
+#include "log.h"
 #include "rfc2822.h"
 
 #define	FILTER_API_VERSION	 50
