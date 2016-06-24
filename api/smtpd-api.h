@@ -383,6 +383,10 @@ void filter_api_session_allocator(void *(*)(uint64_t));
 void filter_api_session_destructor(void (*)(void *));
 void *filter_api_session(uint64_t);
 
+void filter_api_transaction_allocator(void *(*)(uint64_t));
+void filter_api_transaction_destructor(void (*)(void *));
+void *filter_api_transaction(uint64_t);
+
 void filter_api_setugid(uid_t, gid_t);
 void filter_api_set_chroot(const char *);
 void filter_api_no_chroot(void);

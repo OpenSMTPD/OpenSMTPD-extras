@@ -73,6 +73,7 @@ struct filter_session {
 	void			*datahold_arg;
 
 	void			*session;
+	void			*transaction;
 	void			*udata;
 };
 
@@ -113,6 +114,9 @@ static struct filter_internals {
 
 	void			*(*session_allocator)(uint64_t);
 	void			(*session_destructor)(void *);
+
+	void			*(*transaction_allocator)(uint64_t);
+	void			(*transaction_destructor)(void *);
 } fi;
 
 static void filter_api_init(void);
@@ -261,20 +265,43 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 			break;
 		case EVENT_DISCONNECT:
 			filter_dispatch_disconnect(id);
-			s = tree_xget(&sessions, id);
-			if (fi.session_destructor)
-				fi.session_destructor(s->session);
+			if (fi.session_destructor) {
+				s = tree_xget(&sessions, id);
+				if (s->session)
+					fi.session_destructor(s->session);
+			}
 			s = tree_xpop(&sessions, id);
 			free(s);
 			break;
 		case EVENT_RESET:
 			filter_dispatch_reset(id);
+			if (fi.transaction_destructor) {
+				s = tree_xget(&sessions, id);
+				if (s->transaction) {
+					fi.transaction_destructor(s->transaction);
+					s->transaction = NULL;
+				}
+			}
 			break;
 		case EVENT_COMMIT:
 			filter_dispatch_commit(id);
+			if (fi.transaction_destructor) {
+				s = tree_xget(&sessions, id);
+				if (s->transaction) {
+					fi.transaction_destructor(s->transaction);
+					s->transaction = NULL;
+				}
+			}
 			break;
 		case EVENT_ROLLBACK:
 			filter_dispatch_rollback(id);
+			if (fi.transaction_destructor) {
+				s = tree_xget(&sessions, id);
+				if (s->transaction) {
+					fi.transaction_destructor(s->transaction);
+					s->transaction = NULL;
+				}
+			}
 			break;
 		default:
 			log_warnx("warn: filter-api:%s bad event %d", filter_name, type);
@@ -305,6 +332,12 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 		case QUERY_MAIL:
 			m_get_mailaddr(&m, &maddr);
 			m_end(&m);
+
+			if (fi.transaction_allocator) {
+				s = tree_xget(&sessions, id);
+				s->transaction = fi.transaction_allocator(id);
+			}
+
 			filter_register_query(id, qid, type);
 			filter_dispatch_mail(id, &maddr);
 			break;
@@ -799,6 +832,27 @@ filter_api_session(uint64_t id)
 
 	s = tree_xget(&sessions, id);
 	return s->session;
+}
+
+void
+filter_api_transaction_allocator(void *(*f)(uint64_t))
+{
+	fi.transaction_allocator = f;
+}
+
+void
+filter_api_transaction_destructor(void (*f)(void *))
+{
+	fi.transaction_destructor = f;
+}
+
+void *
+filter_api_transaction(uint64_t id)
+{
+	struct filter_session	*s;
+
+	s = tree_xget(&sessions, id);
+	return s->transaction;
 }
 
 void
