@@ -61,11 +61,11 @@ on_helo(uint64_t id, const char *helo)
 static int
 on_mail(uint64_t id, struct mailaddr *mail)
 {
-	struct session	*rs = filter_api_session(id);
-	const char	*address;
+	struct transaction	*tx = filter_api_transaction(id);
+	const char		*address;
 
 	address = filter_api_mailaddr_to_text(mail);
-	rs->tx.from = xstrdup(address, "on_mail");
+	tx->from = xstrdup(address, "on_mail");
 
 	return filter_api_accept(id);
 }
@@ -73,11 +73,11 @@ on_mail(uint64_t id, struct mailaddr *mail)
 static int
 on_rcpt(uint64_t id, struct mailaddr *rcpt)
 {
-	struct session	*rs = filter_api_session(id);
-	const char	*address;
+	struct transaction	*tx = filter_api_transaction(id);
+	const char		*address;
 
 	address = filter_api_mailaddr_to_text(rcpt);
-	rs->tx.rcpt = xstrdup(address, "on_rcpt");
+	tx->rcpt = xstrdup(address, "on_rcpt");
 
 	return filter_api_accept(id);
 }
@@ -85,14 +85,14 @@ on_rcpt(uint64_t id, struct mailaddr *rcpt)
 static int
 on_data(uint64_t id)
 {
-	struct session *rs = filter_api_session(id);
+	struct transaction	*tx = filter_api_transaction(id);
 
-	if (! rspamd_buffer(rs))
-		return filter_api_reject_code(rs->id, FILTER_FAIL, 421,
+	if (! rspamd_buffer(tx))
+		return filter_api_reject_code(id, FILTER_FAIL, 421,
 		    "temporary failure");
 
-	if (! rspamd_connect(rs))
-		return filter_api_reject_code(rs->id, FILTER_FAIL, 421,
+	if (! rspamd_connect(tx))
+		return filter_api_reject_code(id, FILTER_FAIL, 421,
 		    "temporary failure");
 
 	return 1;
@@ -101,44 +101,24 @@ on_data(uint64_t id)
 static void
 on_dataline(uint64_t id, const char *line)
 {
-	struct session *rs = filter_api_session(id);
-	ssize_t		sz;
+	struct transaction     *tx = filter_api_transaction(id);
+	ssize_t			sz;
 
-	sz = fprintf(rs->tx.fp, "%s\n", line);
+	sz = fprintf(tx->fp, "%s\n", line);
 	if (sz == -1 || sz < (ssize_t)strlen(line) + 1)
-		rs->tx.error = 1;
+		tx->error = 1;
 
-	rspamd_send_chunk(rs, line);
+	rspamd_send_chunk(tx, line);
 }
 
 static int
 on_eom(uint64_t id, size_t size)
 {
-	struct session	*rs = filter_api_session(id);
+	struct transaction	*tx = filter_api_transaction(id);
 
-	rspamd_send_chunk(rs, NULL);
+	rspamd_send_chunk(tx, NULL);
 
 	return 1;
-}
-static void
-on_commit(uint64_t id)
-{
-	struct session	*rs = filter_api_session(id);
-
-	session_reset(rs);
-}
-
-static void
-on_rollback(uint64_t id)
-{
-	struct session	*rs = filter_api_session(id);
-
-	session_reset(rs);
-}
-
-static void
-on_disconnect(uint64_t id)
-{
 }
 
 int
@@ -206,12 +186,12 @@ main(int argc, char **argv)
 	filter_api_on_data(on_data);
 	filter_api_on_dataline(on_dataline);
 	filter_api_on_eom(on_eom);
-	filter_api_on_commit(on_commit);
-	filter_api_on_rollback(on_rollback);
-	filter_api_on_disconnect(on_disconnect);
 
 	filter_api_session_allocator(session_allocator);
 	filter_api_session_destructor(session_destructor);
+
+	filter_api_transaction_allocator(transaction_allocator);
+	filter_api_transaction_destructor(transaction_destructor);
 
 	/*
 	if (c)

@@ -20,26 +20,21 @@
 #define RSPAMD_PORT "11333"
 
 struct session {
+	char	       *ip;
+	char	       *hostname;
+	char	       *helo;
+};
+
+struct transaction {
 	uint64_t	id;
 
 	struct iobuf	iobuf;
 	struct io	io;
 	
-	char	       *ip;
-	char	       *hostname;
-	char	       *helo;
+	char	       *from;
+	char	       *rcpt;
+	int		eom;
 
-	struct tx {
-		FILE   *fp;
-		char   *line;
-		int	error;
-		int	eom;
-
-		char   *from;
-		char   *rcpt;
-		struct rfc2822_parser	rfc2822_parser;
-	} tx;
-	
 	struct rspamd_response {
 		int	eoh;
 		char   *body;
@@ -59,20 +54,31 @@ struct session {
 		char   *subject;
 	} rspamd;
 
+	struct rfc2822_parser	rfc2822_parser;
+	int	error;
+	char   *line;
+	FILE   *fp;
 };
 
-struct session  *session_allocator(uint64_t);
-void		session_destructor(struct session *);
-void		session_reset(struct session *);
+void	       *session_allocator(uint64_t);
+void		session_destructor(void *);
 
-int		rspamd_buffer(struct session *);
-int		rspamd_connect(struct session *);
-void		rspamd_connected(struct session *);
-void		rspamd_error(struct session *);
+void	       *transaction_allocator(uint64_t);
+void		transaction_destructor(void *);
+
+int		rspamd_connect(struct transaction *);
+void		rspamd_connected(struct transaction *);
+void		rspamd_send_query(struct transaction *);
+void		rspamd_send_chunk(struct transaction *, const char *);
+void		rspamd_read_response(struct transaction *);
+int		rspamd_parse_response(struct transaction *);
+int		rspamd_buffer(struct transaction *);
+void		rspamd_error(struct transaction *);
+
 void		rspamd_io(struct io *, int);
-void		rspamd_send_query(struct session *);
-void		rspamd_send_chunk(struct session *, const char *);
-void		rspamd_read_response(struct session *);
-int		rspamd_parse_response(struct session *);
+
+
+
+
 
 
