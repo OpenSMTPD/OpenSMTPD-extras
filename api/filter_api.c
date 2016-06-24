@@ -72,6 +72,7 @@ struct filter_session {
 	void			(*datahold_cb)(uint64_t, FILE *, void *);
 	void			*datahold_arg;
 
+	void			*session;
 	void			*udata;
 };
 
@@ -109,6 +110,9 @@ static struct filter_internals {
 		void (*commit)(uint64_t);
 		void (*rollback)(uint64_t);
 	} cb;
+
+	void			*(*session_allocator)(uint64_t);
+	void			(*session_destructor)(void *);
 } fi;
 
 static void filter_api_init(void);
@@ -252,9 +256,14 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 			s->pipe.iev.sock = -1;
 			s->pipe.oev.sock = -1;
 			tree_xset(&sessions, id, s);
+			if (fi.session_allocator)
+				s->session = fi.session_allocator(id);
 			break;
 		case EVENT_DISCONNECT:
 			filter_dispatch_disconnect(id);
+			s = tree_xget(&sessions, id);
+			if (fi.session_destructor)
+				fi.session_destructor(s->session);
 			s = tree_xpop(&sessions, id);
 			free(s);
 			break;
@@ -770,6 +779,27 @@ imsg_to_str(int imsg)
 /*
  * These functions are callable by filters
  */
+
+void
+filter_api_session_allocator(void *(*f)(uint64_t))
+{
+	fi.session_allocator = f;
+}
+
+void
+filter_api_session_destructor(void (*f)(void *))
+{
+	fi.session_destructor = f;
+}
+
+void *
+filter_api_session(uint64_t id)
+{
+	struct filter_session	*s;
+
+	s = tree_xget(&sessions, id);
+	return s->session;
+}
 
 void
 filter_api_setugid(uid_t uid, gid_t gid)
