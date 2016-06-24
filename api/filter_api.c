@@ -286,6 +286,8 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 				if (s->session)
 					fi.session_destructor(s->session);
 			}
+			if (s->data_buffer)
+				data_buffered_release(s);
 			s = tree_xpop(&sessions, id);
 			free(s);
 			break;
