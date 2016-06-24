@@ -99,7 +99,7 @@ dataline_callback(const char *line, void *arg)
 
 
 struct session *
-session_init(uint64_t id)
+session_allocator(uint64_t id)
 {
 	struct session	*rs;
 
@@ -126,7 +126,7 @@ session_reset(struct session *rs)
 }
 
 void
-session_free(struct session *rs)
+session_destructor(struct session *rs)
 {
 	session_reset(rs);
 

@@ -33,19 +33,17 @@
 
 #include "rspamd.h"
 
+
 static int
 on_connect(uint64_t id, struct filter_connect *conn)
 {
-	struct session	*rs;
+	struct session	*rs = filter_api_session(id);
 	const char	*ip;
-
-	rs = session_init(id);
 
 	//ip = filter_api_sockaddr_to_text((struct sockaddr *)&conn->local);
 	ip = "127.0.0.1";
 	rs->ip = xstrdup(ip, "on_connect");
 	rs->hostname = xstrdup(conn->hostname, "on_connect");
-	filter_api_set_udata(id, rs);
 
 	return filter_api_accept(id);
 }
@@ -53,7 +51,7 @@ on_connect(uint64_t id, struct filter_connect *conn)
 static int
 on_helo(uint64_t id, const char *helo)
 {
-	struct session	*rs = filter_api_get_udata(id);
+	struct session	*rs = filter_api_session(id);
 
 	rs->helo = xstrdup(helo, "on_helo");
 
@@ -63,7 +61,7 @@ on_helo(uint64_t id, const char *helo)
 static int
 on_mail(uint64_t id, struct mailaddr *mail)
 {
-	struct session	*rs = filter_api_get_udata(id);
+	struct session	*rs = filter_api_session(id);
 	const char	*address;
 
 	address = filter_api_mailaddr_to_text(mail);
@@ -75,7 +73,7 @@ on_mail(uint64_t id, struct mailaddr *mail)
 static int
 on_rcpt(uint64_t id, struct mailaddr *rcpt)
 {
-	struct session	*rs = filter_api_get_udata(id);
+	struct session	*rs = filter_api_session(id);
 	const char	*address;
 
 	address = filter_api_mailaddr_to_text(rcpt);
@@ -87,7 +85,7 @@ on_rcpt(uint64_t id, struct mailaddr *rcpt)
 static int
 on_data(uint64_t id)
 {
-	struct session *rs = filter_api_get_udata(id);
+	struct session *rs = filter_api_session(id);
 
 	if (! rspamd_buffer(rs))
 		return filter_api_reject_code(rs->id, FILTER_FAIL, 421,
@@ -103,7 +101,7 @@ on_data(uint64_t id)
 static void
 on_dataline(uint64_t id, const char *line)
 {
-	struct session *rs = filter_api_get_udata(id);
+	struct session *rs = filter_api_session(id);
 	ssize_t		sz;
 
 	sz = fprintf(rs->tx.fp, "%s\n", line);
@@ -116,7 +114,7 @@ on_dataline(uint64_t id, const char *line)
 static int
 on_eom(uint64_t id, size_t size)
 {
-	struct session	*rs = filter_api_get_udata(id);
+	struct session	*rs = filter_api_session(id);
 
 	rspamd_send_chunk(rs, NULL);
 
@@ -125,7 +123,7 @@ on_eom(uint64_t id, size_t size)
 static void
 on_commit(uint64_t id)
 {
-	struct session	*rs = filter_api_get_udata(id);
+	struct session	*rs = filter_api_session(id);
 
 	session_reset(rs);
 }
@@ -133,7 +131,7 @@ on_commit(uint64_t id)
 static void
 on_rollback(uint64_t id)
 {
-	struct session	*rs = filter_api_get_udata(id);
+	struct session	*rs = filter_api_session(id);
 
 	session_reset(rs);
 }
@@ -141,7 +139,6 @@ on_rollback(uint64_t id)
 static void
 on_disconnect(uint64_t id)
 {
-	session_free(filter_api_get_udata(id));
 }
 
 int
@@ -212,6 +209,9 @@ main(int argc, char **argv)
 	filter_api_on_commit(on_commit);
 	filter_api_on_rollback(on_rollback);
 	filter_api_on_disconnect(on_disconnect);
+
+	filter_api_session_allocator(session_allocator);
+	filter_api_session_destructor(session_destructor);
 
 	/*
 	if (c)

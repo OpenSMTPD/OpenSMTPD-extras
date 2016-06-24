@@ -61,9 +61,9 @@ struct session {
 
 };
 
-struct session  *session_init(uint64_t);
+struct session  *session_allocator(uint64_t);
+void		session_destructor(struct session *);
 void		session_reset(struct session *);
-void		session_free(struct session *);
 
 int		rspamd_buffer(struct session *);
 int		rspamd_connect(struct session *);
