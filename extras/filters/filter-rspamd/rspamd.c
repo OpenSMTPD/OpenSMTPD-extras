@@ -61,6 +61,9 @@ transaction_allocator(uint64_t id)
 	tx = xcalloc(1, sizeof *tx, "transaction_allocator");
 	tx->id = id;
 
+	iobuf_xinit(&tx->iobuf, LINE_MAX, LINE_MAX, "on_eom");
+	io_init(&tx->io, -1, tx, rspamd_io, &tx->iobuf);
+
 	return tx;
 }
 
@@ -128,8 +131,6 @@ rspamd_resolve(const char *h, const char *p)
 int
 rspamd_connect(struct transaction *tx)
 {
-	iobuf_xinit(&tx->iobuf, LINE_MAX, LINE_MAX, "on_eom");
-	io_init(&tx->io, -1, tx, rspamd_io, &tx->iobuf);
 	if (io_connect(&tx->io, (struct sockaddr *)&ss, NULL) == -1)
 		return 0;
 	return 1;
