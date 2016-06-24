@@ -313,9 +313,13 @@ rspamd_proceed(struct transaction *tx)
 		return 0;
 
 	case GREYLIST:
-		filter_api_reject_code(tx->id, FILTER_FAIL, 421,
-		    "greylisted");
+		/* XXX - don't greylist until filter is finished */
+		/*
+		  filter_api_reject_code(tx->id, FILTER_FAIL, 421,
+			"greylisted");
 		return 0;
+		*/
+		return 1;
 
 	case REJECT:
 		filter_api_reject_code(tx->id, FILTER_FAIL, 550,
