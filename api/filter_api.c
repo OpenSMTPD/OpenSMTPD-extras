@@ -275,6 +275,7 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 			break;
 		case EVENT_DISCONNECT:
 			filter_dispatch_disconnect(id);
+			s = tree_xget(&sessions, id);
 			if (fi.transaction_destructor) {
 				if (s->transaction) {
 					fi.transaction_destructor(s->transaction);
@@ -282,7 +283,6 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 				}
 			}
 			if (fi.session_destructor) {
-				s = tree_xget(&sessions, id);
 				if (s->session)
 					fi.session_destructor(s->session);
 			}
