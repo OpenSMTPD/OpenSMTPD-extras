@@ -275,6 +275,12 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 			break;
 		case EVENT_DISCONNECT:
 			filter_dispatch_disconnect(id);
+			if (fi.transaction_destructor) {
+				if (s->transaction) {
+					fi.transaction_destructor(s->transaction);
+					s->transaction = NULL;
+				}
+			}
 			if (fi.session_destructor) {
 				s = tree_xget(&sessions, id);
 				if (s->session)
@@ -1274,7 +1280,6 @@ data_buffered_stream_process(uint64_t id, FILE *fp, void *arg)
 		return;
 	}
 	line[strcspn(line, "\n")] = '\0';
-	//log_debug("##### FEEDING [%s]", line);
 	rfc2822_parser_feed(&s->rfc2822_parser, line);
 	/* XXX */
 	data_buffered_stream_process(id, fp, s);
