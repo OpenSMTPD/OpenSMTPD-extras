@@ -82,6 +82,14 @@ transaction_destructor(void *ctx)
 	tx->from = NULL;
 	tx->rcpt = NULL;
 
+	if (tx->rspamd.body) {
+		free(tx->rspamd.body);
+		tx->rspamd.body = NULL;
+	}
+	if (tx->rspamd.subject) {
+		free(tx->rspamd.subject);
+		tx->rspamd.subject = NULL;
+	}
 }
 
 
