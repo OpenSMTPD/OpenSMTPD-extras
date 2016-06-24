@@ -36,14 +36,9 @@
 
 struct sockaddr_storage	ss;
 
-static void	datahold_stream(uint64_t, FILE *, void *);
-
-
 void *
 session_allocator(uint64_t id)
 {
-	struct session	*rs;
-
 	return xcalloc(1, sizeof (struct session), "on_connect");
 }
 
@@ -77,8 +72,6 @@ transaction_destructor(void *ctx)
 	iobuf_clear(&tx->iobuf);
 	io_clear(&tx->io);
 
-	filter_api_datahold_close(tx->id);
-
 	if (tx->from)
 		free(tx->from);
 	if (tx->rcpt)
@@ -90,8 +83,6 @@ transaction_destructor(void *ctx)
 	tx->rcpt = NULL;
 
 }
-
-
 
 
 
@@ -124,44 +115,6 @@ rspamd_resolve(const char *h, const char *p)
 	freeaddrinfo(addresses);
 	if (!ai)
 		fatalx("resolve: failed");
-}
-
-static void
-headers_callback(const struct rfc2822_header *hdr, void *arg)
-{
-	struct transaction	*tx = arg;
-	struct rfc2822_line	*l;
-	char			 buffer[4096];
-	int			 i = 0;
-
-	log_debug("#######1");
-	TAILQ_FOREACH(l, &hdr->lines, next) {
-		if (i++ == 0) {
-			snprintf(buffer, sizeof buffer,  "%s:%s", hdr->name, l->buffer);
-			filter_api_writeln(tx->id, buffer);
-			continue;
-		}
-		filter_api_writeln(tx->id, l->buffer);
-	}
-}
-
-static void
-dataline_callback(const char *line, void *arg)
-{
-	struct transaction	*tx = arg;
-
-	log_debug("debug: STREAM BACK: [%s]", tx->line);
-	filter_api_writeln(tx->id, tx->line);
-}
-
-
-int
-rspamd_buffer(struct transaction *tx)
-{
-	tx->fp = filter_api_datahold_open(tx->id, datahold_stream, tx);
-	if (tx->fp == NULL)
-		return 0;
-	return 1;
 }
 
 int
@@ -339,36 +292,17 @@ fail:
 }
 
 void
-rspamd_spam_header(const char *header, void *arg)
+rspamd_spam_headers(struct transaction *tx)
 {
-	struct transaction	*tx = arg;
-	char		buffer[4096];
-
-	snprintf(buffer, sizeof buffer, "X-Spam-Flag: %s",
+	filter_api_header_add(tx->id, "X-Spam-Flag", "%s",
 	    tx->rspamd.is_spam ? "Yes" : "No");
-	filter_api_writeln(tx->id, buffer);
-
-	snprintf(buffer, sizeof buffer, "X-Spam-Score: %.2f",
+	filter_api_header_add(tx->id, "X-Spam-Score", "%.2f",
 	    tx->rspamd.score);
-	filter_api_writeln(tx->id, buffer);
-
-	snprintf(buffer, sizeof buffer, "X-Spam-Status: %s, score=%.2f, required=%.2f",
-	    tx->rspamd.is_spam ? "Yes" : "No",
-	    tx->rspamd.score,
-	    tx->rspamd.required_score);
-	filter_api_writeln(tx->id, buffer);
 }
 
 int
 rspamd_proceed(struct transaction *tx)
 {
-	rfc2822_parser_init(&tx->rfc2822_parser);
-	rfc2822_parser_reset(&tx->rfc2822_parser);
-	rfc2822_header_default_callback(&tx->rfc2822_parser,
-	    headers_callback, tx);
-	rfc2822_body_callback(&tx->rfc2822_parser,
-	    dataline_callback, tx);
-
 	switch (tx->rspamd.action) {
 	case NO_ACTION:
 		return 1;
@@ -390,9 +324,7 @@ rspamd_proceed(struct transaction *tx)
 
 	case ADD_HEADER:
 		/* insert header */
-		log_debug("ADDING X-SPAM");
-		rfc2822_missing_header_callback(&tx->rfc2822_parser,
-		    "x-spam", rspamd_spam_header, tx);
+		rspamd_spam_headers(tx);
 		return 1;
 
 	case REWRITE_SUBJECT:
@@ -439,7 +371,7 @@ rspamd_io(struct io *io, int evt)
 			rspamd_error(tx);
 			break;
 		}
-		/* process rspamd reply and start processing datahold */
+
 		if (! rspamd_parse_response(tx)) {
 			rspamd_error(tx);
 			break;
@@ -447,8 +379,8 @@ rspamd_io(struct io *io, int evt)
 
 		if (! rspamd_proceed(tx))
 			break;
-		
-		filter_api_datahold_start(tx->id);
+
+		filter_api_data_buffered_stream(tx->id);
 		break;
 
 	case IO_TIMEOUT:
@@ -458,29 +390,4 @@ rspamd_io(struct io *io, int evt)
 		break;
 	}
 	return;
-}
-
-static void
-datahold_stream(uint64_t id, FILE *fp, void *arg)
-{
-	struct transaction     *tx = arg;
-	size_t			sz;
-	ssize_t			len;
-	int			ret;
-	
-	errno = 0;
-	if ((len = getline(&tx->line, &sz, fp)) == -1) {
-		if (errno) {
-			filter_api_reject_code(id, FILTER_FAIL, 421,
-			    "temporary failure");
-			return;
-		}
-		filter_api_accept(id);
-		return;
-	}
-
-	tx->line[strcspn(tx->line, "\n")] = '\0';
-	ret = rfc2822_parser_feed(&tx->rfc2822_parser,
-	    tx->line);
-	datahold_stream(id, fp, arg);
 }

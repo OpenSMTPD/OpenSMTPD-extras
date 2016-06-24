@@ -128,6 +128,23 @@ strip(char *s)
 }
 
 int
+lowercase(char *buf, const char *s, size_t len)
+{
+	if (len == 0)
+		return 0;
+
+	if (strlcpy(buf, s, len) >= len)
+		return 0;
+
+	while (*buf != '\0') {
+		*buf = tolower((unsigned char)*buf);
+		buf++;
+	}
+
+	return 1;
+}
+
+int
 base64_encode(unsigned char const *src, size_t srclen,
 	      char *dest, size_t destsize)
 {

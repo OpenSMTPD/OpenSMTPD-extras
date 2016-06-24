@@ -87,10 +87,6 @@ on_data(uint64_t id)
 {
 	struct transaction	*tx = filter_api_transaction(id);
 
-	if (! rspamd_buffer(tx))
-		return filter_api_reject_code(id, FILTER_FAIL, 421,
-		    "temporary failure");
-
 	if (! rspamd_connect(tx))
 		return filter_api_reject_code(id, FILTER_FAIL, 421,
 		    "temporary failure");
@@ -102,11 +98,6 @@ static void
 on_dataline(uint64_t id, const char *line)
 {
 	struct transaction     *tx = filter_api_transaction(id);
-	ssize_t			sz;
-
-	sz = fprintf(tx->fp, "%s\n", line);
-	if (sz == -1 || sz < (ssize_t)strlen(line) + 1)
-		tx->error = 1;
 
 	rspamd_send_chunk(tx, line);
 }
@@ -192,6 +183,8 @@ main(int argc, char **argv)
 
 	filter_api_transaction_allocator(transaction_allocator);
 	filter_api_transaction_destructor(transaction_destructor);
+
+	filter_api_data_buffered();
 
 	/*
 	if (c)

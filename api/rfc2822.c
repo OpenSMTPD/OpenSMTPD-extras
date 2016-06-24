@@ -82,6 +82,13 @@ missing_headers_callback(struct rfc2822_parser *rp)
 }
 
 static void
+eoh_callback(struct rfc2822_parser *rp)
+{
+	if (rp->eoh_cb.func)
+		rp->eoh_cb.func(rp->eoh_cb.arg);
+}
+
+static void
 body_callback(struct rfc2822_parser *rp, const char *line)
 {
 	rp->body_line_cb.func(line, rp->body_line_cb.arg);
@@ -184,8 +191,10 @@ rfc2822_parser_feed(struct rfc2822_parser *rp, const char *line)
 
 	/* no longer in headers */
 	if (*line == '\0') {
-		if (rp->in_hdrs)
+		if (rp->in_hdrs) {
 			missing_headers_callback(rp);
+			eoh_callback(rp);
+		}
 		rp->in_hdrs = 0;
 	}
 
@@ -274,6 +283,17 @@ rfc2822_body_callback(struct rfc2822_parser *rp,
 	struct rfc2822_line_cb	*cb;
 
 	cb = &rp->body_line_cb;
+	cb->func = func;
+	cb->arg  = arg;
+}
+
+void
+rfc2822_eoh_callback(struct rfc2822_parser *rp,
+    void (*func)(void *), void *arg)
+{
+	struct rfc2822_eoh_cb	*cb;
+
+	cb = &rp->eoh_cb;
 	cb->func = func;
 	cb->arg  = arg;
 }

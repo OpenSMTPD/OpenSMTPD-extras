@@ -52,6 +52,11 @@ struct rfc2822_line_cb {
 	void			       *arg;
 };
 
+struct rfc2822_eoh_cb {
+	void			      (*func)(void *);
+	void			       *arg;
+};
+
 struct rfc2822_parser {
 	uint8_t					in_hdrs;	/* in headers */
 
@@ -62,6 +67,7 @@ struct rfc2822_parser {
 	struct rfc2822_header			header;
 
 	struct rfc2822_hdr_cb		        hdr_dflt_cb;
+	struct rfc2822_eoh_cb		        eoh_cb;
 	struct rfc2822_line_cb		        body_line_cb;
 };
 
@@ -79,5 +85,7 @@ void	rfc2822_header_default_callback(struct rfc2822_parser *,
     void (*)(const struct rfc2822_header *, void *), void *);
 void	rfc2822_body_callback(struct rfc2822_parser *,
     void (*)(const char *, void *), void *);
+void	rfc2822_eoh_callback(struct rfc2822_parser *,
+    void (*)(void *), void *);
 
 #endif

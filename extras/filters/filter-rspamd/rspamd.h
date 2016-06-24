@@ -54,10 +54,8 @@ struct transaction {
 		char   *subject;
 	} rspamd;
 
-	struct rfc2822_parser	rfc2822_parser;
 	int	error;
 	char   *line;
-	FILE   *fp;
 };
 
 void	       *session_allocator(uint64_t);
@@ -72,7 +70,6 @@ void		rspamd_send_query(struct transaction *);
 void		rspamd_send_chunk(struct transaction *, const char *);
 void		rspamd_read_response(struct transaction *);
 int		rspamd_parse_response(struct transaction *);
-int		rspamd_buffer(struct transaction *);
 void		rspamd_error(struct transaction *);
 
 void		rspamd_io(struct io *, int);

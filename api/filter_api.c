@@ -68,13 +68,17 @@ struct filter_session {
 		char		*line;
 	} response;
 
-	FILE			*datahold;
-	void			(*datahold_cb)(uint64_t, FILE *, void *);
-	void			*datahold_arg;
-
 	void			*session;
 	void			*transaction;
 	void			*udata;
+
+	void			*data_buffer;
+	void		       (*data_buffer_cb)(uint64_t, FILE *, void *);
+
+	struct rfc2822_parser	rfc2822_parser;
+	struct dict		headers_replace;
+	struct dict		headers_add;
+
 };
 
 struct filter_timer {
@@ -112,11 +116,13 @@ static struct filter_internals {
 		void (*rollback)(uint64_t);
 	} cb;
 
-	void			*(*session_allocator)(uint64_t);
-	void			(*session_destructor)(void *);
+	void	*(*session_allocator)(uint64_t);
+	void	(*session_destructor)(void *);
 
-	void			*(*transaction_allocator)(uint64_t);
-	void			(*transaction_destructor)(void *);
+	void	*(*transaction_allocator)(uint64_t);
+	void    (*transaction_destructor)(void *);
+
+	int		data_buffered;
 } fi;
 
 static void filter_api_init(void);
@@ -143,6 +149,10 @@ static const char *filterimsg_to_str(int);
 static const char *hook_to_str(int);
 static const char *query_to_str(int);
 static const char *event_to_str(int);
+
+static void	data_buffered_setup(struct filter_session *);
+static void	data_buffered_release(struct filter_session *);
+static void	data_buffered_stream_process(uint64_t, FILE *, void *);
 
 
 static void
@@ -275,33 +285,39 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 			break;
 		case EVENT_RESET:
 			filter_dispatch_reset(id);
+			s = tree_xget(&sessions, id);
 			if (fi.transaction_destructor) {
-				s = tree_xget(&sessions, id);
 				if (s->transaction) {
 					fi.transaction_destructor(s->transaction);
 					s->transaction = NULL;
 				}
 			}
+			if (s->data_buffer)
+				data_buffered_release(s);
 			break;
 		case EVENT_COMMIT:
 			filter_dispatch_commit(id);
+			s = tree_xget(&sessions, id);
 			if (fi.transaction_destructor) {
-				s = tree_xget(&sessions, id);
 				if (s->transaction) {
 					fi.transaction_destructor(s->transaction);
 					s->transaction = NULL;
 				}
 			}
+			if (s->data_buffer)
+				data_buffered_release(s);
 			break;
 		case EVENT_ROLLBACK:
 			filter_dispatch_rollback(id);
+			s = tree_xget(&sessions, id);
 			if (fi.transaction_destructor) {
-				s = tree_xget(&sessions, id);
 				if (s->transaction) {
 					fi.transaction_destructor(s->transaction);
 					s->transaction = NULL;
 				}
 			}
+			if (s->data_buffer)
+				data_buffered_release(s);
 			break;
 		default:
 			log_warnx("warn: filter-api:%s bad event %d", filter_name, type);
@@ -349,6 +365,12 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 			break;
 		case QUERY_DATA:
 			m_end(&m);
+
+			if (fi.data_buffered) {
+				s = tree_xget(&sessions, id);
+				data_buffered_setup(s);
+			}
+
 			filter_register_query(id, qid, type);
 			filter_dispatch_data(id);
 			break;
@@ -505,8 +527,6 @@ filter_dispatch_commit(uint64_t id)
 	io_clear(&s->pipe.iev);
 	iobuf_clear(&s->pipe.ibuf);
 
-	filter_api_datahold_close(id);
-
 	if (fi.cb.commit)
 		fi.cb.commit(id);
 }
@@ -525,8 +545,6 @@ filter_dispatch_rollback(uint64_t id)
 	iobuf_clear(&s->pipe.obuf);
 	io_clear(&s->pipe.iev);
 	iobuf_clear(&s->pipe.ibuf);
-
-	filter_api_datahold_close(id);
 
 	if (fi.cb.rollback)
 		fi.cb.rollback(id);
@@ -645,6 +663,10 @@ filter_io_in(struct io *io, int evt)
 
 		s->pipe.idatalen += len + 1;
 		/* XXX warning: do not clear io from this call! */
+		if (s->data_buffer) {
+			/* XXX handle errors somehow */
+			fprintf(s->data_buffer, "%s\n", line);
+		}
 		filter_dispatch_dataline(s->id, line);
 		goto nextline;
 
@@ -701,8 +723,8 @@ filter_io_out(struct io *io, int evt)
 			break;
 
 		/* just wait for more data to send or feed through callback */
-		if (s->datahold_cb)
-			s->datahold_cb(s->id, s->datahold, s->datahold_arg);
+		if (s->data_buffer_cb)
+			s->data_buffer_cb(s->id, s->data_buffer, s);
 		return;
 
 	default:
@@ -1156,6 +1178,31 @@ filter_api_writeln(uint64_t id, const char *line)
 	io_reload(&s->pipe.oev);
 }
 
+void
+filter_api_printf(uint64_t id, const char *fmt, ...)
+{
+	struct filter_session  *s;
+	va_list			ap;
+	int			len;
+
+	log_trace(TRACE_FILTERS, "filter-api:%s %016"PRIx64" filter_api_printf(%s)",
+	    filter_name, id, fmt);
+
+	s = tree_xget(&sessions, id);
+
+	if (s->pipe.oev.sock == -1) {
+		log_warnx("warn: session %016"PRIx64": write out of sequence", id);
+		return;
+	}
+
+	va_start(ap, fmt);
+	len = iobuf_vfqueue(&s->pipe.obuf, fmt, ap);
+	iobuf_fqueue(&s->pipe.obuf, "\n");
+	va_end(ap);
+	s->pipe.odatalen += len + 1;
+	io_reload(&s->pipe.oev);
+}
+
 static void
 filter_api_timer_cb(int fd, short evt, void *arg)
 {
@@ -1205,65 +1252,207 @@ filter_api_mailaddr_to_text(const struct mailaddr *maddr)
 	return (buffer);
 }
 
-FILE *
-filter_api_datahold_open(uint64_t id, void (*callback)(uint64_t, FILE *, void *), void *arg)
+
+/* X X X */
+static void
+data_buffered_stream_process(uint64_t id, FILE *fp, void *arg)
 {
 	struct filter_session	*s;
+	size_t	 sz;
+	ssize_t	 len;
+	char	*line = NULL;
+
+	s = tree_xget(&sessions, id);
+	errno = 0;
+	if ((len = getline(&line, &sz, fp)) == -1) {
+		if (errno) {
+			filter_api_reject_code(id, FILTER_FAIL, 421,
+			    "Internal Server Error");
+			return;
+		}
+		filter_api_accept(id);
+		return;
+	}
+	line[strcspn(line, "\n")] = '\0';
+	//log_debug("##### FEEDING [%s]", line);
+	rfc2822_parser_feed(&s->rfc2822_parser, line);
+	/* XXX */
+	data_buffered_stream_process(id, fp, s);
+}
+
+static void
+default_header_callback(const struct rfc2822_header *hdr, void *arg)
+{
+	struct filter_session	*s = arg;
+	struct rfc2822_line     *l;
+	int                      i = 0;
+
+	TAILQ_FOREACH(l, &hdr->lines, next) {
+		if (i++ == 0) {
+			filter_api_printf(s->id, "%s: %s", hdr->name, l->buffer + 1);
+			continue;
+		}
+		filter_api_printf(s->id, "%s", l->buffer);
+	}
+}
+
+static void
+default_body_callback(const char *line, void *arg)
+{
+	struct filter_session	*s = arg;
+
+	filter_api_writeln(s->id, line);
+}
+
+static void
+header_remove_callback(const struct rfc2822_header *hdr, void *arg)
+{
+}
+
+static void
+header_replace_callback(const struct rfc2822_header *hdr, void *arg)
+{
+	struct filter_session	*s = arg;
+	char			*value;
+	char			*key;
+
+	key = xstrdup(hdr->name, "header_replace_callback");
+	lowercase(key, key, strlen(key)+1);
+
+	value = dict_xget(&s->headers_replace, key);
+	filter_api_printf(s->id, "%s: %s", hdr->name, value);
+	free(key);
+}
+
+static void
+header_eoh_callback(void *arg)
+{
+	struct filter_session	*s = arg;
+	void			*iter;
+	const char		*key;
+	void			*data;
+
+	iter = NULL;
+	while (dict_iter(&s->headers_add, &iter, &key, &data))
+		filter_api_printf(s->id, "%s: %s", key, (char *)data);
+}
+
+void
+data_buffered_setup(struct filter_session *s)
+{
 	FILE   *fp;
 	int	fd;
 	char	pathname[] = "/tmp/XXXXXXXXXX";
 
-	s = tree_xget(&sessions, id);
-
-	if (s->datahold) {
-		log_warnx("warn: filter-api:%s filter_api_datahold_open: already opened !",
-		    filter_name);
-		fatalx("filter-api: exiting");
-	}
-
-	if (!s->tx) {
-		log_warnx("warn: filter-api:%s filter_api_datahold_open: not in transaction !",
-		    filter_name);
-		fatalx("filter-api: exiting");
-	}
-
 	fd = mkstemp(pathname);
 	if (fd == -1)
-		return (NULL);
+		return;
 
 	fp = fdopen(fd, "w+b");
 	if (fp == NULL) {
 		close(fd);
-		return (NULL);
+		return;
+	}
+	unlink(pathname);
+
+	s->data_buffer = fp;
+	s->data_buffer_cb = data_buffered_stream_process;
+
+	rfc2822_parser_init(&s->rfc2822_parser);
+	rfc2822_parser_reset(&s->rfc2822_parser);
+	rfc2822_header_default_callback(&s->rfc2822_parser,
+	    default_header_callback, s);
+	rfc2822_body_callback(&s->rfc2822_parser,
+	    default_body_callback, s);
+	rfc2822_eoh_callback(&s->rfc2822_parser,
+	    header_eoh_callback, s);
+
+	dict_init(&s->headers_replace);
+	dict_init(&s->headers_add);
+}
+
+static void
+data_buffered_release(struct filter_session *s)
+{
+	void	*data;
+
+	rfc2822_parser_release(&s->rfc2822_parser);
+	if (s->data_buffer) {
+		fclose(s->data_buffer);
+		s->data_buffer = NULL;
 	}
 
-	s->datahold = fp;
-	s->datahold_cb = callback;
-	s->datahold_arg = arg;
+	while (dict_poproot(&s->headers_replace, &data))
+		free(data);
 
-	return (fp);
+	while (dict_poproot(&s->headers_add, &data))
+		free(data);
 }
 
 void
-filter_api_datahold_start(uint64_t id)
+filter_api_data_buffered(void)
+{
+	fi.data_buffered = 1;
+}
+
+void
+filter_api_data_buffered_stream(uint64_t id)
 {
 	struct filter_session	*s;
 
 	s = tree_xget(&sessions, id);
-	if (s->datahold)
-		fseek(s->datahold, 0, 0);
+	if (s->data_buffer)
+		fseek(s->data_buffer, 0, 0);
 	io_callback(&s->pipe.oev, IO_LOWAT);
 }
 
 void
-filter_api_datahold_close(uint64_t id)
+filter_api_header_remove(uint64_t id, const char *header)
 {
 	struct filter_session	*s;
 
 	s = tree_xget(&sessions, id);
-	if (s->datahold)
-		fclose(s->datahold);
-	s->datahold = NULL;
-	s->datahold_cb = NULL;
-	s->datahold_arg = NULL;
+	rfc2822_header_callback(&s->rfc2822_parser, header,
+	    header_remove_callback, s);
+}
+
+void
+filter_api_header_replace(uint64_t id, const char *header, const char *fmt, ...)
+{
+	struct filter_session	*s;
+	char			*key;
+	char			*buffer = NULL;
+	va_list			ap;
+
+	s = tree_xget(&sessions, id);
+	va_start(ap, fmt);
+	vasprintf(&buffer, fmt, ap);
+	va_end(ap);
+
+	key = xstrdup(header, "filter_api_header_replace");
+	lowercase(key, key, strlen(key)+1);
+	dict_set(&s->headers_replace, header, buffer);
+	free(key);
+
+	rfc2822_header_callback(&s->rfc2822_parser, header,
+	    header_replace_callback, s);
+}
+
+void
+filter_api_header_add(uint64_t id, const char *header, const char *fmt, ...)
+{
+	struct filter_session	*s;
+	char			*key;
+	char			*buffer = NULL;
+	va_list			ap;
+
+	s = tree_xget(&sessions, id);
+	va_start(ap, fmt);
+	vasprintf(&buffer, fmt, ap);
+	va_end(ap);
+
+	key = xstrdup(header, "filter_api_header_replace");
+	lowercase(key, key, strlen(key)+1);
+	dict_set(&s->headers_add, header, buffer);
+	free(key);
 }

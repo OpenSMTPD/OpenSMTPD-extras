@@ -393,12 +393,16 @@ void filter_api_no_chroot(void);
 void filter_api_set_udata(uint64_t, void *);
 void *filter_api_get_udata(uint64_t);
 
+void filter_api_data_buffered(void);
+void filter_api_data_buffered_stream(uint64_t);
+
 void filter_api_loop(void);
 int filter_api_accept(uint64_t);
 int filter_api_reject(uint64_t, enum filter_status);
 int filter_api_reject_code(uint64_t, enum filter_status, uint32_t,
     const char *);
 void filter_api_writeln(uint64_t, const char *);
+void filter_api_printf(uint64_t id, const char *, ...);
 void filter_api_timer(uint64_t, uint32_t, void (*)(uint64_t, void *), void *);
 const char *filter_api_sockaddr_to_text(const struct sockaddr *);
 const char *filter_api_mailaddr_to_text(const struct mailaddr *);
@@ -547,5 +551,6 @@ void	 iobuf_xfqueue(struct iobuf *, const char *, const char *, ...);
 char	*strip(char *);
 int	 base64_encode(unsigned char const *, size_t, char *, size_t);
 int	 base64_decode(char const *, unsigned char *, size_t);
+int	 lowercase(char *, const char *, size_t);
 
 #endif
