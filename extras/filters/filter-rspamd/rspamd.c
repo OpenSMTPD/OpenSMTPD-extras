@@ -64,6 +64,8 @@ transaction_allocator(uint64_t id)
 	iobuf_xinit(&tx->iobuf, LINE_MAX, LINE_MAX, "on_eom");
 	io_init(&tx->io, -1, tx, rspamd_io, &tx->iobuf);
 
+	dict_init(&tx->rcpts);
+
 	return tx;
 }
 
@@ -71,19 +73,20 @@ void
 transaction_destructor(void *ctx)
 {
 	struct transaction *tx = ctx;
+	void		   *data;
 
 	iobuf_clear(&tx->iobuf);
 	io_clear(&tx->io);
 
 	if (tx->from)
 		free(tx->from);
-	if (tx->rcpt)
-		free(tx->rcpt);
 
 	tx->eom = 0;
 	tx->error = 0;
 	tx->from = NULL;
-	tx->rcpt = NULL;
+
+	while (dict_poproot(&tx->rcpts, &data))
+		;
 
 	if (tx->rspamd.body) {
 		free(tx->rspamd.body);
@@ -159,7 +162,9 @@ void
 rspamd_send_query(struct transaction *tx)
 {
 	struct session	*rs = filter_api_session(tx->id);
-	
+	void		*iter;
+	const  char	*key;
+
 	iobuf_xfqueue(&tx->iobuf, "io",
 	    "POST /check HTTP/1.0\r\n"
 	    "Transfer-Encoding: chunked\r\n"
@@ -167,14 +172,16 @@ rspamd_send_query(struct transaction *tx)
 	    "IP: %s\r\n"
 	    "Helo: %s\r\n"
 	    "Hostname: %s\r\n"
-	    "From: %s\r\n"
-	    "Rcpt: %s\r\n"
-	    "\r\n",
+	    "From: %s\r\n",
 	    rs->ip,
 	    rs->helo,
 	    rs->hostname,
-	    tx->from,
-	    tx->rcpt);
+	    tx->from);
+
+	iter = NULL;
+	while (dict_iter(&tx->rcpts, &iter, &key, NULL))
+		iobuf_xfqueue(&tx->iobuf, "io", "Rcpt: %s\r\n", key);
+	iobuf_xfqueue(&tx->iobuf, "io", "\r\n");
 	io_reload(&tx->io);
 }
 
@@ -214,12 +221,15 @@ rspamd_read_response(struct transaction *tx)
 int
 rspamd_parse_response(struct transaction *tx)
 {
-	json_value     *jv;
+	json_value     *jv = NULL;
 	json_value     *def = NULL;
 	char	       *name;
 	json_value     *val;
 	size_t		i;
-	
+
+	if (tx->rspamd.body == NULL)
+		goto fail;
+
 	jv = json_parse(tx->rspamd.body, strlen(tx->rspamd.body));
 	if (jv == NULL || jv->type != json_object)
 		goto fail;
@@ -263,7 +273,6 @@ rspamd_parse_response(struct transaction *tx)
 			val = def->u.object.values[i].value;
 			if (val->type != json_string)
 				goto fail;
-			log_debug("[%.*s]", val->u.string.length, val->u.string.ptr);
 			if (strncmp(val->u.string.ptr, "no action",
 				val->u.string.length) == 0)
 				tx->rspamd.action = NO_ACTION;
@@ -296,8 +305,9 @@ rspamd_parse_response(struct transaction *tx)
 	return 1;
 
 fail:
-	json_value_free(jv);
-	return -1;
+	if (jv)
+		json_value_free(jv);
+	return 0;
 }
 
 void
@@ -370,7 +380,6 @@ rspamd_io(struct io *io, int evt)
 		break;
 
 	case IO_DATAIN:
-		/* accumulate reply */
 		rspamd_read_response(tx);
 		break;
 
@@ -390,8 +399,10 @@ rspamd_io(struct io *io, int evt)
 			break;
 		}
 
-		if (! rspamd_proceed(tx))
+		if (! rspamd_proceed(tx)) {
+			rspamd_error(tx);
 			break;
+		}
 
 		filter_api_data_buffered_stream(tx->id);
 		break;

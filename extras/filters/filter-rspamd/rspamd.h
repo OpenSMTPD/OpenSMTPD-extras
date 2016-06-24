@@ -32,8 +32,8 @@ struct transaction {
 	struct io	io;
 	
 	char	       *from;
-	char	       *rcpt;
 	int		eom;
+	struct dict	rcpts;
 
 	struct rspamd_response {
 		int	eoh;

@@ -40,8 +40,10 @@ on_connect(uint64_t id, struct filter_connect *conn)
 	struct session	*rs = filter_api_session(id);
 	const char	*ip;
 
-	//ip = filter_api_sockaddr_to_text((struct sockaddr *)&conn->local);
-	ip = "127.0.0.1";
+	/* will fail on local enqueuer, fallback to "localhost" */
+	ip = filter_api_sockaddr_to_text((struct sockaddr *)&conn->local);
+	if (ip == NULL)
+		ip = "127.0.0.1";
 	rs->ip = xstrdup(ip, "on_connect");
 	rs->hostname = xstrdup(conn->hostname, "on_connect");
 
@@ -77,7 +79,7 @@ on_rcpt(uint64_t id, struct mailaddr *rcpt)
 	const char		*address;
 
 	address = filter_api_mailaddr_to_text(rcpt);
-	tx->rcpt = xstrdup(address, "on_rcpt");
+	dict_set(&tx->rcpts, address, NULL);
 
 	return filter_api_accept(id);
 }
