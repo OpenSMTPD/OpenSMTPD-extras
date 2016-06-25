@@ -96,6 +96,8 @@ transaction_destructor(void *ctx)
 		free(tx->rspamd.subject);
 		tx->rspamd.subject = NULL;
 	}
+
+	free(tx);
 }
 
 
