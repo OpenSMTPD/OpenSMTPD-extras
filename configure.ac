@@ -1129,7 +1129,7 @@ AC_ARG_WITH([experimental-filter-regex],
 )
 AM_CONDITIONAL([HAVE_FILTER_REGEX], [test $HAVE_FILTER_REGEX = yes])
 
-#HAVE_FILTER_RSPAMD=no
+HAVE_FILTER_RSPAMD=no
 #AC_ARG_WITH([experimental-filter-rspamd],
 #	[  --with-experimental-filter-rspamd	Enable filter rspamd],
 #	[
@@ -1766,7 +1766,7 @@ if test "$experimental_filter" = "yes"; then
    echo
    echo "YOU HAVE BEEN WARNED, YOU'RE ON YOUR OWN"
 
-echo
+   echo
    echo
    echo
 
