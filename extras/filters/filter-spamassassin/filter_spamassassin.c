@@ -218,8 +218,6 @@ spamassassin_on_data(uint64_t id)
 		return filter_api_accept(id);
 	}
 	iobuf_xfqueue(&sa->iobuf, "on_data", "PROCESS SPAMC/1.5\r\n\r\n"); /* spamd.raw source: content length header is optional */
-	if (spamassassin_limit)
-		io_pause(&sa->io, IO_PAUSE_OUT); /* pause io until eom or limit is reached */
 	filter_api_set_udata(id, sa);
 	return filter_api_accept(id);
 }
@@ -228,7 +226,6 @@ static void
 spamassassin_on_dataline(uint64_t id, const char *l)
 {
 	struct spamassassin *sa;
-	struct ioqbuf *q;
 
 	if ((sa = filter_api_get_udata(id)) == NULL) {
 		filter_api_writeln(id, l);
@@ -236,20 +233,11 @@ spamassassin_on_dataline(uint64_t id, const char *l)
 	}
 	sa->l += strlen(l);
 	if (spamassassin_limit && sa->l >= spamassassin_limit) {
-		write(sa->io.sock, "SKIP SPAMC/1.5\r\n\r\n", 18);
-		if (iobuf_queued(&sa->iobuf)) { /* get lines back, but skip first request line */
-			for (q = sa->iobuf.outq->next; q; q = q->next) {
-				q->buf[q->wpos - q->rpos - 1] = '\0';
-				filter_api_writeln(id, q->buf + q->rpos);
-			}
-		}
-		filter_api_writeln(id, l);
-		spamassassin_clear(sa);
-		filter_api_set_udata(id, NULL);
-		return;
+		log_info("info: on_dataline: limit reached");
+		log_warnx("warn: on_dataline: limit option not implemented");
 	}
 	iobuf_xfqueue(&sa->iobuf, "on_dataline", "%s\n", l);
-        io_reload(&sa->io);
+	io_reload(&sa->io);
 }
 
 static int
@@ -259,8 +247,6 @@ spamassassin_on_eom(uint64_t id, size_t size)
 
 	if ((sa = filter_api_get_udata(id)) == NULL)
 		return filter_api_accept(id);
-	if (spamassassin_limit)
-		io_resume(&sa->io, IO_PAUSE_OUT);
 	sa->s++;
 	if (iobuf_queued(&sa->iobuf) == 0)
 		spamassassin_io(&sa->io, IO_LOWAT);
