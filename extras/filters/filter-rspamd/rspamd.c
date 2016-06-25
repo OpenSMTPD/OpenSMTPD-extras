@@ -80,22 +80,19 @@ transaction_destructor(void *ctx)
 
 	if (tx->from)
 		free(tx->from);
+	if (tx->rspamd.body)
+		free(tx->rspamd.body);
+	if (tx->rspamd.subject)
+		free(tx->rspamd.subject);
 
 	tx->eom = 0;
 	tx->error = 0;
 	tx->from = NULL;
+	tx->rspamd.body = NULL;
+	tx->rspamd.subject = NULL;
 
 	while (dict_poproot(&tx->rcpts, &data))
 		;
-
-	if (tx->rspamd.body) {
-		free(tx->rspamd.body);
-		tx->rspamd.body = NULL;
-	}
-	if (tx->rspamd.subject) {
-		free(tx->rspamd.subject);
-		tx->rspamd.subject = NULL;
-	}
 
 	free(tx);
 }
