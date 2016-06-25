@@ -41,7 +41,6 @@ on_connect(uint64_t id, struct filter_connect *conn)
 	const char	*ip;
 
 	ip = filter_api_sockaddr_to_text((struct sockaddr *)&conn->local);
-
 	if (! session_set_ip(rs, ip ? ip : "127.0.0.1"))
 		return filter_api_reject_code(id, FILTER_FAIL, 421,
 		    "temporary failure");
@@ -102,6 +101,7 @@ on_data(uint64_t id)
 		return filter_api_reject_code(id, FILTER_FAIL, 421,
 		    "temporary failure");
 
+	/* accept/reject is called from rspamd.c */
 	return 1;
 }
 
@@ -120,6 +120,7 @@ on_eom(uint64_t id, size_t size)
 
 	rspamd_send_chunk(tx, NULL);
 
+	/* accept/reject is called from rspamd.c */
 	return 1;
 }
 
