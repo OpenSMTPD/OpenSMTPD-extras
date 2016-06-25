@@ -40,12 +40,15 @@ on_connect(uint64_t id, struct filter_connect *conn)
 	struct session	*rs = filter_api_session(id);
 	const char	*ip;
 
-	/* will fail on local enqueuer, fallback to "localhost" */
 	ip = filter_api_sockaddr_to_text((struct sockaddr *)&conn->local);
-	if (ip == NULL)
-		ip = "127.0.0.1";
-	rs->ip = xstrdup(ip, "on_connect");
-	rs->hostname = xstrdup(conn->hostname, "on_connect");
+
+	if (! session_set_ip(rs, ip ? ip : "127.0.0.1"))
+		return filter_api_reject_code(id, FILTER_FAIL, 421,
+		    "temporary failure");
+
+	if (! session_set_hostname(rs, conn->hostname))
+		return filter_api_reject_code(id, FILTER_FAIL, 421,
+		    "temporary failure");
 
 	return filter_api_accept(id);
 }
@@ -55,7 +58,9 @@ on_helo(uint64_t id, const char *helo)
 {
 	struct session	*rs = filter_api_session(id);
 
-	rs->helo = xstrdup(helo, "on_helo");
+	if (! session_set_helo(rs, helo))
+		return filter_api_reject_code(id, FILTER_FAIL, 421,
+		    "temporary failure");
 
 	return filter_api_accept(id);
 }
@@ -67,7 +72,9 @@ on_mail(uint64_t id, struct mailaddr *mail)
 	const char		*address;
 
 	address = filter_api_mailaddr_to_text(mail);
-	tx->from = xstrdup(address, "on_mail");
+	if (! transaction_set_from(tx, address))
+		return filter_api_reject_code(id, FILTER_FAIL, 421,
+		    "temporary failure");
 
 	return filter_api_accept(id);
 }
@@ -79,7 +86,9 @@ on_rcpt(uint64_t id, struct mailaddr *rcpt)
 	const char		*address;
 
 	address = filter_api_mailaddr_to_text(rcpt);
-	dict_set(&tx->rcpts, address, NULL);
+	if (! transaction_add_rcpt(tx, address))
+		return filter_api_reject_code(id, FILTER_FAIL, 421,
+		    "temporary failure");
 
 	return filter_api_accept(id);
 }

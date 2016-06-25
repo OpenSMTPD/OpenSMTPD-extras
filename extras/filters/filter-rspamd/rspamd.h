@@ -58,21 +58,26 @@ struct transaction {
 	char   *line;
 };
 
-void	       *session_allocator(uint64_t);
-void		session_destructor(void *);
+void   *session_allocator(uint64_t);
+void	session_destructor(void *);
+int	session_set_helo(struct session *, const char *);
+int	session_set_ip(struct session *, const char *);
+int	session_set_hostname(struct session *, const char *);
 
-void	       *transaction_allocator(uint64_t);
-void		transaction_destructor(void *);
+void   *transaction_allocator(uint64_t);
+void	transaction_destructor(void *);
+int	transaction_set_from(struct transaction *, const char *);
+int	transaction_add_rcpt(struct transaction *, const char *);
 
-int		rspamd_connect(struct transaction *);
-void		rspamd_connected(struct transaction *);
-void		rspamd_send_query(struct transaction *);
-void		rspamd_send_chunk(struct transaction *, const char *);
-void		rspamd_read_response(struct transaction *);
-int		rspamd_parse_response(struct transaction *);
-void		rspamd_error(struct transaction *);
+int	rspamd_connect(struct transaction *);
+void	rspamd_connected(struct transaction *);
+void	rspamd_send_query(struct transaction *);
+void	rspamd_send_chunk(struct transaction *, const char *);
+void	rspamd_read_response(struct transaction *);
+int	rspamd_parse_response(struct transaction *);
+void	rspamd_error(struct transaction *);
 
-void		rspamd_io(struct io *, int);
+void	rspamd_io(struct io *, int);
 
 
 

@@ -98,6 +98,46 @@ transaction_destructor(void *ctx)
 }
 
 
+int
+session_set_helo(struct session *s, const char *helo)
+{
+	if ((s->helo = strdup(helo)) == NULL)
+		return 0;
+	return 1;
+}
+
+int
+session_set_ip(struct session *s, const char *ip)
+{
+	if ((s->ip = strdup(ip)) == NULL)
+		return 0;
+	return 1;
+}
+
+int
+session_set_hostname(struct session *s, const char *hostname)
+{
+	if ((s->hostname = strdup(hostname)) == NULL)
+		return 0;
+	return 1;
+}
+
+int
+transaction_set_from(struct transaction *t, const char *from)
+{
+	if ((t->from = strdup(from)) == NULL)
+		return 0;
+	return 1;
+}
+
+int
+transaction_add_rcpt(struct transaction *t, const char *rcpt)
+{
+	/* XXX - not the best data structure */
+	dict_set(&t->rcpts, rcpt, NULL);
+	return 1;
+}
+
 
 /* XXX
  * this needs to be handled differently, but lets focus on the filter for now
