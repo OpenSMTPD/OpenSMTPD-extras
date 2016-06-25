@@ -54,7 +54,6 @@ struct transaction {
 		char   *subject;
 	} rspamd;
 
-	int	error;
 	char   *line;
 };
 

@@ -86,7 +86,6 @@ transaction_destructor(void *ctx)
 		free(tx->rspamd.subject);
 
 	tx->eom = 0;
-	tx->error = 0;
 	tx->from = NULL;
 	tx->rspamd.body = NULL;
 	tx->rspamd.subject = NULL;
@@ -101,33 +100,25 @@ transaction_destructor(void *ctx)
 int
 session_set_helo(struct session *s, const char *helo)
 {
-	if ((s->helo = strdup(helo)) == NULL)
-		return 0;
-	return 1;
+	return ((s->helo = strdup(helo)) != NULL);
 }
 
 int
 session_set_ip(struct session *s, const char *ip)
 {
-	if ((s->ip = strdup(ip)) == NULL)
-		return 0;
-	return 1;
+	return ((s->ip = strdup(ip)) != NULL);
 }
 
 int
 session_set_hostname(struct session *s, const char *hostname)
 {
-	if ((s->hostname = strdup(hostname)) == NULL)
-		return 0;
-	return 1;
+	return ((s->hostname = strdup(hostname)) != NULL);
 }
 
 int
 transaction_set_from(struct transaction *t, const char *from)
 {
-	if ((t->from = strdup(from)) == NULL)
-		return 0;
-	return 1;
+	return ((t->from = strdup(from)) != NULL);
 }
 
 int
@@ -173,9 +164,7 @@ rspamd_resolve(const char *h, const char *p)
 int
 rspamd_connect(struct transaction *tx)
 {
-	if (io_connect(&tx->io, (struct sockaddr *)&ss, NULL) == -1)
-		return 0;
-	return 1;
+	return (io_connect(&tx->io, (struct sockaddr *)&ss, NULL) != -1);
 }
 
 void
@@ -188,6 +177,7 @@ rspamd_disconnect(struct transaction *tx)
 void
 rspamd_connected(struct transaction *tx)
 {
+	/* answer to DATA phase */
 	filter_api_accept(tx->id);
 }
 
@@ -247,13 +237,13 @@ rspamd_read_response(struct transaction *tx)
 		if (strlen(line) == 0)
 			tx->rspamd.eoh = 1;
 
-	if (tx->rspamd.eoh) {
+	if (tx->rspamd.eoh)
 		if (iobuf_len(&tx->iobuf) != 0) {
 			tx->rspamd.body = xmemdup(iobuf_data(&tx->iobuf),
 			    iobuf_len(&tx->iobuf) + 1, "rspamd_read_response");
 			tx->rspamd.body[iobuf_len(&tx->iobuf)] = 0;
 		}
-	}
+
 	iobuf_normalize(&tx->iobuf);
 }
 
@@ -428,11 +418,6 @@ rspamd_io(struct io *io, int evt)
 		/* we're done with rspamd, if there was a local error
 		 * during transaction, reject now, else move forward.
 		 */
-		if (tx->error) {
-			rspamd_error(tx);
-			break;
-		}
-
 		if (! rspamd_parse_response(tx)) {
 			rspamd_error(tx);
 			break;
