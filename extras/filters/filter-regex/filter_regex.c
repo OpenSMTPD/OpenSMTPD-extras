@@ -29,9 +29,7 @@
 #include <regex.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 #define REGEX_CONF SMTPD_CONFDIR "/filter-regex.conf"
 
