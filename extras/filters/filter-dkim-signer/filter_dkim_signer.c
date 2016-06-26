@@ -27,9 +27,7 @@
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 #define DKIM_SIGNER_CRLF "\r\n"
 #define DKIM_SIGNER_CRLF_LEN 2

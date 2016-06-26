@@ -44,9 +44,7 @@ void luaL_setfuncs (lua_State *L, const luaL_Reg *l, int nup) {
   (lua_newtable((L)),luaL_setfuncs((L), (l), 0))
 #endif
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 #define ID_STR_SZ 20
 

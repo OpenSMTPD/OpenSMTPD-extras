@@ -25,9 +25,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 #define MONKEY_CONF SMTPD_CONFDIR "/filter-monkey.conf"
 

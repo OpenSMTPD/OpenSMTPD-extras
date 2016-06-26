@@ -28,9 +28,7 @@
 #include <XSUB.h>
 #include <perl.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 static PerlInterpreter	*my_perl; /* fix build */
 static PerlInterpreter	*pi;

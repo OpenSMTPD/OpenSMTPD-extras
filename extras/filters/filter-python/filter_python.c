@@ -30,9 +30,7 @@
 #define _GNU_SOURCE
 #endif
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 static PyObject	*py_on_connect;
 static PyObject	*py_on_helo;

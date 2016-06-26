@@ -25,11 +25,7 @@
 #include <limits.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
-#include "iobuf.h"
-#include "ioev.h"
+#include <smtpd-api.h>
 
 #define CLAMAV_HOST "127.0.0.1"
 #define CLAMAV_PORT "3310"

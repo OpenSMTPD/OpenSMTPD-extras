@@ -28,9 +28,7 @@
 #include <unistd.h>
 #include <asr.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 struct dnsbl {
 	uint64_t id;
