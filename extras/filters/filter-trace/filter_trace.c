@@ -22,9 +22,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 static int
 on_connect(uint64_t id, struct filter_connect *conn)
