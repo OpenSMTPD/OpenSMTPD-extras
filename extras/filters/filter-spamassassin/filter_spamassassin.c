@@ -28,11 +28,7 @@
 #include <limits.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
-#include "iobuf.h"
-#include "ioev.h"
+#include <smtpd-api.h>
 
 #define SPAMASSASSIN_HOST "127.0.0.1"
 #define SPAMASSASSIN_PORT "783"
