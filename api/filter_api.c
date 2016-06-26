@@ -1283,6 +1283,8 @@ data_buffered_stream_process(uint64_t id, FILE *fp, void *arg)
 	}
 	line[strcspn(line, "\n")] = '\0';
 	rfc2822_parser_feed(&s->rfc2822_parser, line);
+	free(line);
+
 	/* XXX */
 	data_buffered_stream_process(id, fp, s);
 }
