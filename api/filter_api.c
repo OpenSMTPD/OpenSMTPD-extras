@@ -1285,8 +1285,9 @@ data_buffered_stream_process(uint64_t id, FILE *fp, void *arg)
 	rfc2822_parser_feed(&s->rfc2822_parser, line);
 	free(line);
 
-	/* XXX */
-	data_buffered_stream_process(id, fp, s);
+	/* XXX - should be driven by parser_feed */
+	if (1)
+		io_callback(&s->pipe.oev, IO_LOWAT);
 }
 
 static void
