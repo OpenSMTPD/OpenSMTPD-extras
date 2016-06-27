@@ -34,7 +34,7 @@
 #include "rspamd.h"
 #include "json.h"
 
-struct sockaddr_storage	ss;
+extern struct sockaddr_storage	ss;
 
 void *
 session_allocator(uint64_t id)
@@ -130,37 +130,6 @@ transaction_add_rcpt(struct transaction *t, const char *rcpt)
 }
 
 
-/* XXX
- * this needs to be handled differently, but lets focus on the filter for now
- */
-void
-rspamd_resolve(const char *h, const char *p)
-{
-	struct addrinfo hints, *addresses, *ai;
-	int fd, r;
-
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = PF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
-	if ((r = getaddrinfo(h, p, &hints, &addresses)))
-		fatalx("resolve: getaddrinfo %s", gai_strerror(r));
-	for (ai = addresses; ai; ai = ai->ai_next) {
-		if ((fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)) == -1)
-			continue;
-		if (connect(fd, ai->ai_addr, ai->ai_addrlen) == -1) {
-			close(fd);
-			continue;
-		}
-		close(fd);
-		memmove(&ss, ai->ai_addr, ai->ai_addrlen);
-		break;
-	}
-	freeaddrinfo(addresses);
-	if (!ai)
-		fatalx("resolve: failed");
-}
-
 int
 rspamd_connect(struct transaction *tx)
 {
@@ -247,6 +216,7 @@ rspamd_read_response(struct transaction *tx)
 	iobuf_normalize(&tx->iobuf);
 }
 
+/* XXX this can certainly be cleaned up */
 int
 rspamd_parse_response(struct transaction *tx)
 {
@@ -400,17 +370,17 @@ rspamd_io(struct io *io, int evt)
 		rspamd_connected(tx);
 		rspamd_send_query(tx);
 		io_set_write(io);
-		break;
+		return;
 
 	case IO_LOWAT:
 		/* we've hit EOM and no more data, toggle to read */
 		if (tx->eom)
 			io_set_read(io);
-		break;
+		return;
 
 	case IO_DATAIN:
 		rspamd_read_response(tx);
-		break;
+		return;
 
 	case IO_DISCONNECTED:
 		rspamd_disconnect(tx);
@@ -418,24 +388,22 @@ rspamd_io(struct io *io, int evt)
 		/* we're done with rspamd, if there was a local error
 		 * during transaction, reject now, else move forward.
 		 */
-		if (! rspamd_parse_response(tx)) {
-			rspamd_error(tx);
-			break;
-		}
+		if (! rspamd_parse_response(tx))
+			goto fail;
 
-		if (! rspamd_proceed(tx)) {
-			rspamd_error(tx);
-			break;
-		}
+		if (! rspamd_proceed(tx))
+			goto fail;
 
 		filter_api_data_buffered_stream(tx->id);
-		break;
+		return;
 
 	case IO_TIMEOUT:
 	case IO_ERROR:
 	default:
-		rspamd_error(tx);
 		break;
 	}
+
+fail:
+	rspamd_error(tx);
 	return;
 }

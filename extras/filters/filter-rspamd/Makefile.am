@@ -8,5 +8,6 @@ filter_rspamd_SOURCES	 = $(SRCS)
 filter_rspamd_SOURCES	+= filter_rspamd.c
 filter_rspamd_SOURCES	+= rspamd.c
 filter_rspamd_SOURCES	+= json.c
+filter_rspamd_SOURCES	+= fixme.c
 
 LDFLAGS	+= -lm
