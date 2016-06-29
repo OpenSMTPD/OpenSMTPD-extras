@@ -229,14 +229,14 @@ regex_on_eom(uint64_t id, size_t size)
 }
 
 static void
-regex_on_commit(uint64_t id)
+regex_on_tx_commit(uint64_t id)
 {
 	free(filter_api_get_udata(id));
 	filter_api_set_udata(id, NULL);
 }
 
 static void
-regex_on_rollback(uint64_t id)
+regex_on_tx_rollback(uint64_t id)
 {
 	free(filter_api_get_udata(id));
 	filter_api_set_udata(id, NULL);
@@ -291,8 +291,8 @@ main(int argc, char **argv)
 	filter_api_on_rcpt(regex_on_rcpt);
 	filter_api_on_dataline(regex_on_dataline);
 	filter_api_on_eom(regex_on_eom);
-	filter_api_on_commit(regex_on_commit);
-	filter_api_on_rollback(regex_on_rollback);
+	filter_api_on_tx_commit(regex_on_tx_commit);
+	filter_api_on_tx_rollback(regex_on_tx_rollback);
 
 	filter_api_loop();
 	regex_clear();

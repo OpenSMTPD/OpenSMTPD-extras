@@ -112,8 +112,9 @@ static struct filter_internals {
 
 		void (*disconnect)(uint64_t);
 		void (*reset)(uint64_t);
-		void (*commit)(uint64_t);
-		void (*rollback)(uint64_t);
+		void (*tx_begin)(uint64_t);
+		void (*tx_commit)(uint64_t);
+		void (*tx_rollback)(uint64_t);
 	} cb;
 
 	void	*(*session_allocator)(uint64_t);
@@ -138,8 +139,9 @@ static void filter_dispatch_helo(uint64_t, const char *);
 static void filter_dispatch_mail(uint64_t, struct mailaddr *);
 static void filter_dispatch_rcpt(uint64_t, struct mailaddr *);
 static void filter_dispatch_reset(uint64_t);
-static void filter_dispatch_commit(uint64_t);
-static void filter_dispatch_rollback(uint64_t);
+static void filter_dispatch_tx_begin(uint64_t);
+static void filter_dispatch_tx_commit(uint64_t);
+static void filter_dispatch_tx_rollback(uint64_t);
 static void filter_dispatch_disconnect(uint64_t);
 
 static void filter_trigger_eom(struct filter_session *);
@@ -276,12 +278,6 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 		case EVENT_DISCONNECT:
 			filter_dispatch_disconnect(id);
 			s = tree_xget(&sessions, id);
-			if (fi.transaction_destructor) {
-				if (s->transaction) {
-					fi.transaction_destructor(s->transaction);
-					s->transaction = NULL;
-				}
-			}
 			if (fi.session_destructor) {
 				if (s->session)
 					fi.session_destructor(s->session);
@@ -294,36 +290,21 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 		case EVENT_RESET:
 			filter_dispatch_reset(id);
 			s = tree_xget(&sessions, id);
-			if (fi.transaction_destructor) {
-				if (s->transaction) {
-					fi.transaction_destructor(s->transaction);
-					s->transaction = NULL;
-				}
-			}
 			if (s->data_buffer)
 				data_buffered_release(s);
 			break;
-		case EVENT_COMMIT:
-			filter_dispatch_commit(id);
+		case EVENT_TX_BEGIN:
+			filter_dispatch_tx_begin(id);
+			break;
+		case EVENT_TX_COMMIT:
+			filter_dispatch_tx_commit(id);
 			s = tree_xget(&sessions, id);
-			if (fi.transaction_destructor) {
-				if (s->transaction) {
-					fi.transaction_destructor(s->transaction);
-					s->transaction = NULL;
-				}
-			}
 			if (s->data_buffer)
 				data_buffered_release(s);
 			break;
-		case EVENT_ROLLBACK:
-			filter_dispatch_rollback(id);
+		case EVENT_TX_ROLLBACK:
+			filter_dispatch_tx_rollback(id);
 			s = tree_xget(&sessions, id);
-			if (fi.transaction_destructor) {
-				if (s->transaction) {
-					fi.transaction_destructor(s->transaction);
-					s->transaction = NULL;
-				}
-			}
 			if (s->data_buffer)
 				data_buffered_release(s);
 			break;
@@ -356,12 +337,6 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 		case QUERY_MAIL:
 			m_get_mailaddr(&m, &maddr);
 			m_end(&m);
-
-			if (fi.transaction_allocator) {
-				s = tree_xget(&sessions, id);
-				s->transaction = fi.transaction_allocator(id);
-			}
-
 			filter_register_query(id, qid, type);
 			filter_dispatch_mail(id, &maddr);
 			break;
@@ -481,13 +456,6 @@ filter_dispatch_helo(uint64_t id, const char *helo)
 static void
 filter_dispatch_mail(uint64_t id, struct mailaddr *mail)
 {
-	struct filter_session	*s;
-
-	s = tree_xget(&sessions, id);
-	if (s->tx)
-		fatalx("transaction already started");
-	s->tx = 1;
-
 	if (fi.cb.mail)
 		fi.cb.mail(id, mail);
 	else
@@ -517,17 +485,34 @@ filter_dispatch_reset(uint64_t id)
 {
 	if (fi.cb.reset)
 		fi.cb.reset(id);
-	filter_dispatch_rollback(id);
 }
 
 static void
-filter_dispatch_commit(uint64_t id)
+filter_dispatch_tx_begin(uint64_t id)
+{
+	struct filter_session *s;
+
+	s = tree_xget(&sessions, id);
+	if (s->tx)
+		fatalx("tx-begin: session %016"PRIx64" in transaction", id);
+
+	s->tx = 1;
+
+	if (fi.transaction_allocator)
+		s->transaction = fi.transaction_allocator(id);
+
+	if (fi.cb.tx_begin)
+		fi.cb.tx_begin(id);
+}
+
+static void
+filter_dispatch_tx_commit(uint64_t id)
 {
 	struct filter_session	*s;
 
 	s = tree_xget(&sessions, id);
 	if (s->tx == 0)
-		fatalx("commit: session %016"PRIx64" not in transaction", id);
+		fatalx("tx-commit: session %016"PRIx64" not in transaction", id);
 
 	s->tx = 0;
 	io_clear(&s->pipe.oev);
@@ -535,18 +520,23 @@ filter_dispatch_commit(uint64_t id)
 	io_clear(&s->pipe.iev);
 	iobuf_clear(&s->pipe.ibuf);
 
-	if (fi.cb.commit)
-		fi.cb.commit(id);
+	if (fi.cb.tx_commit)
+		fi.cb.tx_commit(id);
+
+	if (fi.transaction_destructor && s->transaction) {
+		fi.transaction_destructor(s->transaction);
+		s->transaction = NULL;
+	}
 }
 
 static void
-filter_dispatch_rollback(uint64_t id)
+filter_dispatch_tx_rollback(uint64_t id)
 {
 	struct filter_session	*s;
 
 	s = tree_xget(&sessions, id);
 	if (s->tx == 0)
-		return;
+		fatalx("tx-rollback: session %016"PRIx64" not in transaction", id);
 
 	s->tx = 0;
 	io_clear(&s->pipe.oev);
@@ -554,16 +544,18 @@ filter_dispatch_rollback(uint64_t id)
 	io_clear(&s->pipe.iev);
 	iobuf_clear(&s->pipe.ibuf);
 
-	if (fi.cb.rollback)
-		fi.cb.rollback(id);
+	if (fi.cb.tx_rollback)
+		fi.cb.tx_rollback(id);
+
+	if (fi.transaction_destructor && s->transaction) {
+		fi.transaction_destructor(s->transaction);
+		s->transaction = NULL;
+	}
 }
 
 static void
 filter_dispatch_disconnect(uint64_t id)
 {
-
-	filter_dispatch_rollback(id);
-
 	if (fi.cb.disconnect)
 		fi.cb.disconnect(id);
 }
@@ -776,8 +768,9 @@ hook_to_str(int hook)
 	CASE(HOOK_EOM);
 	CASE(HOOK_RESET);
 	CASE(HOOK_DISCONNECT);
-	CASE(HOOK_COMMIT);
-	CASE(HOOK_ROLLBACK);
+	CASE(HOOK_TX_BEGIN);
+	CASE(HOOK_TX_COMMIT);
+	CASE(HOOK_TX_ROLLBACK);
 	CASE(HOOK_DATALINE);
 	default:
 		return ("HOOK_???");
@@ -807,8 +800,9 @@ event_to_str(int event)
 	CASE(EVENT_CONNECT);
 	CASE(EVENT_RESET);
 	CASE(EVENT_DISCONNECT);
-	CASE(EVENT_COMMIT);
-	CASE(EVENT_ROLLBACK);
+	CASE(EVENT_TX_BEGIN);
+	CASE(EVENT_TX_COMMIT);
+	CASE(EVENT_TX_ROLLBACK);
 	default:
 		return ("EVENT_???");
 	}
@@ -1039,21 +1033,30 @@ filter_api_on_disconnect(void(*cb)(uint64_t))
 }
 
 void
-filter_api_on_commit(void(*cb)(uint64_t))
+filter_api_on_tx_begin(void(*cb)(uint64_t))
 {
 	filter_api_init();
 
-	fi.hooks |= HOOK_COMMIT;
-	fi.cb.commit = cb;
+	fi.hooks |= HOOK_TX_BEGIN;
+	fi.cb.tx_begin = cb;
 }
 
 void
-filter_api_on_rollback(void(*cb)(uint64_t))
+filter_api_on_tx_commit(void(*cb)(uint64_t))
 {
 	filter_api_init();
 
-	fi.hooks |= HOOK_ROLLBACK;
-	fi.cb.rollback = cb;
+	fi.hooks |= HOOK_TX_COMMIT;
+	fi.cb.tx_commit = cb;
+}
+
+void
+filter_api_on_tx_rollback(void(*cb)(uint64_t))
+{
+	filter_api_init();
+
+	fi.hooks |= HOOK_TX_ROLLBACK;
+	fi.cb.tx_rollback = cb;
 }
 
 void

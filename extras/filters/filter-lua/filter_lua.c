@@ -277,32 +277,48 @@ on_eom(uint64_t id, size_t size)
 }
 
 static void
-on_commit(uint64_t id)
+on_tx_begin(uint64_t id)
 {
 	char	s_id[ID_STR_SZ];
 
 	(void)snprintf(s_id, sizeof(s_id), "%016"PRIx64"", id);
-	lua_getglobal(L, "on_commit");
+	lua_getglobal(L, "on_tx_begin");
 	lua_pushstring(L, s_id);
 
 	if (lua_pcall(L, 1, 0, 0)) {
-		log_warnx("warn: on_commit: %s",
+		log_warnx("warn: on_tx_begin: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
 }
 
 static void
-on_rollback(uint64_t id)
+on_tx_commit(uint64_t id)
 {
 	char	s_id[ID_STR_SZ];
 
 	(void)snprintf(s_id, sizeof(s_id), "%016"PRIx64"", id);
-	lua_getglobal(L, "on_rollback");
+	lua_getglobal(L, "on_tx_commit");
 	lua_pushstring(L, s_id);
 
 	if (lua_pcall(L, 1, 0, 0)) {
-		log_warnx("warn: on_rollback: %s",
+		log_warnx("warn: on_tx_commit: %s",
+		    lua_tostring(L, -1));
+		exit(1);
+	}
+}
+
+static void
+on_tx_rollback(uint64_t id)
+{
+	char	s_id[ID_STR_SZ];
+
+	(void)snprintf(s_id, sizeof(s_id), "%016"PRIx64"", id);
+	lua_getglobal(L, "on_tx_rollback");
+	lua_pushstring(L, s_id);
+
+	if (lua_pcall(L, 1, 0, 0)) {
+		log_warnx("warn: on_tx_rollback: %s",
 		    lua_tostring(L, -1));
 		exit(1);
 	}
@@ -429,16 +445,22 @@ main(int argc, char **argv)
 		filter_api_on_eom(on_eom);
 	}
 
-	lua_getglobal(L, "on_commit");
+	lua_getglobal(L, "on_tx_begin");
 	if (lua_isfunction(L, 1)) {
-		log_debug("debug: on_commit is present");
-		filter_api_on_commit(on_commit);
+		log_debug("debug: on_tx_begin is present");
+		filter_api_on_tx_begin(on_tx_begin);
 	}
 
-	lua_getglobal(L, "on_rollback");
+	lua_getglobal(L, "on_tx_commit");
 	if (lua_isfunction(L, 1)) {
-		log_debug("debug: on_rollback is present");
-		filter_api_on_rollback(on_rollback);
+		log_debug("debug: on_tx_commit is present");
+		filter_api_on_tx_commit(on_tx_commit);
+	}
+
+	lua_getglobal(L, "on_tx_rollback");
+	if (lua_isfunction(L, 1)) {
+		log_debug("debug: on_tx_rollback is present");
+		filter_api_on_tx_rollback(on_tx_rollback);
 	}
 
 	lua_getglobal(L, "on_disconnect");

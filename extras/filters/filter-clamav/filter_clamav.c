@@ -203,14 +203,14 @@ clamav_on_eom(uint64_t id, size_t size)
 }
 
 static void
-clamav_on_commit(uint64_t id)
+clamav_on_tx_commit(uint64_t id)
 {
 	clamav_clear(filter_api_get_udata(id));
 	filter_api_set_udata(id, NULL);
 }
 
 static void
-clamav_on_rollback(uint64_t id)
+clamav_on_tx_rollback(uint64_t id)
 {
 	clamav_clear(filter_api_get_udata(id));
 	filter_api_set_udata(id, NULL);
@@ -291,8 +291,8 @@ main(int argc, char **argv)
 	filter_api_on_data(clamav_on_data);
 	filter_api_on_dataline(clamav_on_dataline);
 	filter_api_on_eom(clamav_on_eom);
-	filter_api_on_commit(clamav_on_commit);
-	filter_api_on_rollback(clamav_on_rollback);
+	filter_api_on_tx_commit(clamav_on_tx_commit);
+	filter_api_on_tx_rollback(clamav_on_tx_rollback);
 
 	filter_api_loop();
 	log_debug("debug: exiting");

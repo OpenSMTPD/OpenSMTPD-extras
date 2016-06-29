@@ -80,15 +80,21 @@ on_reset(uint64_t id)
 }
 
 static void
-on_commit(uint64_t id)
+on_tx_begin(uint64_t id)
 {
-	log_debug("debug: on_commit");
+	log_debug("debug: on_tx_begin");
 }
 
 static void
-on_rollback(uint64_t id)
+on_tx_commit(uint64_t id)
 {
-	log_debug("debug: on_rollback");
+	log_debug("debug: on_tx_commit");
+}
+
+static void
+on_tx_rollback(uint64_t id)
+{
+	log_debug("debug: on_tx_rollback");
 }
 
 static void
@@ -134,8 +140,9 @@ main(int argc, char **argv)
 	filter_api_on_reset(on_reset);
 	filter_api_on_eom(on_eom);
 	filter_api_on_dataline(on_dataline);
-	filter_api_on_commit(on_commit);
-	filter_api_on_rollback(on_rollback);
+	filter_api_on_tx_begin(on_tx_begin);
+	filter_api_on_tx_commit(on_tx_commit);
+	filter_api_on_tx_rollback(on_tx_rollback);
 	filter_api_on_disconnect(on_disconnect);
 
 	filter_api_loop();

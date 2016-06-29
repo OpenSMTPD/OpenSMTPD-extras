@@ -90,15 +90,21 @@ on_disconnect(uint64_t id)
 }
 
 static void
-on_commit(uint64_t id)
+on_tx_begin(uint64_t id)
 {
-	log_info("info: session %016"PRIx64": on_commit", id);
+	log_info("info: session %016"PRIx64": on_tx_begin", id);
 }
 
 static void
-on_rollback(uint64_t id)
+on_tx_commit(uint64_t id)
 {
-	log_info("info: session %016"PRIx64": on_rollback", id);
+	log_info("info: session %016"PRIx64": on_tx_commit", id);
+}
+
+static void
+on_tx_rollback(uint64_t id)
+{
+	log_info("info: session %016"PRIx64": on_tx_rollback", id);
 }
 
 int
@@ -144,8 +150,9 @@ main(int argc, char **argv)
 
 	filter_api_on_reset(on_reset);
 	filter_api_on_disconnect(on_disconnect);
-	filter_api_on_commit(on_commit);
-	filter_api_on_rollback(on_rollback);
+	filter_api_on_tx_begin(on_tx_begin);
+	filter_api_on_tx_commit(on_tx_commit);
+	filter_api_on_tx_rollback(on_tx_rollback);
 
 	filter_api_loop();
 

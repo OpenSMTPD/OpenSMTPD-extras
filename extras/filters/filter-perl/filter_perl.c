@@ -38,8 +38,9 @@ static CV		*pl_on_mail;
 static CV		*pl_on_rcpt;
 static CV		*pl_on_data;
 static CV		*pl_on_eom;
-static CV		*pl_on_commit;
-static CV		*pl_on_rollback;
+static CV		*pl_on_tx_begin;
+static CV		*pl_on_tx_commit;
+static CV		*pl_on_tx_rollback;
 static CV		*pl_on_dataline;
 static CV		*pl_on_disconnect;
 
@@ -187,16 +188,23 @@ on_eom(uint64_t id, size_t size)
 }
 
 static void
-on_commit(uint64_t id)
+on_tx_begin(uint64_t id)
 {
-	call_sub_sv((SV *)pl_on_commit, "%i", id);
+	call_sub_sv((SV *)pl_on_tx_begin, "%i", id);
 	return;
 }
 
 static void
-on_rollback(uint64_t id)
+on_tx_commit(uint64_t id)
 {
-	call_sub_sv((SV *)pl_on_rollback, "%i", id);
+	call_sub_sv((SV *)pl_on_tx_commit, "%i", id);
+	return;
+}
+
+static void
+on_tx_rollback(uint64_t id)
+{
+	call_sub_sv((SV *)pl_on_tx_rollback, "%i", id);
 	return;
 }
 
@@ -272,10 +280,12 @@ main(int argc, char **argv)
 		filter_api_on_data(on_data);
 	if ((pl_on_eom = perl_get_cv("on_eom", FALSE)))
 		filter_api_on_eom(on_eom);
-	if ((pl_on_commit = perl_get_cv("on_commit", FALSE)))
-		filter_api_on_commit(on_commit);
-	if ((pl_on_rollback = perl_get_cv("on_rollback", FALSE)))
-		filter_api_on_rollback(on_rollback);
+	if ((pl_on_tx_begin = perl_get_cv("on_tx_begin", FALSE)))
+		filter_api_on_tx_begin(on_tx_begin);
+	if ((pl_on_tx_commit = perl_get_cv("on_tx_commit", FALSE)))
+		filter_api_on_tx_commit(on_tx_commit);
+	if ((pl_on_tx_rollback = perl_get_cv("on_tx_rollback", FALSE)))
+		filter_api_on_rollback(on_tx_rollback);
 	if ((pl_on_dataline = perl_get_cv("on_dataline", FALSE)))
 		filter_api_on_dataline(on_dataline);
 	if ((pl_on_disconnect = perl_get_cv("on_disconnect", FALSE)))

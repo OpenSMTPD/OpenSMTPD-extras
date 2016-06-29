@@ -250,14 +250,14 @@ spamassassin_on_eom(uint64_t id, size_t size)
 }
 
 static void
-spamassassin_on_commit(uint64_t id)
+spamassassin_on_tx_commit(uint64_t id)
 {
 	spamassassin_clear(filter_api_get_udata(id));
 	filter_api_set_udata(id, NULL);
 }
 
 static void
-spamassassin_on_rollback(uint64_t id)
+spamassassin_on_tx_rollback(uint64_t id)
 {
 	spamassassin_clear(filter_api_get_udata(id));
 	filter_api_set_udata(id, NULL);
@@ -358,8 +358,8 @@ main(int argc, char **argv)
 	filter_api_on_data(spamassassin_on_data);
 	filter_api_on_dataline(spamassassin_on_dataline);
 	filter_api_on_eom(spamassassin_on_eom);
-	filter_api_on_commit(spamassassin_on_commit);
-	filter_api_on_rollback(spamassassin_on_rollback);
+	filter_api_on_tx_commit(spamassassin_on_tx_commit);
+	filter_api_on_tx_rollback(spamassassin_on_tx_rollback);
 
 	filter_api_loop();
 	log_debug("debug: exiting");

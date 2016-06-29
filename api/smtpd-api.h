@@ -36,7 +36,7 @@
 #include "log.h"
 #include "rfc2822.h"
 
-#define	FILTER_API_VERSION	 50
+#define	FILTER_API_VERSION	 51
 
 enum blockmodes {
 	BM_NORMAL,
@@ -113,8 +113,9 @@ enum filter_event_type {
 	EVENT_CONNECT,
 	EVENT_RESET,
 	EVENT_DISCONNECT,
-	EVENT_COMMIT,
-	EVENT_ROLLBACK,
+	EVENT_TX_BEGIN,
+	EVENT_TX_COMMIT,
+	EVENT_TX_ROLLBACK,
 };
 
 /* XXX - server side requires mfa_session.c update on filter_hook changes */
@@ -138,9 +139,10 @@ enum filter_hook_type {
 	HOOK_EOM		= 1 << 5,
 	HOOK_RESET		= 1 << 6,
 	HOOK_DISCONNECT		= 1 << 7,
-	HOOK_COMMIT		= 1 << 8,
-	HOOK_ROLLBACK		= 1 << 9,
-	HOOK_DATALINE		= 1 << 10,
+	HOOK_TX_BEGIN		= 1 << 8,
+	HOOK_TX_COMMIT		= 1 << 9,
+	HOOK_TX_ROLLBACK	= 1 << 10,
+	HOOK_DATALINE		= 1 << 11,
 };
 
 struct filter_connect {
@@ -419,8 +421,9 @@ void filter_api_on_dataline(void(*)(uint64_t, const char *));
 void filter_api_on_eom(int(*)(uint64_t, size_t));
 void filter_api_on_reset(void(*)(uint64_t));
 void filter_api_on_disconnect(void(*)(uint64_t));
-void filter_api_on_commit(void(*)(uint64_t));
-void filter_api_on_rollback(void(*)(uint64_t));
+void filter_api_on_tx_begin(void(*)(uint64_t));
+void filter_api_on_tx_commit(void(*)(uint64_t));
+void filter_api_on_tx_rollback(void(*)(uint64_t));
 
 const char *proc_name(enum smtp_proc_type);
 const char *imsg_to_str(int);

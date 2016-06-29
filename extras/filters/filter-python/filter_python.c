@@ -40,8 +40,9 @@ static PyObject	*py_on_data;
 static PyObject	*py_on_eom;
 static PyObject	*py_on_dataline;
 
-static PyObject	*py_on_commit;
-static PyObject	*py_on_rollback;
+static PyObject	*py_on_tx_begin;
+static PyObject	*py_on_tx_commit;
+static PyObject	*py_on_tx_rollback;
 static PyObject	*py_on_disconnect;
 
 
@@ -277,7 +278,7 @@ on_eom(uint64_t id, size_t sz)
 }
 
 static void
-on_commit(uint64_t id)
+on_tx_begin(uint64_t id)
 {
 	PyObject *py_args;
 	PyObject *py_ret;
@@ -286,18 +287,18 @@ on_commit(uint64_t id)
 	py_args = PyTuple_New(1);
 	py_id   = PyLong_FromUnsignedLongLong(id);
 	PyTuple_SetItem(py_args, 0, py_id);
-	py_ret = PyObject_CallObject(py_on_commit, py_args);
+	py_ret = PyObject_CallObject(py_on_tx_begin, py_args);
 	Py_DECREF(py_args);
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: on_commit: handler failed");
+		log_warnx("warn: on_tx_begin: handler failed");
 		exit(1);
 	}
 }
 
 static void
-on_rollback(uint64_t id)
+on_tx_commit(uint64_t id)
 {
 	PyObject *py_args;
 	PyObject *py_ret;
@@ -306,12 +307,32 @@ on_rollback(uint64_t id)
 	py_args = PyTuple_New(1);
 	py_id   = PyLong_FromUnsignedLongLong(id);
 	PyTuple_SetItem(py_args, 0, py_id);
-	py_ret = PyObject_CallObject(py_on_rollback, py_args);
+	py_ret = PyObject_CallObject(py_on_tx_commit, py_args);
 	Py_DECREF(py_args);
 
 	if (py_ret == NULL) {
 		PyErr_Print();
-		log_warnx("warn: on_rollback: handler failed");
+		log_warnx("warn: on_tx_commit: handler failed");
+		exit(1);
+	}
+}
+
+static void
+on_tx_rollback(uint64_t id)
+{
+	PyObject *py_args;
+	PyObject *py_ret;
+	PyObject *py_id;
+
+	py_args = PyTuple_New(1);
+	py_id   = PyLong_FromUnsignedLongLong(id);
+	PyTuple_SetItem(py_args, 0, py_id);
+	py_ret = PyObject_CallObject(py_on_tx_rollback, py_args);
+	Py_DECREF(py_args);
+
+	if (py_ret == NULL) {
+		PyErr_Print();
+		log_warnx("warn: on_tx_rollback: handler failed");
 		exit(1);
 	}
 }
@@ -485,13 +506,17 @@ main(int argc, char **argv)
 	if (py_on_eom && PyCallable_Check(py_on_eom))
 		filter_api_on_eom(on_eom);
 
-	py_on_commit = PyObject_GetAttrString(module, "on_commit");
-	if (py_on_commit && PyCallable_Check(py_on_commit))
-		filter_api_on_commit(on_commit);
+	py_on_tx_begin = PyObject_GetAttrString(module, "on_tx_begin");
+	if (py_on_tx_begin && PyCallable_Check(py_on_tx_begin))
+		filter_api_on_tx_begin(on_tx_begin);
 
-	py_on_rollback = PyObject_GetAttrString(module, "on_rollback");
-	if (py_on_rollback && PyCallable_Check(py_on_rollback))
-		filter_api_on_rollback(on_rollback);
+	py_on_tx_commit = PyObject_GetAttrString(module, "on_tx_commit");
+	if (py_on_tx_commit && PyCallable_Check(py_on_tx_commit))
+		filter_api_on_tx_commit(on_tx_commit);
+
+	py_on_tx_rollback = PyObject_GetAttrString(module, "on_tx_rollback");
+	if (py_on_tx_rollback && PyCallable_Check(py_on_tx_rollback))
+		filter_api_on_tx_rollback(on_tx_rollback);
 
 	py_on_dataline = PyObject_GetAttrString(module, "on_dataline");
 	if (py_on_dataline && PyCallable_Check(py_on_dataline))

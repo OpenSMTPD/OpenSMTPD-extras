@@ -226,14 +226,14 @@ done:
 }
 
 static void
-dkim_signer_on_commit(uint64_t id)
+dkim_signer_on_tx_commit(uint64_t id)
 {
 	dkim_signer_clear(filter_api_get_udata(id));
 	filter_api_set_udata(id, NULL);
 }
 
 static void
-dkim_signer_on_rollback(uint64_t id)
+dkim_signer_on_tx_rollback(uint64_t id)
 {
 	dkim_signer_clear(filter_api_get_udata(id));
 	filter_api_set_udata(id, NULL);
@@ -309,8 +309,8 @@ main(int argc, char **argv)
 	filter_api_on_data(dkim_signer_on_data);
 	filter_api_on_dataline(dkim_signer_on_dataline);
 	filter_api_on_eom(dkim_signer_on_eom);
-	filter_api_on_commit(dkim_signer_on_commit);
-	filter_api_on_rollback(dkim_signer_on_rollback);
+	filter_api_on_tx_commit(dkim_signer_on_tx_commit);
+	filter_api_on_tx_rollback(dkim_signer_on_tx_rollback);
 	if (c)
 		filter_api_set_chroot(c);
 	if (C)
