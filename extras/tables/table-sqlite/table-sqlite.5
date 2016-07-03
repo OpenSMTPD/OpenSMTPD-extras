@@ -139,6 +139,8 @@ query_domain SELECT domain FROM domains WHERE domain=?;
 table domains sqlite:/etc/mail/sqlite.conf
 table virtuals sqlite:/etc/mail/sqlite.conf
 table credentials sqlite:/etc/mail/sqlite.conf
+listen on egress port 587 tls-require pki mx.domain.tld auth <credentials>
+accept from any for domain <domains> virtual <virtuals> deliver to mbox
 .Ed
 
 .Sh FILES
