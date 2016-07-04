@@ -1,10 +1,10 @@
-.\"
-.\" Copyright (c) 2014 Jason Barbier <kusuriya@serversave.us>
-.\"
+.\" 
+.\" Copyright (c) 2013 Eric Faurot <eric@openbsd.org>
+.\" 
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
 .\" copyright notice and this permission notice appear in all copies.
-.\"
+.\" 
 .\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 .\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
 .\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
@@ -12,26 +12,25 @@
 .\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-.\"
-.\"
+.\" 
 .Dd $Mdocdate: July 4 2016 $
-.Dt TABLE_SQLITE 5
+.Dt MYSQL_SQLITE 5
 .Os
 .Sh NAME
-.Nm table_sqlite
-.Nd format description for smtpd sqlite tables
+.Nm table_mysql
+.Nd format description for smtpd MySQL or MariaDB tables
 .Sh DESCRIPTION
-This manual page documents the file format of sqlite tables used by the
+This manual page documents the file format of MySQL or MariaDB tables used
+by the
 .Xr smtpd 8
 mail daemon.
 .Pp
 The format described here applies to tables as defined in
 .Xr smtpd.conf 5 .
-.Sh SQLITE TABLE
-A sqlite table allows the storing of usernames, passwords, aliases, and domains
+.Sh MYSQL TABLE
+A mysql table allows the storing of usernames, passwords, aliases, and domains
 in a format that is shareable across various machines that support
-.Xr sqlite3 1
-(SQLite version 3).
+.Xr mysql 1 .
 .Pp
 The table is used by
 .Xr smtpd 8
@@ -39,8 +38,8 @@ when authenticating a user, when user information such as user-id and/or
 home directory is required for a delivery, when a domain lookup may be required,
 and/or when looking for an alias.
 .Pp
-A sqlite table consists of one or more
-.Xr sqlite3 1
+A MySQL table consists of one or more
+.Xr mysql 1
 databases with one or more tables.
 .Pp
 If the table is used for authentication, the password should be
@@ -52,19 +51,52 @@ utility or
 .Xr smtpctl 8
 encrypt command.
 
-.Sh SQLITE TABLE CONFIG FILE
+.Sh MYSQL TABLE CONFIG FILE
 
 The following configuration options are available:
 .Pp
 .Bl -tag -width Ds
 .It Xo
-.Ic dbpath
-.Ar file
+.Ic host
+.Ar hostname
 .Xc
-This is the path to where the DB file is located.
+This is the host running MySQL or MariaDB.
 For example:
 .Bd -literal -offset indent
-dbpath /etc/mail/smtp.sqlite
+host db.example.com
+.Ed
+.Pp
+
+.It Xo
+.Ic username
+.Ar username
+.Xc
+The username required to talk to the MySQL or MariaDB database.
+For example:
+.Bd -literal -offset indent
+username maildba
+.Ed
+.Pp
+
+.It Xo
+.Ic password
+.Ar password
+.Xc
+The password required to talk to the MySQL or MariaDB database.
+For example:
+.Bd -literal -offset indent
+password OpenSMTPDRules!
+.Ed
+.Pp
+
+.It Xo
+.Ic database
+.Ar databse
+.Xc
+The name of the MySQL or MariaDB database.
+For example:
+.Bd -literal -offset indent
+databse opensmtpdb
 .Ed
 .Pp
 
@@ -136,21 +168,21 @@ CREATE TABLE domains (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     domain VARCHAR(255) NOT NULL
 );
-INSERT INTO domains VALUES (1, "example.com");
-INSERT INTO domains VALUES (2, "example.net");
-INSERT INTO domains VALUES (3, "example.org");
+insert into domains values (1, "example.com");
+insert into domains values (2, "example.net");
+insert into domains values (3, "example.org");
 
-INSERT INTO virtuals VALUES (1, "abuse@example.com", "bob@example.com");
-INSERT INTO virtuals VALUES (2, "postmaster@example.com", "bob@example.com");
-INSERT INTO virtuals VALUES (3, "webmaster@example.com", "bob@example.com");
-INSERT INTO virtuals VALUES (4, "bob@example.com", "vmail");
-INSERT INTO virtuals VALUES (5, "abuse@example.net", "alice@example.net");
-INSERT INTO virtuals VALUES (6, "postmaster@example.net", "alice@example.net");
-INSERT INTO virtuals VALUES (7, "webmaster@example.net", "alice@example.net");
-INSERT INTO virtuals VALUES (8, "alice@example.net", "vmail");
+insert into virtuals values (1, "abuse@example.com", "bob@example.com");
+insert into virtuals values (2, "postmaster@example.com", "bob@example.com");
+insert into virtuals values (3, "webmaster@example.com", "bob@example.com");
+insert into virtuals values (4, "bob@example.com", "vmail");
+insert into virtuals values (5, "abuse@example.net", "alice@example.net");
+insert into virtuals values (6, "postmaster@example.net", "alice@example.net");
+insert into virtuals values (7, "webmaster@example.net", "alice@example.net");
+insert into virtuals values (8, "alice@example.net", "vmail");
 
-INSERT INTO credentials VALUES (1, "bob@example.com", "$2b$08$ANGFKBL.BnDLL0bUl7I6aumTCLRJSQluSQLuueWRG.xceworWrUIu");
-INSERT INTO credentials VALUES (2, "alice@example.net", "$2b$08$AkHdB37kaj2NEoTcISHSYOCEBA5vyW1RcD8H1HG.XX0P/G1KIYwii");
+insert into credentials values (1, "bob@example.com", "$2b$08$ANGFKBL.BnDLL0bUl7I6aumTCLRJSQluSQLuueWRG.xceworWrUIu");
+insert into credentials values (2, "alice@example.net", "$2b$08$AkHdB37kaj2NEoTcISHSYOCEBA5vyW1RcD8H1HG.XX0P/G1KIYwii");
 .Ed
 
 .Ic Pa /etc/mail/sqlite.conf
