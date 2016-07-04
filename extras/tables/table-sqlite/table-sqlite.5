@@ -61,7 +61,7 @@ The following configuration options are available:
 .Ic dbpath
 .Ar file
 .Xc
-This is the path to where the DB is located with the dbname.
+This is the path to where the DB file is located.
 For example:
 .Bd -literal -offset indent
 dbpath /etc/mail/smtp.sqlite
@@ -106,11 +106,23 @@ query_ SELECT value FROM table WHERE key=?;
 .Ed
 
 .Sh EXAMPLES
-Those provided here a known to work.
+Example based on the OpenSMTPD FAQ: Building a Mail Server
+The filtering part is excluded in this example.
 
-.Ic Pa sqlite3 schema
+The configuration below is for a medium-size mail server which handles
+multiple domains with multiple virtual users and is based on several
+assumptions. One is that a single system user named vmail is used for all
+virtual users. This user needs to be created:
+
+.Bd -literal
+# useradd -g =uid -c "Virtual Mail" -d /var/vmail -s /sbin/nologin vmail
+# mkdir /var/vmail
+# chown vmail:vmail /var/vmail
+.Ed
+
+.Ic Pa sqlite schema
 .Bd -literal -compact
-CREATE TABLE aliases (
+CREATE TABLE virtuals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email VARCHAR(255) NOT NULL,
     destination VARCHAR(255) NOT NULL
@@ -124,12 +136,27 @@ CREATE TABLE domains (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     domain VARCHAR(255) NOT NULL
 );
+insert into domains values (1, "example.com");
+insert into domains values (2, "example.net");
+insert into domains values (3, "example.org");
+
+insert into virtuals values (1, "abuse@example.com", "bob@example.com");
+insert into virtuals values (2, "postmaster@example.com", "bob@example.com");
+insert into virtuals values (3, "webmaster@example.com", "bob@example.com");
+insert into virtuals values (4, "bob@example.com", "vmail");
+insert into virtuals values (5, "abuse@example.net", "alice@example.net");
+insert into virtuals values (6, "postmaster@example.net", "alice@example.net");
+insert into virtuals values (7, "webmaster@example.net", "alice@example.net");
+insert into virtuals values (8, "alice@example.net", "vmail");
+
+insert into credentials values (1, "bob@example.com", "$2b$08$ANGFKBL.BnDLL0bUl7I6aumTCLRJSQluSQLuueWRG.xceworWrUIu");
+insert into credentials values (2, "alice@example.net", "$2b$08$AkHdB37kaj2NEoTcISHSYOCEBA5vyW1RcD8H1HG.XX0P/G1KIYwii");
 .Ed
 
 .Ic Pa /etc/mail/sqlite.conf
 .Bd -literal -compact
 dbpath /etc/mail/smtp.sqlite
-query_alias SELECT destination FROM aliases WHERE email=?;
+query_alias SELECT destination FROM virtuals WHERE email=?;
 query_credentials SELECT email, password FROM credentials WHERE email=?;
 query_domain SELECT domain FROM domains WHERE domain=?;
 .Ed
@@ -139,14 +166,15 @@ query_domain SELECT domain FROM domains WHERE domain=?;
 table domains sqlite:/etc/mail/sqlite.conf
 table virtuals sqlite:/etc/mail/sqlite.conf
 table credentials sqlite:/etc/mail/sqlite.conf
-listen on egress port 587 tls-require pki mx.domain.tld auth <credentials>
+listen on egress port 25 tls pki mail.example.com
+listen on egress port 587 tls-require pki mail.example.com auth <credentials>
 accept from any for domain <domains> virtual <virtuals> deliver to mbox
 .Ed
 
 .Sh FILES
 .Bl -tag -width "/etc/mail/sqlite.conf" -compact
 .It Pa /etc/mail/sqlite.conf
-Suggested
+Default
 .Xr table-sqlite 8
 configuration file.
 .It Pa /etc/mail/smtp.sqlite
@@ -154,6 +182,8 @@ Suggested
 .Xr sqlite3 1
 database file.
 .El
+
+.Sh TODO
 
 .Sh SEE ALSO
 .Xr smtpd.conf 5 ,
