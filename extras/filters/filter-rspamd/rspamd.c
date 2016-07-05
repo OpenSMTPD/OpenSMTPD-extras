@@ -321,6 +321,9 @@ rspamd_spam_headers(struct transaction *tx)
 int
 rspamd_proceed(struct transaction *tx)
 {
+	if (! rspamd_parse_response(tx))
+		return 0;
+
 	switch (tx->rspamd.action) {
 	case NO_ACTION:
 		return 1;
@@ -388,9 +391,6 @@ rspamd_io(struct io *io, int evt)
 		/* we're done with rspamd, if there was a local error
 		 * during transaction, reject now, else move forward.
 		 */
-		if (! rspamd_parse_response(tx))
-			goto fail;
-
 		if (! rspamd_proceed(tx))
 			goto fail;
 
