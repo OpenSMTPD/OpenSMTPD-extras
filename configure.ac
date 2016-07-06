@@ -995,6 +995,18 @@ AC_SUBST([pkglibexecdir])
 #
 # individual modules
 #
+HAVE_FILTER_CLAMAV=no
+AC_ARG_WITH([filter-clamav],
+	[  --with-filter-clamav	Enable filter clamav],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_FILTER_CLAMAV], [1],
+				[Define if you have filter clamav])
+			HAVE_FILTER_CLAMAV=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_FILTER_CLAMAV], [test $HAVE_FILTER_CLAMAV = yes])
 
 HAVE_FILTER_MONKEY=no
 AC_ARG_WITH([filter-monkey],
