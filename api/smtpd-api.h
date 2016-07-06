@@ -129,22 +129,6 @@ enum filter_query_type {
 	QUERY_DATALINE,
 };
 
-/* XXX - server side requires mfa_session.c update on filter_hook changes */
-enum filter_hook_type {
-	HOOK_CONNECT		= 1 << 0,
-	HOOK_HELO		= 1 << 1,
-	HOOK_MAIL		= 1 << 2,
-	HOOK_RCPT		= 1 << 3,
-	HOOK_DATA		= 1 << 4,
-	HOOK_EOM		= 1 << 5,
-	HOOK_RESET		= 1 << 6,
-	HOOK_DISCONNECT		= 1 << 7,
-	HOOK_TX_BEGIN		= 1 << 8,
-	HOOK_TX_COMMIT		= 1 << 9,
-	HOOK_TX_ROLLBACK	= 1 << 10,
-	HOOK_DATALINE		= 1 << 11,
-};
-
 struct filter_connect {
 	struct sockaddr_storage	 local;
 	struct sockaddr_storage	 remote;
@@ -415,8 +399,9 @@ void filter_api_on_helo(int(*)(uint64_t, const char *));
 void filter_api_on_mail(int(*)(uint64_t, struct mailaddr *));
 void filter_api_on_rcpt(int(*)(uint64_t, struct mailaddr *));
 void filter_api_on_data(int(*)(uint64_t));
-void filter_api_on_dataline(void(*)(uint64_t, const char *));
-void filter_api_on_eom(int(*)(uint64_t, size_t));
+void filter_api_on_msg_line(void(*)(uint64_t, const char *));
+void filter_api_on_msg_start(void(*)(uint64_t));
+void filter_api_on_msg_end(int(*)(uint64_t, size_t));
 void filter_api_on_reset(void(*)(uint64_t));
 void filter_api_on_disconnect(void(*)(uint64_t));
 void filter_api_on_tx_begin(void(*)(uint64_t));

@@ -137,7 +137,7 @@ on_data(uint64_t id)
 }
 
 static int
-on_eom(uint64_t id, size_t size)
+on_msg_end(uint64_t id, size_t size)
 {
 	return monkey_defer(id, "eom");
 }
@@ -310,7 +310,7 @@ main(int argc, char **argv)
 	filter_api_on_mail(on_mail);
 	filter_api_on_rcpt(on_rcpt);
 	filter_api_on_data(on_data);
-	filter_api_on_eom(on_eom);
+	filter_api_on_msg_end(on_msg_end);
 	filter_api_loop();
 
 	log_debug("debug: exiting");
