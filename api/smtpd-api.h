@@ -129,22 +129,6 @@ enum filter_query_type {
 	QUERY_DATALINE,
 };
 
-/* XXX - server side requires mfa_session.c update on filter_hook changes */
-enum filter_hook_type {
-	HOOK_CONNECT		= 1 << 0,
-	HOOK_HELO		= 1 << 1,
-	HOOK_MAIL		= 1 << 2,
-	HOOK_RCPT		= 1 << 3,
-	HOOK_DATA		= 1 << 4,
-	HOOK_EOM		= 1 << 5,
-	HOOK_RESET		= 1 << 6,
-	HOOK_DISCONNECT		= 1 << 7,
-	HOOK_TX_BEGIN		= 1 << 8,
-	HOOK_TX_COMMIT		= 1 << 9,
-	HOOK_TX_ROLLBACK	= 1 << 10,
-	HOOK_DATALINE		= 1 << 11,
-};
-
 struct filter_connect {
 	struct sockaddr_storage	 local;
 	struct sockaddr_storage	 remote;
