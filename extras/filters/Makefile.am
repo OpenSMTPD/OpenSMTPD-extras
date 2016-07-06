@@ -1,5 +1,9 @@
 SUBDIRS	=
 
+if HAVE_FILTER_DNSBL
+SUBDIRS	+=	filter-dnsbl
+endif
+
 if HAVE_FILTER_MONKEY
 SUBDIRS	+=	filter-monkey
 endif

@@ -996,6 +996,19 @@ AC_SUBST([pkglibexecdir])
 # individual modules
 #
 
+HAVE_FILTER_DNSBL=no
+AC_ARG_WITH([filter-dnsbl],
+	[  --with-filter-dnsbl	Enable filter dnsbl],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_FILTER_DNSBL], [1],
+				[Define if you have filter dnsbl])
+			HAVE_FILTER_DNSBL=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_FILTER_DNSBL], [test $HAVE_FILTER_DNSBL = yes])
+
 HAVE_FILTER_MONKEY=no
 AC_ARG_WITH([filter-monkey],
 	[  --with-filter-monkey	Enable filter monkey],
