@@ -36,8 +36,6 @@
 .Nm filter_api_setugid ,
 .Nm filter_api_set_chroot ,
 .Nm filter_api_no_chroot ,
-.Nm filter_api_set_udata ,
-.Nm filter_api_get_udata ,
 .Nm filter_api_timer ,
 .Nm filter_api_sockaddr_to_text ,
 .Nm filter_api_mailaddr_to_text
@@ -84,10 +82,6 @@
 .Fn filter_api_set_chroot "const char *rootpath"
 .Ft void
 .Fn filter_api_no_chroot "void"
-.Ft void
-.Fn filter_api_set_udata "uint64_t id" "void *data"
-.Ft void *
-.Fn filter_api_get_udata "uint64_t id"
 .Ft void *
 .Fn filter_api_timer "uint64_t id" "uint32_t tmo" \
     "void (*cb)(uint64_t, void *)" "void *arg"
@@ -236,21 +230,6 @@ to set the chroot path of the filter.
 The function
 .Fn filter_api_no_chroot
 can be called to disable chroot for the filter.
-.Pp
-The function
-.Fn filter_api_set_udata
-can be called for the current message with the given
-.Fa id
-to set a user data pointer
-.Fa data
-from within a callback function.
-.Pp
-The function
-.Fn filter_api_get_udata
-can be called to get the user data pointer for the current message with the
-given
-.Fa id
-from within a callback function.
 .Pp
 The function
 .Fn filter_api_timer
