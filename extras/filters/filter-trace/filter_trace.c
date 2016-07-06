@@ -63,17 +63,23 @@ on_data(uint64_t id)
 	return filter_api_accept(id);
 }
 
-static int
-on_eom(uint64_t id, size_t size)
+static void
+on_msg_start(uint64_t id)
 {
-	log_info("info: session %016"PRIx64": on_eom: size=%zu", id, size);
+	log_info("info: session %016"PRIx64": on_msg_start", id);
+}
+
+static int
+on_msg_end(uint64_t id, size_t size)
+{
+	log_info("info: session %016"PRIx64": on_msg_end: size=%zu", id, size);
 	return filter_api_accept(id);
 }
 
 static void
-on_dataline(uint64_t id, const char *line)
+on_msg_line(uint64_t id, const char *line)
 {
-	log_info("info: session %016"PRIx64": on_dataline: line=\"%s\"", id, line);
+	log_info("info: session %016"PRIx64": on_msg_line: line=\"%s\"", id, line);
 	filter_api_writeln(id, line);
 }
 
@@ -145,8 +151,9 @@ main(int argc, char **argv)
 	filter_api_on_rcpt(on_rcpt);
 	filter_api_on_data(on_data);
 	if (l)
-		filter_api_on_dataline(on_dataline);
-	filter_api_on_eom(on_eom);
+		filter_api_on_msg_line(on_msg_line);
+	filter_api_on_msg_start(on_msg_start);
+	filter_api_on_msg_end(on_msg_end);
 
 	filter_api_on_reset(on_reset);
 	filter_api_on_disconnect(on_disconnect);

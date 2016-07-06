@@ -106,8 +106,10 @@ static struct filter_internals {
 		int  (*mail)(uint64_t, struct mailaddr *);
 		int  (*rcpt)(uint64_t, struct mailaddr *);
 		int  (*data)(uint64_t);
-		void (*dataline)(uint64_t, const char *);
-		int  (*eom)(uint64_t, size_t);
+
+		void (*msg_line)(uint64_t, const char *);
+		void (*msg_start)(uint64_t);
+		int  (*msg_end)(uint64_t, size_t);
 
 		void (*disconnect)(uint64_t);
 		void (*reset)(uint64_t);
@@ -130,9 +132,10 @@ static void filter_response(struct filter_session *, int, int, const char *);
 static void filter_send_response(struct filter_session *);
 static void filter_register_query(uint64_t, uint64_t, int);
 static void filter_dispatch(struct mproc *, struct imsg *);
-static void filter_dispatch_dataline(uint64_t, const char *);
 static void filter_dispatch_data(uint64_t);
-static void filter_dispatch_eom(uint64_t, size_t);
+static void filter_dispatch_msg_line(uint64_t, const char *);
+static void filter_dispatch_msg_start(uint64_t);
+static void filter_dispatch_msg_end(uint64_t, size_t);
 static void filter_dispatch_connect(uint64_t, struct filter_connect *);
 static void filter_dispatch_helo(uint64_t, const char *);
 static void filter_dispatch_mail(uint64_t, struct mailaddr *);
@@ -358,7 +361,7 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 			m_get_u32(&m, &datalen);
 			m_end(&m);
 			filter_register_query(id, qid, type);
-			filter_dispatch_eom(id, datalen);
+			filter_dispatch_msg_end(id, datalen);
 			break;
 		default:
 			log_warnx("warn: filter-api:%s bad query %d", filter_name, type);
@@ -407,6 +410,9 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 		m_create(&fi.p, IMSG_FILTER_PIPE, 0, 0, fdin);
 		m_add_id(&fi.p, id);
 		m_close(&fi.p);
+
+		if (fdin != -1)
+			filter_dispatch_msg_start(id);
 
 		break;
 	}
@@ -558,16 +564,23 @@ filter_dispatch_disconnect(uint64_t id)
 }
 
 static void
-filter_dispatch_dataline(uint64_t id, const char *data)
+filter_dispatch_msg_line(uint64_t id, const char *data)
 {
-	if (fi.cb.dataline)
-		fi.cb.dataline(id, data);
+	if (fi.cb.msg_line)
+		fi.cb.msg_line(id, data);
 	else
 		filter_api_writeln(id, data);
 }
 
 static void
-filter_dispatch_eom(uint64_t id, size_t datalen)
+filter_dispatch_msg_start(uint64_t id)
+{
+	if (fi.cb.msg_start)
+		fi.cb.msg_start(id);
+}
+
+static void
+filter_dispatch_msg_end(uint64_t id, size_t datalen)
 {
 	struct filter_session	*s;
 
@@ -608,8 +621,8 @@ filter_trigger_eom(struct filter_session *s)
 	/* if we didn't send the eom to the user do it now */
 	if (!s->pipe.eom_called) {
 		s->pipe.eom_called = 1;
-		if (fi.cb.eom)
-			fi.cb.eom(s->id, s->datalen);
+		if (fi.cb.msg_end)
+			fi.cb.msg_end(s->id, s->datalen);
 		else
 			filter_api_accept(s->id);
 		return;
@@ -664,7 +677,7 @@ filter_io_in(struct io *io, int evt)
 			/* XXX handle errors somehow */
 			fprintf(s->data_buffer, "%s\n", line);
 		}
-		filter_dispatch_dataline(s->id, line);
+		filter_dispatch_msg_line(s->id, line);
 		goto nextline;
 
 	case IO_DISCONNECTED:
@@ -994,21 +1007,29 @@ filter_api_on_data(int(*cb)(uint64_t))
 }
 
 void
-filter_api_on_dataline(void(*cb)(uint64_t, const char *))
+filter_api_on_msg_line(void(*cb)(uint64_t, const char *))
 {
 	filter_api_init();
 
 	fi.hooks |= HOOK_DATALINE | HOOK_EOM;
-	fi.cb.dataline = cb;
+	fi.cb.msg_line = cb;
 }
 
 void
-filter_api_on_eom(int(*cb)(uint64_t, size_t))
+filter_api_on_msg_start(void(*cb)(uint64_t))
+{
+	filter_api_init();
+
+	fi.cb.msg_start = cb;
+}
+
+void
+filter_api_on_msg_end(int(*cb)(uint64_t, size_t))
 {
 	filter_api_init();
 
 	fi.hooks |= HOOK_EOM;
-	fi.cb.eom = cb;
+	fi.cb.msg_end = cb;
 }
 
 void

@@ -81,17 +81,23 @@ on_data(uint64_t id)
 	return filter_api_accept(id);
 }
 
-static int
-on_eom(uint64_t id, size_t size)
+static void
+on_msg_start(uint64_t id)
 {
-	log_debug("debug: on_eom");
+	log_debug("debug: on_msg_start");
+}
+
+static int
+on_msg_end(uint64_t id, size_t size)
+{
+	log_debug("debug: on_msg_end");
 	return filter_api_accept(id);
 }
 
 static void
-on_dataline(uint64_t id, const char *line)
+on_msg_line(uint64_t id, const char *line)
 {
-	log_debug("debug: on_dataline");
+	log_debug("debug: on_msg_line");
 	filter_api_writeln(id, line);
 }
 
@@ -165,8 +171,9 @@ main(int argc, char **argv)
 	filter_api_on_rcpt(on_rcpt);
 	filter_api_on_data(on_data);
 	filter_api_on_reset(on_reset);
-	filter_api_on_eom(on_eom);
-	filter_api_on_dataline(on_dataline);
+	filter_api_on_msg_start(on_msg_start);
+	filter_api_on_msg_end(on_msg_end);
+	filter_api_on_msg_line(on_msg_line);
 	filter_api_on_tx_begin(on_tx_begin);
 	filter_api_on_tx_commit(on_tx_commit);
 	filter_api_on_tx_rollback(on_tx_rollback);
