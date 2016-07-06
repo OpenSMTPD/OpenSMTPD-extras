@@ -1569,6 +1569,7 @@ AC_CONFIG_FILES([Makefile
 		extras/Makefile
 
 		extras/filters/Makefile
+		extras/filters/filter-lua/Makefile
 		extras/filters/filter-monkey/Makefile
 		extras/filters/filter-stub/Makefile
 		extras/filters/filter-trace/Makefile
