@@ -106,7 +106,12 @@ on_data(uint64_t id)
 }
 
 static void
-on_dataline(uint64_t id, const char *line)
+on_msg_start(uint64_t id)
+{
+}
+
+static void
+on_msg_line(uint64_t id, const char *line)
 {
 	struct transaction     *tx = filter_api_transaction(id);
 
@@ -114,7 +119,7 @@ on_dataline(uint64_t id, const char *line)
 }
 
 static int
-on_eom(uint64_t id, size_t size)
+on_msg_end(uint64_t id, size_t size)
 {
 	struct transaction	*tx = filter_api_transaction(id);
 
@@ -186,9 +191,10 @@ main(int argc, char **argv)
 	filter_api_on_helo(on_helo);
 	filter_api_on_mail(on_mail);
 	filter_api_on_rcpt(on_rcpt);
-	filter_api_on_msg_start(on_data);
-	filter_api_on_msg_line(on_dataline);
-	filter_api_on_msg_end(on_eom);
+	filter_api_on_data(on_data);
+	filter_api_on_msg_start(on_msg_start);
+	filter_api_on_msg_line(on_msg_line);
+	filter_api_on_msg_end(on_msg_end);
 
 	filter_api_session_allocator(session_allocator);
 	filter_api_session_destructor(session_destructor);
