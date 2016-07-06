@@ -4,6 +4,10 @@ if HAVE_FILTER_MONKEY
 SUBDIRS	+=	filter-monkey
 endif
 
+if HAVE_FILTER_REGEX
+SUBDIRS	+=	filter-regex
+endif
+
 if HAVE_FILTER_STUB
 SUBDIRS	+=	filter-stub
 endif

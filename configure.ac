@@ -1009,6 +1009,19 @@ AC_ARG_WITH([filter-monkey],
 )
 AM_CONDITIONAL([HAVE_FILTER_MONKEY], [test $HAVE_FILTER_MONKEY = yes])
 
+HAVE_FILTER_REGEX=no
+AC_ARG_WITH([filter-regex],
+	[  --with-filter-regex	Enable filter regex],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_FILTER_REGEX], [1],
+				[Define if you have filter regex])
+			HAVE_FILTER_REGEX=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_FILTER_REGEX], [test $HAVE_FILTER_REGEX = yes])
+
 HAVE_FILTER_STUB=no
 AC_ARG_WITH([filter-stub],
 	[  --with-filter-stub	Enable filter stub],
