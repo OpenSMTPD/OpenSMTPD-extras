@@ -1571,6 +1571,7 @@ AC_CONFIG_FILES([Makefile
 
 		extras/filters/Makefile
 		extras/filters/filter-monkey/Makefile
+		extras/filters/filter-regex/Makefile
 		extras/filters/filter-stub/Makefile
 		extras/filters/filter-trace/Makefile
 		extras/filters/filter-void/Makefile
