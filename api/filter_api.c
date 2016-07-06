@@ -68,9 +68,8 @@ struct filter_session {
 		char		*line;
 	} response;
 
-	void			*session;
-	void			*transaction;
-	void			*udata;
+	void			*usession;
+	void			*utx;
 
 	void			*data_buffer;
 	void		       (*data_buffer_cb)(uint64_t, FILE *, void *);
@@ -112,16 +111,16 @@ static struct filter_internals {
 
 		void (*disconnect)(uint64_t);
 		void (*reset)(uint64_t);
+
+		void *(*session_alloc)(uint64_t);
+		void (*session_free)(void *);
+
+		void *(*tx_alloc)(uint64_t);
+		void (*tx_free)(void *);
 		void (*tx_begin)(uint64_t);
 		void (*tx_commit)(uint64_t);
 		void (*tx_rollback)(uint64_t);
 	} cb;
-
-	void	*(*session_allocator)(uint64_t);
-	void	(*session_destructor)(void *);
-
-	void	*(*transaction_allocator)(uint64_t);
-	void    (*transaction_destructor)(void *);
 
 	int		data_buffered;
 } fi;
@@ -272,16 +271,14 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 			s->pipe.iev.sock = -1;
 			s->pipe.oev.sock = -1;
 			tree_xset(&sessions, id, s);
-			if (fi.session_allocator)
-				s->session = fi.session_allocator(id);
+			if (fi.cb.session_alloc)
+				s->usession = fi.cb.session_alloc(id);
 			break;
 		case EVENT_DISCONNECT:
 			filter_dispatch_disconnect(id);
 			s = tree_xget(&sessions, id);
-			if (fi.session_destructor) {
-				if (s->session)
-					fi.session_destructor(s->session);
-			}
+			if (fi.cb.session_free && s->usession)
+				fi.cb.session_free(s->usession);
 			if (s->data_buffer)
 				data_buffered_release(s);
 			s = tree_xpop(&sessions, id);
@@ -498,8 +495,8 @@ filter_dispatch_tx_begin(uint64_t id)
 
 	s->tx = 1;
 
-	if (fi.transaction_allocator)
-		s->transaction = fi.transaction_allocator(id);
+	if (fi.cb.tx_alloc)
+		s->utx = fi.cb.tx_alloc(id);
 
 	if (fi.cb.tx_begin)
 		fi.cb.tx_begin(id);
@@ -523,9 +520,9 @@ filter_dispatch_tx_commit(uint64_t id)
 	if (fi.cb.tx_commit)
 		fi.cb.tx_commit(id);
 
-	if (fi.transaction_destructor && s->transaction) {
-		fi.transaction_destructor(s->transaction);
-		s->transaction = NULL;
+	if (fi.cb.tx_free && s->utx) {
+		fi.cb.tx_free(s->utx);
+		s->utx = NULL;
 	}
 }
 
@@ -547,9 +544,9 @@ filter_dispatch_tx_rollback(uint64_t id)
 	if (fi.cb.tx_rollback)
 		fi.cb.tx_rollback(id);
 
-	if (fi.transaction_destructor && s->transaction) {
-		fi.transaction_destructor(s->transaction);
-		s->transaction = NULL;
+	if (fi.cb.tx_free && s->utx) {
+		fi.cb.tx_free(s->utx);
+		s->utx = NULL;
 	}
 }
 
@@ -840,13 +837,13 @@ imsg_to_str(int imsg)
 void
 filter_api_session_allocator(void *(*f)(uint64_t))
 {
-	fi.session_allocator = f;
+	fi.cb.session_alloc = f;
 }
 
 void
 filter_api_session_destructor(void (*f)(void *))
 {
-	fi.session_destructor = f;
+	fi.cb.session_free = f;
 }
 
 void *
@@ -855,19 +852,19 @@ filter_api_session(uint64_t id)
 	struct filter_session	*s;
 
 	s = tree_xget(&sessions, id);
-	return s->session;
+	return s->usession;
 }
 
 void
 filter_api_transaction_allocator(void *(*f)(uint64_t))
 {
-	fi.transaction_allocator = f;
+	fi.cb.tx_alloc = f;
 }
 
 void
 filter_api_transaction_destructor(void (*f)(void *))
 {
-	fi.transaction_destructor = f;
+	fi.cb.tx_free = f;
 }
 
 void *
@@ -876,7 +873,7 @@ filter_api_transaction(uint64_t id)
 	struct filter_session	*s;
 
 	s = tree_xget(&sessions, id);
-	return s->transaction;
+	return s->utx;
 }
 
 void
@@ -1098,24 +1095,6 @@ filter_api_loop(void)
 		log_warn("warn: filter-api:%s event_dispatch", filter_name);
 		fatalx("filter-api: exiting");
 	}
-}
-
-void
-filter_api_set_udata(uint64_t id, void *data)
-{
-	struct filter_session	*s;
-
-	s = tree_xget(&sessions, id);
-	s->udata = data;
-}
-
-void *
-filter_api_get_udata(uint64_t id)
-{
-	struct filter_session	*s;
-
-	s = tree_xget(&sessions, id);
-	return s->udata;
 }
 
 int
