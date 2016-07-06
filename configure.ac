@@ -1009,6 +1009,19 @@ AC_ARG_WITH([filter-monkey],
 )
 AM_CONDITIONAL([HAVE_FILTER_MONKEY], [test $HAVE_FILTER_MONKEY = yes])
 
+HAVE_FILTER_PAUSE=no
+AC_ARG_WITH([filter-pause],
+	[  --with-filter-pause	Enable filter pause],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_FILTER_PAUSE], [1],
+				[Define if you have filter pause])
+			HAVE_FILTER_PAUSE=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_FILTER_PAUSE], [test $HAVE_FILTER_PAUSE = yes])
+
 HAVE_FILTER_STUB=no
 AC_ARG_WITH([filter-stub],
 	[  --with-filter-stub	Enable filter stub],
