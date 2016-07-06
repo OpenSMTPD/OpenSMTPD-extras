@@ -24,6 +24,28 @@
 
 #include <smtpd-api.h>
 
+static void *
+session_alloc(uint64_t id)
+{
+	return (void *)-1;
+}
+
+static void
+session_free(void *session)
+{
+}
+
+static void *
+transaction_alloc(uint64_t id)
+{
+	return (void *)-1;
+}
+
+static void
+transaction_free(void *transaction)
+{
+}
+
 static int
 on_connect(uint64_t id, struct filter_connect *conn)
 {
@@ -131,6 +153,11 @@ main(int argc, char **argv)
 	log_verbose(v);
 
 	log_debug("debug: starting...");
+
+	filter_api_session_allocator(session_alloc);
+	filter_api_session_destructor(session_free);
+	filter_api_transaction_allocator(transaction_alloc);
+	filter_api_transaction_destructor(transaction_free);
 
 	filter_api_on_connect(on_connect);
 	filter_api_on_helo(on_helo);
