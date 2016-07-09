@@ -18,9 +18,7 @@
 
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 static int table_stub_update(void);
 static int table_stub_check(int, struct dict *, const char *);

@@ -20,9 +20,7 @@
 
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 static int
 queue_stub_message_create(uint32_t *msgid)

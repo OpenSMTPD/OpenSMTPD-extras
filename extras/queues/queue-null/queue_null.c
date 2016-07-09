@@ -22,10 +22,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
-#include "queue_utils.h"
+#include <smtpd-api.h>
 
 static int
 queue_null_message_create(uint32_t *msgid)

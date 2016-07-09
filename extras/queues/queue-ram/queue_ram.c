@@ -25,10 +25,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "queue_utils.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 #define stat_increment(a, b)	do {} while(0)
 #define stat_decrement(a, b)	do {} while(0)

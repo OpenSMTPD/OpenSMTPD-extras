@@ -21,9 +21,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 static int
 scheduler_stub_init(void)

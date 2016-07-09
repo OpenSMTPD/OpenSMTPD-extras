@@ -26,10 +26,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "queue_utils.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 uint32_t
 queue_generate_msgid(void)

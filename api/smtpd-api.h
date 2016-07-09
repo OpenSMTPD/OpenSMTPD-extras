@@ -24,6 +24,7 @@
 #include <sys/tree.h>
 #include <sys/socket.h>
 
+#include <stdio.h>
 #include <netinet/in.h>
 #include <netdb.h>
 
@@ -479,6 +480,11 @@ void queue_api_no_chroot(void);
 void queue_api_set_chroot(const char *);
 void queue_api_set_user(const char *);
 int queue_api_dispatch(void);
+
+/* queue utils */
+uint32_t queue_generate_msgid(void);
+uint64_t queue_generate_evpid(uint32_t);
+int mktmpfile(void);
 
 /* scheduler */
 void scheduler_api_on_init(int(*)(void));

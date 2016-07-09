@@ -28,9 +28,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 enum {
 	SQL_ALIAS = 0,

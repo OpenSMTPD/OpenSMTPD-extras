@@ -29,9 +29,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 static int table_socketmap_update(void);
 static int table_socketmap_lookup(int, struct dict *, const char *, char *, size_t);

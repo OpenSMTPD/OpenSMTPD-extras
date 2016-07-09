@@ -31,9 +31,7 @@
 #define _GNU_SOURCE
 #endif
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 static int table_python_update(void);
 static int table_python_check(int, struct dict *, const char *);

@@ -27,9 +27,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 static char	       *config;
 static struct dict     *passwd;

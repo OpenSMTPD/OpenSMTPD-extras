@@ -33,9 +33,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 #define TRACE_SCHEDULER        0x0080
 #define stat_increment(a, b) do {} while(0)
