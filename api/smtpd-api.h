@@ -36,7 +36,7 @@
 #include "log.h"
 #include "rfc2822.h"
 
-#define	FILTER_API_VERSION	 51
+#define	FILTER_API_VERSION	 52
 
 enum blockmodes {
 	BM_NORMAL,
@@ -135,7 +135,7 @@ struct filter_connect {
 	const char		*hostname;
 };
 
-#define PROC_QUEUE_API_VERSION	1
+#define PROC_QUEUE_API_VERSION	2
 
 enum {
 	PROC_QUEUE_OK,
@@ -156,7 +156,7 @@ enum {
 	PROC_QUEUE_MESSAGE_WALK,
 };
 
-#define PROC_SCHEDULER_API_VERSION	1
+#define PROC_SCHEDULER_API_VERSION	2
 
 struct scheduler_info;
 
@@ -224,7 +224,7 @@ struct scheduler_info {
 #define SCHED_MDA		0x10
 #define SCHED_MTA		0x20
 
-#define PROC_TABLE_API_VERSION	1
+#define PROC_TABLE_API_VERSION	2
 
 struct table_open_params {
 	uint32_t	version;
