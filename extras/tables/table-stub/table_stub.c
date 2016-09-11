@@ -20,10 +20,30 @@
 
 #include <smtpd-api.h>
 
-static int table_stub_update(void);
-static int table_stub_check(int, struct dict *, const char *);
-static int table_stub_lookup(int, struct dict *, const char *, char *, size_t);
-static int table_stub_fetch(int, struct dict *, char *, size_t);
+static int
+table_stub_update(void)
+{
+	return -1;
+}
+
+static int
+table_stub_check(int service, struct dict *params, const char *key)
+{
+	return -1;
+}
+
+static int
+table_stub_lookup(int service, struct dict *params, const char *key, char *dst,
+    size_t sz)
+{
+	return -1;
+}
+
+static int
+table_stub_fetch(int service, struct dict *params, char *dst, size_t sz)
+{
+	return -1;
+}
 
 int
 main(int argc, char **argv)
@@ -56,26 +76,3 @@ main(int argc, char **argv)
 	return 0;
 }
 
-static int
-table_stub_update(void)
-{
-	return -1;
-}
-
-static int
-table_stub_check(int service, struct dict *params, const char *key)
-{
-	return -1;
-}
-
-static int
-table_stub_lookup(int service, struct dict *params, const char *key, char *dst, size_t sz)
-{
-	return -1;
-}
-
-static int
-table_stub_fetch(int service, struct dict *params, char *dst, size_t sz)
-{
-	return -1;
-}
