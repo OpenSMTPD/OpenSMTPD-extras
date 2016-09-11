@@ -216,8 +216,7 @@ ldap_connect(const char *addr)
 			sin4.sin_port = htons(lu.port);
 			if (connect(fd, (struct sockaddr *)&sin4, res->ai_addrlen) == 0)
 				return aldap_init(fd);
-		}
-		else if (res->ai_family == AF_INET6) {
+		} else if (res->ai_family == AF_INET6) {
 			struct sockaddr_in6 sin6 = *(struct sockaddr_in6 *)res->ai_addr;
 			sin6.sin6_port = htons(lu.port);
 			if (connect(fd, (struct sockaddr *)&sin6, res->ai_addrlen) == 0)
@@ -333,43 +332,33 @@ ldap_config(void)
 			read_value(&password, key, value);
 		else if (!strcmp(key, "basedn"))
 			read_value(&basedn, key, value);
-
 		else if (!strcmp(key, "alias_filter"))
 			read_value(&queries[LDAP_ALIAS].filter, key, value);
 		else if (!strcmp(key, "alias_attributes")) {
 			ldap_parse_attributes(&queries[LDAP_ALIAS],
 			    key, value, 1);
-		}
-
-		else if (!strcmp(key, "credentials_filter"))
+		} else if (!strcmp(key, "credentials_filter"))
 			read_value(&queries[LDAP_CREDENTIALS].filter, key, value);
 		else if (!strcmp(key, "credentials_attributes")) {
 			ldap_parse_attributes(&queries[LDAP_CREDENTIALS],
 			    key, value, 2);
-		}
-
-		else if (!strcmp(key, "domain_filter"))
+		} else if (!strcmp(key, "domain_filter"))
 			read_value(&queries[LDAP_DOMAIN].filter, key, value);
 		else if (!strcmp(key, "domain_attributes")) {
 			ldap_parse_attributes(&queries[LDAP_DOMAIN],
 			    key, value, 1);
-		}
-
-		else if (!strcmp(key, "userinfo_filter"))
+		} else if (!strcmp(key, "userinfo_filter"))
 			read_value(&queries[LDAP_USERINFO].filter, key, value);
 		else if (!strcmp(key, "userinfo_attributes")) {
 			ldap_parse_attributes(&queries[LDAP_USERINFO],
 			    key, value, 3);
-		}
-
-		else if (!strcmp(key, "mailaddr_filter"))
+		} else if (!strcmp(key, "mailaddr_filter"))
 			read_value(&queries[LDAP_MAILADDR].filter, key, value);
 		else if (!strcmp(key, "mailaddr_attributes")) {
 			ldap_parse_attributes(&queries[LDAP_MAILADDR],
 			    key, value, 1);
-		}
-		else
-			log_warnx("warn: table-ldap: bogus entry \"%s\"", key);
+		} else
+			log_warnx("warn: bogus entry \"%s\"", key);
 	}
 
 	free(buf);

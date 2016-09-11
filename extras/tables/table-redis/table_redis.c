@@ -431,8 +431,7 @@ table_redis_query(const char *key, int service)
 	} else if (!config->slave->err) {
 		log_debug("debug: running query \"%s\" on slave", query);
 		res = redisCommand(config->slave, query, key);
-	}
-	else
+	} else
 		return NULL;
 	if (res == NULL) {
 		log_warnx("warn: table-redis: redisCommand: %s",

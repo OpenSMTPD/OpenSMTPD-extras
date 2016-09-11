@@ -465,8 +465,7 @@ scheduler_ram_release(int type, uint64_t holdq, int n)
 	if (n == -1) {
 		n = 0;
 		update = 1;
-	}
-	else
+	} else
 		update = 0;
 
 	for (i = 0; n == 0 || i < n; i++) {
@@ -615,10 +614,8 @@ scheduler_ram_batch(int mask, int *delay, size_t *count, uint64_t *evpids, int *
 		else
 			t = evp->expire;
 		*delay = (t < currtime) ? 0 : (t - currtime);
-	}
-	else
+	} else
 		*delay = -1;
-
 	return 0;
 }
 
@@ -666,16 +663,13 @@ scheduler_ram_envelopes(uint64_t from, struct evpstate *dst, size_t size)
 		if (evp->state == RQ_EVPSTATE_PENDING) {
 			dst[n].time = evp->sched;
 			dst[n].flags = EF_PENDING;
-		}
-		else if (evp->state == RQ_EVPSTATE_SCHEDULED) {
+		} else if (evp->state == RQ_EVPSTATE_SCHEDULED) {
 			dst[n].time = evp->t_scheduled;
 			dst[n].flags = EF_PENDING;
-		}
-		else if (evp->state == RQ_EVPSTATE_INFLIGHT) {
+		} else if (evp->state == RQ_EVPSTATE_INFLIGHT) {
 			dst[n].time = evp->t_inflight;
 			dst[n].flags = EF_INFLIGHT;
-		}
-		else if (evp->state == RQ_EVPSTATE_HELD) {
+		} else if (evp->state == RQ_EVPSTATE_HELD) {
 			/* same as scheduled */
 			dst[n].time = evp->t_scheduled;
 			dst[n].flags = EF_PENDING;
@@ -711,8 +705,7 @@ scheduler_ram_schedule(uint64_t evpid)
 			return 0;
 		rq_envelope_schedule(&ramqueue, evp);
 		return 1;
-	}
-	else {
+	} else {
 		msgid = evpid;
 		if ((msg = tree_get(&ramqueue.messages, msgid)) == NULL)
 			return 0;
@@ -748,8 +741,7 @@ scheduler_ram_remove(uint64_t evpid)
 		if (rq_envelope_remove(&ramqueue, evp))
 			return 1;
 		return 0;
-	}
-	else {
+	} else {
 		msgid = evpid;
 		if ((msg = tree_get(&ramqueue.messages, msgid)) == NULL)
 			return 0;
@@ -782,8 +774,7 @@ scheduler_ram_suspend(uint64_t evpid)
 		if (rq_envelope_suspend(&ramqueue, evp))
 			return 1;
 		return 0;
-	}
-	else {
+	} else {
 		msgid = evpid;
 		if ((msg = tree_get(&ramqueue.messages, msgid)) == NULL)
 			return 0;
@@ -816,8 +807,7 @@ scheduler_ram_resume(uint64_t evpid)
 		if (rq_envelope_resume(&ramqueue, evp))
 			return 1;
 		return 0;
-	}
-	else {
+	} else {
 		msgid = evpid;
 		if ((msg = tree_get(&ramqueue.messages, msgid)) == NULL)
 			return 0;
@@ -987,8 +977,7 @@ rq_envelope_schedule(struct rq_queue *rq, struct rq_envelope *evp)
 		}
 		evp->holdq = 0;
 		stat_decrement("scheduler.ramqueue.hold", 1);
-	}
-	else if (!(evp->flags & RQ_ENVELOPE_SUSPEND)) {
+	} else if (!(evp->flags & RQ_ENVELOPE_SUSPEND)) {
 		TAILQ_REMOVE(&rq->q_pending, evp, entry);
 		SPLAY_REMOVE(prioqtree, &rq->q_priotree, evp);
 	}
@@ -1024,8 +1013,7 @@ rq_envelope_remove(struct rq_queue *rq, struct rq_envelope *evp)
 		}
 		evp->holdq = 0;
 		stat_decrement("scheduler.ramqueue.hold", 1);
-	}
-	else if (!(evp->flags & RQ_ENVELOPE_SUSPEND)) {
+	} else if (!(evp->flags & RQ_ENVELOPE_SUSPEND)) {
 		evl = rq_envelope_list(rq, evp);
 		TAILQ_REMOVE(evl, evp, entry);
 		if (evl == &rq->q_pending)
@@ -1060,8 +1048,7 @@ rq_envelope_suspend(struct rq_queue *rq, struct rq_envelope *evp)
 		evp->holdq = 0;
 		evp->state = RQ_EVPSTATE_PENDING;
 		stat_decrement("scheduler.ramqueue.hold", 1);
-	}
-	else if (evp->state != RQ_EVPSTATE_INFLIGHT) {
+	} else if (evp->state != RQ_EVPSTATE_INFLIGHT) {
 		evl = rq_envelope_list(rq, evp);
 		TAILQ_REMOVE(evl, evp, entry);
 		if (evl == &rq->q_pending)
