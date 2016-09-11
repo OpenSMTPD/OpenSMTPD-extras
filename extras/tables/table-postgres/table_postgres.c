@@ -509,9 +509,7 @@ table_postgres_fetch(int service, struct dict *params, char *dst, size_t sz)
 	if (service != K_SOURCE)
 		return -1;
 
-	stmt = config->stmt_fetch_source;
-
-	if (stmt == NULL)
+	if ((stmt = config->stmt_fetch_source) == NULL)
 		return -1;
 
 	if (config->source_ncall < config->source_refresh &&

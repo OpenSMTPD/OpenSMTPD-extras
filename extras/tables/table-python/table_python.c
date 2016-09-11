@@ -106,10 +106,8 @@ table_python_update(void)
 	if (py_on_update == NULL)
 		return 0;
 
-	ret = dispatch(py_on_update, PyTuple_New(0));
-
-	if (ret == NULL) {
-		log_warnx("table-python: update failed");
+	if ((ret = dispatch(py_on_update, PyTuple_New(0))) == NULL) {
+		log_warnx("warn: update failed");
 		return -1;
 	}
 
@@ -128,18 +126,15 @@ table_python_check(int service, struct dict *params, const char *key)
 	if (py_on_check == NULL)
 		return -1;
 
-	dict = dict_to_py(params);
-	if (dict == NULL)
+	if ((dict = dict_to_py(params)) == NULL)
 		return -1;
 
-	args = Py_BuildValue("iOs", service, dict, key);
-	if (args ==  NULL) {
+	if ((args = Py_BuildValue("iOs", service, dict, key)) == NULL) {
 		Py_DECREF(dict);
 		return -1;
 	}
 
-	ret = dispatch(py_on_check, args);
-	if (ret == NULL)
+	if ((ret = dispatch(py_on_check, args)) == NULL)
 		return -1;
 
 	r = PyObject_IsTrue(ret);
@@ -158,19 +153,15 @@ table_python_lookup(int service, struct dict *params, const char *key, char *buf
 	if (py_on_lookup == NULL)
 		return -1;
 
-	dict = dict_to_py(params);
-	if (dict == NULL)
+	if ((dict = dict_to_py(params)) == NULL)
 		return -1;
 
-	args = Py_BuildValue("iOs", service, dict, key);
-	if (args ==  NULL) {
+	if ((args = Py_BuildValue("iOs", service, dict, key)) ==  NULL) {
 		Py_DECREF(dict);
 		return -1;
 	}
 
-	ret = dispatch(py_on_lookup, args);
-
-	if (ret == NULL)
+	if ((ret = dispatch(py_on_lookup, args)) == NULL)
 		return -1;
 
 	if (ret == Py_None)

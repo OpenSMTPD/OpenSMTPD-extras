@@ -163,9 +163,8 @@ config_load(const char *path)
 			goto end;
 		}
 
-		value = strdup(value);
-		if (value == NULL) {
-			log_warn("warn: table-redis: strdup");
+		if ((value = strdup(value)) == NULL) {
+			log_warn("warn: strdup");
 			goto end;
 		}
 

@@ -48,10 +48,8 @@ get_message(uint32_t msgid)
 {
 	struct qr_message	*msg;
 
-        msg = tree_get(&messages, msgid);
-        if (msg == NULL)
-                log_warn("warn: queue-ram: message not found");
-
+	if ((msg = tree_get(&messages, msgid)) == NULL)
+		log_warn("warn: message not found");
 	return msg;
 }
 
@@ -271,9 +269,8 @@ queue_ram_envelope_update(uint64_t evpid, const char *buf, size_t len)
 		log_warn("warn: queue-ram: not found");
 		return 0;
 	}
-	tmp = malloc(len);
-	if (tmp == NULL) {
-		log_warn("warn: queue-ram: malloc");
+	if ((tmp = malloc(len)) == NULL) {
+		log_warn("warn: malloc");
 		return 0;
 	}
 	memmove(tmp, buf, len);

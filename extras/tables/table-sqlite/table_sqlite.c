@@ -113,9 +113,8 @@ table_sqlite_getconfstr(const char *key, const char *value, char **var)
 		log_warnx("warn: table-sqlite: duplicate %s %s", key, value);
 		free(*var);
 	}
-	*var = strdup(value);
-	if (*var == NULL) {
-		log_warn("warn: table-sqlite: strdup");
+	if ((*var = strdup(value)) == NULL) {
+		log_warn("warn: strdup");
 		return -1;
 	}
 	return 0;
@@ -258,9 +257,8 @@ table_sqlite_update(void)
 			continue;
 		}
 
-		queries[i] = strdup(value);
-		if (queries[i] == NULL) {
-			log_warnx("warn: table-sqlite: strdup");
+		if ((queries[i] = strdup(value)) == NULL) {
+			log_warnx("warn: strdup");
 			goto end;
 		}
 	}

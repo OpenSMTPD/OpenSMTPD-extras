@@ -489,12 +489,10 @@ table_mysql_lookup(int service, struct dict *params, const char *key, char *dst,
 	if (config->db == NULL && config_connect(config) == 0)
 		return -1;
 
-	stmt = table_mysql_query(key, service);
-	if (stmt == NULL)
+	if ((stmt = table_mysql_query(key, service)) == NULL)
 		return -1;
 
-	s = mysql_stmt_fetch(stmt);
-	if (s == MYSQL_NO_DATA) {
+	if ((s = mysql_stmt_fetch(stmt)) == MYSQL_NO_DATA) {
 		r = 0;
 		goto end;
 	}
@@ -587,9 +585,7 @@ table_mysql_fetch(int service, struct dict *params, char *dst, size_t sz)
 	if (service != K_SOURCE)
 		return -1;
 
-	stmt = config->stmt_fetch_source;
-
-	if (stmt == NULL)
+	if ((stmt = config->stmt_fetch_source) == NULL)
 		return -1;
 
 	if (config->source_ncall < config->source_refresh &&
