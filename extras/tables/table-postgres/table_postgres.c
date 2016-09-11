@@ -235,7 +235,7 @@ config_load(const char *path)
 	fclose(fp);
 	return conf;
 
-    end:
+end:
 	free(buf);
 	fclose(fp);
 	config_free(conf);
@@ -366,8 +366,7 @@ table_postgres_query(const char *key, int service)
 	char		*stmt;
 	int		 i;
 
-    retry:
-
+retry:
 	stmt = NULL;
 	for (i = 0; i < SQL_MAX; i++) {
 		if (service == 1 << i) {
@@ -455,16 +454,14 @@ table_postgres_lookup(int service, struct dict *params, const char *key, char *d
 		}
 		break;
 	case K_CREDENTIALS:
-		if (snprintf(dst, sz, "%s:%s",
-		    PQgetvalue(res, 0, 0),
+		if (snprintf(dst, sz, "%s:%s", PQgetvalue(res, 0, 0),
  		    PQgetvalue(res, 0, 1)) > (ssize_t)sz) {
 			log_warnx("warn: table-postgres: result too large");
 			r = -1;
 		}
 		break;
 	case K_USERINFO:
-		if (snprintf(dst, sz, "%s:%s:%s",
-		    PQgetvalue(res, 0, 0),
+		if (snprintf(dst, sz, "%s:%s:%s", PQgetvalue(res, 0, 0),
 		    PQgetvalue(res, 0, 1),
 		    PQgetvalue(res, 0, 2)) > (ssize_t)sz) {
 			log_warnx("warn: table-postgres: result too large");
@@ -477,19 +474,18 @@ table_postgres_lookup(int service, struct dict *params, const char *key, char *d
 	case K_MAILADDR:
 	case K_ADDRNAME:
 		if (strlcpy(dst, PQgetvalue(res, 0, 0), sz) >= sz) {
-			log_warnx("warn: table-postgres: result too large");
+			log_warnx("warn: result too large");
 			r = -1;
 		}
 		break;
 	default:
-		log_warnx("warn: table-postgres: unknown service %d",
+		log_warnx("warn: unknown service %d",
 		    service);
 		r = -1;
 	}
 
-    end:
+end:
 	PQclear(res);
-
 	return r;
 }
 
@@ -504,8 +500,7 @@ table_postgres_fetch(int service, struct dict *params, char *dst, size_t sz)
 	if (config->db == NULL && config_connect(config) == 0)
 		return -1;
 
-    retry:
-
+retry:
 	if (service != K_SOURCE)
 		return -1;
 
@@ -546,8 +541,7 @@ table_postgres_fetch(int service, struct dict *params, char *dst, size_t sz)
 	config->source_update = time(NULL);
 	config->source_ncall = 0;
 
-    fetch:
-
+fetch:
 	config->source_ncall += 1;
 
 	if (!dict_iter(&config->sources, &config->source_iter, &k, (void **)NULL)) {

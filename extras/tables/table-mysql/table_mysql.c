@@ -309,7 +309,7 @@ config_connect(struct config *conf)
 
 	log_debug("debug: (re)connecting");
 
-	/* Disconnect first, if needed */
+	/* disconnect first, if needed */
 	config_reset(conf);
 
 	host = dict_get(&conf->conf, "host");
@@ -352,7 +352,7 @@ config_connect(struct config *conf)
 	log_debug("debug: connected");
 	return 1;
 
-    end:
+end:
 	config_reset(conf);
 	return 0;
 }
@@ -400,8 +400,7 @@ table_mysql_query(const char *key, int service)
 	char		 buffer[SMTPD_MAXLINESIZE];
 	int		 i;
 
-    retry:
-
+retry:
 	stmt = NULL;
 	for (i = 0; i < SQL_MAX; i++) {
 		if (service == 1 << i) {
@@ -562,7 +561,7 @@ table_mysql_lookup(int service, struct dict *params, const char *key, char *dst,
 		r = -1;
 	}
 
-    end:
+end:
 	if (mysql_stmt_free_result(stmt))
 		log_warnx("warn: table-mysql: mysql_stmt_free_result: %s",
 		    mysql_stmt_error(stmt));
@@ -580,8 +579,7 @@ table_mysql_fetch(int service, struct dict *params, char *dst, size_t sz)
 	if (config->db == NULL && config_connect(config) == 0)
 		return -1;
 
-    retry:
-
+retry:
 	if (service != K_SOURCE)
 		return -1;
 
@@ -625,8 +623,7 @@ table_mysql_fetch(int service, struct dict *params, char *dst, size_t sz)
 	config->source_update = time(NULL);
 	config->source_ncall = 0;
 
-    fetch:
-
+fetch:
 	config->source_ncall += 1;
 
 	if (!dict_iter(&config->sources, &config->source_iter, &k, (void **)NULL)) {

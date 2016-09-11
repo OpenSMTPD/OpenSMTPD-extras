@@ -873,7 +873,7 @@ rq_queue_merge(struct rq_queue *rq, struct rq_queue *update)
 		stat_decrement("scheduler.ramqueue.message", 1);
 	}
 
-	/* Sorted insert in the pending queue */
+	/* sorted insert in the pending queue */
 	while ((envelope = TAILQ_FIRST(&update->q_pending))) {
 		TAILQ_REMOVE(&update->q_pending, envelope, entry);
 		sorted_insert(rq, envelope);

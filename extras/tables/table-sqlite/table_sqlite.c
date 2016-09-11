@@ -136,7 +136,7 @@ table_sqlite_prepare_stmt(sqlite3 *_db, const char *query, int ncols)
 	}
 
 	return stmt;
-    end:
+end:
 	sqlite3_finalize(stmt);
 	return NULL;
 }
@@ -283,8 +283,7 @@ table_sqlite_update(void)
 	    (_stmt_fetch_source = table_sqlite_prepare_stmt(_db, _query_fetch_source, 1)) == NULL)
 		goto end;
 
-	/* Replace previous setup */
-
+	/* replace previous setup */
 	for (i = 0; i < SQL_MAX; i++) {
 		if (statements[i])
 			sqlite3_finalize(statements[i]);
@@ -308,8 +307,7 @@ table_sqlite_update(void)
 	log_debug("debug: config successfully updated");
 	ret = 1;
 
-    end:
-
+end:
 	/* Cleanup */
 	for (i = 0; i < SQL_MAX; i++) {
 		if (_statements[i])
@@ -331,15 +329,14 @@ static sqlite3_stmt *
 table_sqlite_query(const char *key, int service)
 {
 	int		 i;
-	sqlite3_stmt	*stmt;
+	sqlite3_stmt	*stmt = NULL;
 
-	stmt = NULL;
-	for(i = 0; i < SQL_MAX; i++)
+	for (i = 0; i < SQL_MAX; i++) {
 		if (service == (1 << i)) {
 			stmt = statements[i];
 			break;
 		}
-
+	}
 	if (stmt == NULL)
 		return NULL;
 
@@ -424,16 +421,14 @@ table_sqlite_lookup(int service, struct dict *params, const char *key, char *dst
 		}
 		break;
 	case K_CREDENTIALS:
-		if (snprintf(dst, sz, "%s:%s",
-		    sqlite3_column_text(stmt, 0),
+		if (snprintf(dst, sz, "%s:%s", sqlite3_column_text(stmt, 0),
 		    sqlite3_column_text(stmt, 1)) >= (ssize_t)sz) {
 			log_warnx("warn: table-sqlite: result too large");
 			r = -1;
 		}
 		break;
 	case K_USERINFO:
-		if (snprintf(dst, sz, "%d:%d:%s",
-		    sqlite3_column_int(stmt, 0),
+		if (snprintf(dst, sz, "%d:%d:%s", sqlite3_column_int(stmt, 0),
 		    sqlite3_column_int(stmt, 1),
 		    sqlite3_column_text(stmt, 2)) >= (ssize_t)sz) {
 			log_warnx("warn: table-sqlite: result too large");
@@ -491,8 +486,7 @@ table_sqlite_fetch(int service, struct dict *params, char *dst, size_t sz)
 	source_update = time(NULL);
 	source_ncall = 0;
 
-    fetch:
-
+fetch:
 	source_ncall += 1;
 
         if (!dict_iter(&sources, &source_iter, &k, (void **)NULL)) {

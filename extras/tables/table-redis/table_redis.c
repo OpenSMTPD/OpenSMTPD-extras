@@ -409,7 +409,7 @@ table_redis_query(const char *key, int service)
 
 	retry_times = 3;
 
- retry:
+retry:
 	--retry_times;
 	if (retry_times < 0) {
 		log_warnx("warn: table-redis: giving up: too many retries");
