@@ -275,11 +275,10 @@ config_connect(struct config *config)
 	}
 
 	if (!strncmp("unix:", master, 5)) {
-		log_debug("debug: table-redis: connect via unix socket %s", master + 5);
+		log_debug("debug: connect via unix socket %s", master + 5);
 		config->master = redisConnectUnix(master + 5);
-	}
-	else {
-		log_debug("debug: table-redis: connect to master via tcp at %s:%d", master, master_port);
+	} else {
+		log_debug("debug: connect to master via tcp at %s:%d", master, master_port);
 		config->master = redisConnect(master, master_port);
 	}
 	if (config->master == NULL) {
@@ -288,7 +287,7 @@ config_connect(struct config *config)
 	}
 
 	if (!config->master->err) {
-		log_debug("debug: table-redis: connected to master");
+		log_debug("debug: connected to master");
 		if (password) {
 			res = redisCommand(config->master, "AUTH %s", password);
 			if (res->type == REDIS_REPLY_ERROR) {
@@ -360,8 +359,7 @@ config_connect(struct config *config)
 		goto end;
 	}
 
-	log_debug("debug: table-redis: connected");
-
+	log_debug("debug: connected");
 	return 1;
 
 end:
@@ -428,11 +426,10 @@ table_redis_query(const char *key, int service)
 		return NULL;
 
 	if (!config->master->err) {
-		log_debug("debug: table-redis: running query \"%s\" on master", query);
+		log_debug("debug: running query \"%s\" on master", query);
 		res = redisCommand(config->master, query, key);
-	}
-	else if (!config->slave->err) {
-		log_debug("debug: table-redis: running query \"%s\" on slave", query);
+	} else if (!config->slave->err) {
+		log_debug("debug: running query \"%s\" on slave", query);
 		res = redisCommand(config->slave, query, key);
 	}
 	else
@@ -559,7 +556,7 @@ table_redis_lookup(int service, struct dict *params, const char *key, char *dst,
 		r = -1;
 	}
 
-	log_debug("debug: table_redis: table_redis_lookup return %d (result = \"%s\")", r, dst);
+	log_debug("debug: table_redis_lookup return %d (result = \"%s\")", r, dst);
 	freeReplyObject(reply);
 	return r;
 }

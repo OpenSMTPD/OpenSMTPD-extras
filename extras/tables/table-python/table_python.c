@@ -321,7 +321,7 @@ main(int argc, char **argv)
 		return 1;
 	}
 
-	log_debug("debug: table-python: starting...");
+	log_debug("debug: starting...");
 
 	py_on_update = PyObject_GetAttrString(module, "table_update");
 	py_on_check = PyObject_GetAttrString(module, "table_check");
@@ -335,7 +335,7 @@ main(int argc, char **argv)
 
 	table_api_dispatch();
 
-	log_debug("debug: table-python: exiting");
+	log_debug("debug: exiting");
 	Py_Finalize();
 
 	return 1;

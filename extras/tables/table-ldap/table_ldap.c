@@ -234,9 +234,7 @@ ldap_connect(const char *addr)
 static int
 read_value(char **store, const char *key, const char *value)
 {
-	log_debug("debug: table-ldap: reading key \"%s\" -> \"%s\"",
-	    key, value);
-
+	log_debug("debug: reading key \"%s\" -> \"%s\"", key, value);
 	if (*store) {
 		log_warnx("warn: table-ldap: duplicate key %s", key);
 		return 0;
@@ -258,8 +256,8 @@ ldap_parse_attributes(struct query *query, const char *key, const char *line,
 	char   *p;
 	size_t	m, n;
 
-	log_debug("debug: table-ldap: parsing attribute \"%s\" (%zu) -> \"%s\"",
-	    key, expect, line);
+	log_debug("debug: parsing attribute \"%s\" (%zu) -> \"%s\"", key,
+	    expect, line);
 
 	if (strlcpy(buffer, line, sizeof buffer) >= sizeof buffer)
 		return 0;
@@ -402,7 +400,7 @@ ldap_open(void)
 
 	switch (aldap_get_resultcode(amsg)) {
 	case LDAP_SUCCESS:
-		log_debug("debug: table-ldap: ldap server accepted credentials");
+		log_debug("debug: ldap server accepted credentials");
 		break;
 	case LDAP_INVALID_CREDENTIALS:
 		log_warnx("warn: table-ldap: ldap server refused credentials");

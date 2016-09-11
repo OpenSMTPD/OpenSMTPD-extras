@@ -306,7 +306,7 @@ config_connect(struct config *conf)
 	size_t	 i;
 	char	*host, *username, *password, *database, *q;
 
-	log_debug("debug: table-mysql: (re)connecting");
+	log_debug("debug: (re)connecting");
 
 	/* Disconnect first, if needed */
 	config_reset(conf);
@@ -348,8 +348,7 @@ config_connect(struct config *conf)
 	    q, 0, 1)) == NULL)
 		goto end;
 
-	log_debug("debug: table-mysql: connected");
-
+	log_debug("debug: connected");
 	return 1;
 
     end:

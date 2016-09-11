@@ -566,7 +566,7 @@ main(int argc, char **argv)
 		return 1;
 	}
 
-	log_debug("debug: scheduler-python: starting...");
+	log_debug("debug: starting...");
 
 	py_on_init = PyObject_GetAttrString(module, "scheduler_init");
 	py_on_insert = PyObject_GetAttrString(module, "scheduler_insert");
@@ -603,7 +603,7 @@ main(int argc, char **argv)
 	scheduler_api_no_chroot();
 	scheduler_api_dispatch();
 
-	log_debug("debug: scheduler-python: exiting");
+	log_debug("debug: exiting");
 	Py_Finalize();
 
 	return 1;

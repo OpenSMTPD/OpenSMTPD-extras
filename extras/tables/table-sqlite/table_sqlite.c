@@ -263,9 +263,8 @@ table_sqlite_update(void)
 		}
 	}
 
-	/* Setup db */
-
-	log_debug("debug: table-sqlite: opening %s", dbpath);
+	/* set up db */
+	log_debug("debug: opening %s", dbpath);
 
 	if (sqlite3_open(dbpath, &_db) != SQLITE_OK) {
 		log_warnx("warn: table-sqlite: open: %s",
@@ -306,7 +305,7 @@ table_sqlite_update(void)
 	source_expire = _source_expire;
 	source_refresh = _source_refresh;
 
-	log_debug("debug: table-sqlite: config successfully updated");
+	log_debug("debug: config successfully updated");
 	ret = 1;
 
     end:

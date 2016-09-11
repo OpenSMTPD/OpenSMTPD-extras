@@ -450,7 +450,7 @@ main(int argc, char **argv)
 		return 1;
 	}
 
-	log_debug("debug: queue-python: starting...");
+	log_debug("debug: starting...");
 
 	if ((py_message_create = PyObject_GetAttrString(module, "message_create")) == NULL)
 		goto nosuchmethod;
@@ -481,6 +481,8 @@ main(int argc, char **argv)
 
 	queue_api_no_chroot();
 	queue_api_dispatch();
+
+	log_debug("debug: exiting");
 
 	return 0;
 
