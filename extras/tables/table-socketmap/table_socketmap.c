@@ -31,13 +31,6 @@
 
 #include <smtpd-api.h>
 
-static int table_socketmap_update(void);
-static int table_socketmap_lookup(int, struct dict *, const char *, char *, size_t);
-static int table_socketmap_check(int, struct dict *, const char *);
-static int table_socketmap_fetch(int, struct dict *, char *, size_t);
-
-static int table_socketmap_connect(const char *);
-
 static char	       *config;
 static int		sock = -1;
 static FILE	       *sockstream;
@@ -51,46 +44,6 @@ enum socketmap_reply{
 	SM_TIMEOUT,
 	SM_PERM,
 };
-
-int
-main(int argc, char **argv)
-{
-	int	ch;
-
-	log_init(1);
-	log_verbose(~0);
-
-	while ((ch = getopt(argc, argv, "")) != -1) {
-		switch (ch) {
-		default:
-			log_warnx("warn: table-socketmap: bad option");
-			return 1;
-			/* NOTREACHED */
-		}
-	}
-	argc -= optind;
-	argv += optind;
-
-	if (argc != 1) {
-		log_warnx("warn: table-socketmap: bogus argument(s)");
-		return 1;
-	}
-
-	config = argv[0];
-
-	if (table_socketmap_connect(config) == 0) {
-		log_warnx("warn: table-socketmap: error connecting to %s", config);
-		return 1;
-	}
-
-	table_api_on_update(table_socketmap_update);
-	table_api_on_check(table_socketmap_check);
-	table_api_on_lookup(table_socketmap_lookup);
-	table_api_on_fetch(table_socketmap_fetch);
-	table_api_dispatch();
-
-	return 0;
-}
 
 static int
 table_socketmap_connect(const char *s)
@@ -242,4 +195,40 @@ static int
 table_socketmap_fetch(int service, struct dict *params, char *key, size_t sz)
 {
 	return -1;
+}
+
+int
+main(int argc, char **argv)
+{
+	int ch;
+
+	log_init(1);
+	log_verbose(~0);
+
+	while ((ch = getopt(argc, argv, "")) != -1) {
+		switch (ch) {
+		default:
+			fatalx("bad option");
+			/* NOTREACHED */
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc != 1)
+		fatalx("bogus argument(s)");
+
+
+	config = argv[0];
+
+	if (table_socketmap_connect(config) == 0)
+		fatalx("error connecting to %s", config);
+
+	table_api_on_update(table_socketmap_update);
+	table_api_on_check(table_socketmap_check);
+	table_api_on_lookup(table_socketmap_lookup);
+	table_api_on_fetch(table_socketmap_fetch);
+	table_api_dispatch();
+
+	return 0;
 }

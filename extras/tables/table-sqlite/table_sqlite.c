@@ -43,13 +43,6 @@ enum {
 	SQL_MAX
 };
 
-static int table_sqlite_update(void);
-static int table_sqlite_lookup(int, struct dict *, const char *, char *, size_t);
-static int table_sqlite_check(int, struct dict *, const char *);
-static int table_sqlite_fetch(int, struct dict *, char *, size_t);
-
-static sqlite3_stmt *table_sqlite_query(const char *, int);
-
 #define	DEFAULT_EXPIRE	60
 #define	DEFAULT_REFRESH	1000
 
@@ -59,52 +52,9 @@ static sqlite3_stmt	*statements[SQL_MAX];
 static sqlite3_stmt	*stmt_fetch_source;
 static struct dict	 sources;
 static void		*source_iter;
-static size_t		 source_refresh = 1000;
-static size_t		 source_ncall;
+static size_t		 source_refresh = 1000, source_ncall;
 static int		 source_expire = 60;
 static time_t		 source_update;
-
-int
-main(int argc, char **argv)
-{
-	int	ch;
-
-	log_init(1);
-	log_verbose(~0);
-
-	while ((ch = getopt(argc, argv, "")) != -1) {
-		switch (ch) {
-		default:
-			log_warnx("warn: table-sqlite: bad option");
-			return 1;
-			/* NOTREACHED */
-		}
-	}
-	argc -= optind;
-	argv += optind;
-
-	if (argc != 1) {
-		log_warnx("warn: table-sqlite: bogus argument(s)");
-		return 1;
-	}
-
-	config = argv[0];
-
-	dict_init(&sources);
-
-	if (table_sqlite_update() == 0) {
-		log_warnx("warn: table-sqlite: error parsing config file");
-		return 1;
-	}
-
-	table_api_on_update(table_sqlite_update);
-	table_api_on_check(table_sqlite_check);
-	table_api_on_lookup(table_sqlite_lookup);
-	table_api_on_fetch(table_sqlite_fetch);
-	table_api_dispatch();
-
-	return 0;
-}
 
 static int
 table_sqlite_getconfstr(const char *key, const char *value, char **var)
@@ -499,4 +449,41 @@ fetch:
 		return -1;
 
 	return 1;
+}
+
+int
+main(int argc, char **argv)
+{
+	int ch;
+
+	log_init(1);
+	log_verbose(~0);
+
+	while ((ch = getopt(argc, argv, "")) != -1) {
+		switch (ch) {
+		default:
+			fatalx("bad option");
+			/* NOTREACHED */
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc != 1)
+		fatalx("bogus argument(s)");
+
+	config = argv[0];
+
+	dict_init(&sources);
+
+	if (table_sqlite_update() == 0)
+		fatalx("error parsing config file");
+
+	table_api_on_update(table_sqlite_update);
+	table_api_on_check(table_sqlite_check);
+	table_api_on_lookup(table_sqlite_lookup);
+	table_api_on_fetch(table_sqlite_fetch);
+	table_api_dispatch();
+
+	return 0;
 }

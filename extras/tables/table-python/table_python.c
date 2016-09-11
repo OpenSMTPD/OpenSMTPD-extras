@@ -32,15 +32,7 @@
 
 #include <smtpd-api.h>
 
-static int table_python_update(void);
-static int table_python_check(int, struct dict *, const char *);
-static int table_python_lookup(int, struct dict *, const char *, char *, size_t);
-static int table_python_fetch(int, struct dict *, char *, size_t);
-
-static PyObject *py_on_update;
-static PyObject *py_on_lookup;
-static PyObject *py_on_check;
-static PyObject *py_on_fetch;
+static PyObject *py_on_update, *py_on_lookup, *py_on_check, *py_on_fetch;
 
 static void
 check_err(const char *name)

@@ -58,16 +58,8 @@ struct config {
 	time_t		 source_update;
 };
 
-static int table_mysql_update(void);
-static int table_mysql_lookup(int, struct dict *, const char *, char *, size_t);
-static int table_mysql_check(int, struct dict *, const char *);
-static int table_mysql_fetch(int, struct dict *, char *, size_t);
-
 static MYSQL_STMT *table_mysql_query(const char *, int);
 
-static struct config 	*config_load(const char *);
-static void		 config_reset(struct config *);
-static int		 config_connect(struct config *);
 static void		 config_free(struct config *);
 
 #define SQL_MAX_RESULT	5
@@ -79,57 +71,6 @@ static MYSQL_BIND	 results[SQL_MAX_RESULT];
 static char		 results_buffer[SQL_MAX_RESULT][SMTPD_MAXLINESIZE];
 static char		*conffile;
 static struct config	*config;
-
-int
-main(int argc, char **argv)
-{
-	int	ch, i;
-
-	log_init(1);
-	log_verbose(~0);
-
-	while ((ch = getopt(argc, argv, "")) != -1) {
-		switch (ch) {
-		default:
-			log_warnx("warn: table-mysql: bad option");
-			return 1;
-			/* NOTREACHED */
-		}
-	}
-	argc -= optind;
-	argv += optind;
-
-	if (argc != 1) {
-		log_warnx("warn: table-mysql: bogus argument(s)");
-		return 1;
-	}
-
-	conffile = argv[0];
-
-	for (i = 0; i < SQL_MAX_RESULT; i++) {
-		results[i].buffer_type = MYSQL_TYPE_STRING;
-		results[i].buffer = results_buffer[i];
-		results[i].buffer_length = SMTPD_MAXLINESIZE;
-		results[i].is_null = 0;
-	}
-
-	config = config_load(conffile);
-	if (config == NULL) {
-		log_warnx("warn: table-mysql: error parsing config file");
-		return 1;
-	}
-	if (config_connect(config) == 0) {
-		log_warnx("warn: table-mysql: could not connect");
-	}
-
-	table_api_on_update(table_mysql_update);
-	table_api_on_check(table_mysql_check);
-	table_api_on_lookup(table_mysql_lookup);
-	table_api_on_fetch(table_mysql_fetch);
-	table_api_dispatch();
-
-	return 0;
-}
 
 static MYSQL_STMT *
 table_mysql_prepare_stmt(MYSQL *_db, const char *query, unsigned long nparams,
@@ -636,4 +577,48 @@ fetch:
 		return -1;
 
 	return 1;
+}
+
+int
+main(int argc, char **argv)
+{
+	int ch, i;
+
+	log_init(1);
+	log_verbose(~0);
+
+	while ((ch = getopt(argc, argv, "")) != -1) {
+		switch (ch) {
+		default:
+			fatalx("bad option");
+			/* NOTREACHED */
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc != 1)
+		fatalx("bogus argument(s)");
+
+	conffile = argv[0];
+
+	for (i = 0; i < SQL_MAX_RESULT; i++) {
+		results[i].buffer_type = MYSQL_TYPE_STRING;
+		results[i].buffer = results_buffer[i];
+		results[i].buffer_length = SMTPD_MAXLINESIZE;
+		results[i].is_null = 0;
+	}
+
+	if ((config = config_load(conffile)) == NULL)
+		fatalx("error parsing config file");
+	if (config_connect(config) == 0)
+		fatalx("could not connect");
+
+	table_api_on_update(table_mysql_update);
+	table_api_on_check(table_mysql_check);
+	table_api_on_lookup(table_mysql_lookup);
+	table_api_on_fetch(table_mysql_fetch);
+	table_api_dispatch();
+
+	return 0;
 }

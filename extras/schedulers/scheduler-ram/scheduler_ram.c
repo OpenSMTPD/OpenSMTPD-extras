@@ -101,21 +101,6 @@ struct rq_queue {
 static int rq_envelope_cmp(struct rq_envelope *, struct rq_envelope *);
 
 SPLAY_PROTOTYPE(prioqtree, rq_envelope, t_entry, rq_envelope_cmp);
-static int scheduler_ram_init(void);
-static int scheduler_ram_insert(struct scheduler_info *);
-static size_t scheduler_ram_commit(uint32_t);
-static size_t scheduler_ram_rollback(uint32_t);
-static int scheduler_ram_update(struct scheduler_info *);
-static int scheduler_ram_delete(uint64_t);
-static int scheduler_ram_hold(uint64_t, uint64_t);
-static int scheduler_ram_release(int, uint64_t, int);
-static int scheduler_ram_batch(int, int *, size_t *, uint64_t *, int *);
-static size_t scheduler_ram_messages(uint32_t, uint32_t *, size_t);
-static size_t scheduler_ram_envelopes(uint64_t, struct evpstate *, size_t);
-static int scheduler_ram_schedule(uint64_t);
-static int scheduler_ram_remove(uint64_t);
-static int scheduler_ram_suspend(uint64_t);
-static int scheduler_ram_resume(uint64_t);
 
 static void sorted_insert(struct rq_queue *, struct rq_envelope *);
 

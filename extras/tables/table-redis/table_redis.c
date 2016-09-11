@@ -52,65 +52,10 @@ struct config {
 	char		*queries[REDIS_MAX];
 };
 
-static int table_redis_update(void);
-static int table_redis_lookup(int, struct dict *, const char *, char *, size_t);
-static int table_redis_check(int, struct dict *, const char *);
-static int table_redis_fetch(int, struct dict *, char *, size_t);
-
-static redisReply *table_redis_query(const char *key, int service);
-
-static struct config 	*config_load(const char *);
-static void		 config_reset(struct config *);
-static int		 config_connect(struct config *);
 static void		 config_free(struct config *);
 
 static char		*conffile;
 static struct config	*config;
-
-int
-main(int argc, char **argv)
-{
-	int	ch;
-
-	log_init(1);
-	log_verbose(~0);
-
-	while ((ch = getopt(argc, argv, "")) != -1) {
-		switch (ch) {
-		default:
-			log_warnx("warn: table-redis: bad option");
-			return 1;
-			/* NOTREACHED */
-		}
-	}
-	argc -= optind;
-	argv += optind;
-
-	if (argc != 1) {
-		log_warnx("warn: table-redis: bogus argument(s)");
-		return 1;
-	}
-
-	conffile = argv[0];
-
-	config = config_load(conffile);
-	if (config == NULL) {
-		log_warnx("warn: table-redis: error parsing config file");
-		return 1;
-	}
-	if (config_connect(config) == 0) {
-		log_warnx("warn: table-redis: could not connect");
-		return 1;
-	}
-
-	table_api_on_update(table_redis_update);
-	table_api_on_check(table_redis_check);
-	table_api_on_lookup(table_redis_lookup);
-	table_api_on_fetch(table_redis_fetch);
-	table_api_dispatch();
-
-	return 0;
-}
 
 static struct config *
 config_load(const char *path)
@@ -564,4 +509,41 @@ static int
 table_redis_fetch(int service, struct dict *params, char *dst, size_t sz)
 {
 	return -1;
+}
+
+int
+main(int argc, char **argv)
+{
+	int ch;
+
+	log_init(1);
+	log_verbose(~0);
+
+	while ((ch = getopt(argc, argv, "")) != -1) {
+		switch (ch) {
+		default:
+			fatalx("bad option");
+			/* NOTREACHED */
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc != 1)
+		fatalx("bogus argument(s)");
+
+	conffile = argv[0];
+
+	if ((config = config_load(conffile)) == NULL)
+		fatalx("error parsing config file");
+	if (config_connect(config) == 0)
+		fatalx("could not connect");
+
+	table_api_on_update(table_redis_update);
+	table_api_on_check(table_redis_check);
+	table_api_on_lookup(table_redis_lookup);
+	table_api_on_fetch(table_redis_fetch);
+	table_api_dispatch();
+
+	return 0;
 }
