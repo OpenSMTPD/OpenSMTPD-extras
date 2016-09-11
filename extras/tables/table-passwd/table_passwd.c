@@ -220,17 +220,13 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc != 1) {
-		log_warnx("warn: table-passwd: bogus argument(s)");
-		return 1;
-	}
+	if (argc)
+		fatalx("bogus argument(s)");
 
 	config = argv[0];
 
-	if (table_passwd_update() == 0) {
-		log_warnx("warn: table-passwd: error parsing config file");
-		return 1;
-	}
+	if (table_passwd_update() == 0)
+		fatalx("error parsing config file");
 
 	table_api_on_update(table_passwd_update);
 	table_api_on_check(table_passwd_check);

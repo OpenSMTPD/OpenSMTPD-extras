@@ -47,7 +47,7 @@ check_err(const char *name)
 {
 	if (PyErr_Occurred()) {
 		PyErr_Print();
-		fatalx("warn: table-python: error in %s handler", name);
+		fatalx("error in %s handler", name);
 	}
 }
 
@@ -61,9 +61,8 @@ dispatch(PyObject *handler, PyObject *args)
 
 	if (PyErr_Occurred()) {
 		PyErr_Print();
-		fatalx("warn: table-python: exception");
+		fatalx("exception");
 	}
-
 	return ret;
 }
 
@@ -309,16 +308,14 @@ main(int argc, char **argv)
 
 	if (code == NULL) {
 		PyErr_Print();
-		log_warnx("warn: table-python: failed to compile %s", path);
-		return 1;
+		fatalx("failed to compile %s", path);
 	}
 
 	module = PyImport_ExecCodeModuleEx("mytable", code, path);
 
 	if (module == NULL) {
 		PyErr_Print();
-		log_warnx("warn: table-python: failed to install module %s", path);
-		return 1;
+		fatalx("failed to install module %s", path);
 	}
 
 	log_debug("debug: starting...");
