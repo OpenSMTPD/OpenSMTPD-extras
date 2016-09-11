@@ -105,12 +105,12 @@ table_passwd_update(void)
 			buf[len - 1] = '\0';
 
 		/* skip commented entries */
-		for (skip = buf; *skip; ++skip)
+		for (skip = buf; *skip; ++skip) {
 			if (*skip == '#') {
 				*skip = '\0';
 				break;
 			}
-
+		}
 		/* skip empty lines */
 		if (strlen(buf) == 0)
 			continue;

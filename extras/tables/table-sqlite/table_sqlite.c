@@ -244,7 +244,7 @@ table_sqlite_update(void)
 			continue;
 		}
 
-		for(i = 0; i < SQL_MAX; i++)
+		for (i = 0; i < SQL_MAX; i++)
 			if (!strcmp(qspec[i].name, key))
 				break;
 		if (i == SQL_MAX) {

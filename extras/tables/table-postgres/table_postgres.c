@@ -369,12 +369,12 @@ table_postgres_query(const char *key, int service)
     retry:
 
 	stmt = NULL;
-	for(i = 0; i < SQL_MAX; i++)
+	for (i = 0; i < SQL_MAX; i++) {
 		if (service == 1 << i) {
 			stmt = config->statements[i];
 			break;
 		}
-
+	}
 	if (stmt == NULL)
 		return NULL;
 

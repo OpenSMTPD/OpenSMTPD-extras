@@ -271,11 +271,12 @@ config_reset(struct config *conf)
 {
 	size_t	i;
 
-	for (i = 0; i < SQL_MAX; i++)
+	for (i = 0; i < SQL_MAX; i++) {
 		if (conf->statements[i]) {
 			mysql_stmt_close(conf->statements[i]);
 			conf->statements[i] = NULL;
 		}
+	}
 	if (conf->stmt_fetch_source) {
 		mysql_stmt_close(conf->stmt_fetch_source);
 		conf->stmt_fetch_source = NULL;
@@ -402,12 +403,12 @@ table_mysql_query(const char *key, int service)
     retry:
 
 	stmt = NULL;
-	for(i = 0; i < SQL_MAX; i++)
+	for (i = 0; i < SQL_MAX; i++) {
 		if (service == 1 << i) {
 			stmt = config->statements[i];
 			break;
 		}
-
+	}
 	if (stmt == NULL)
 		return NULL;
 
