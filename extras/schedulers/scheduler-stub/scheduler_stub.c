@@ -124,8 +124,7 @@ main(int argc, char **argv)
 	while ((ch = getopt(argc, argv, "")) != -1) {
 		switch (ch) {
 		default:
-			log_warnx("warn: backend-scheduler-stub: bad option");
-			exit(1);
+			fatalx("bad option");
 			/* NOTREACHED */
 		}
 	}

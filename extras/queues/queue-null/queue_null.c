@@ -129,8 +129,7 @@ main(int argc, char **argv)
 	while ((ch = getopt(argc, argv, "")) != -1) {
 		switch (ch) {
 		default:
-			log_warnx("warn: queue-null: bad option");
-			return 1;
+			fatalx("bad option");
 			/* NOTREACHED */
 		}
 	}
