@@ -513,7 +513,7 @@ main(int argc, char **argv)
 	char		*buf;
 	PyObject	*self, *code, *module;
 
-	log_init(-1);
+	log_init(1);
 
 	while ((ch = getopt(argc, argv, "")) != -1) {
 		switch (ch) {
