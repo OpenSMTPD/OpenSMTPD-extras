@@ -19,7 +19,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#include <err.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -475,25 +474,25 @@ loadfile(const char * path)
 	char	*buf;
 
 	if ((f = fopen(path, "r")) == NULL)
-		err(1, "fopen");
+		fatal("fopen");
 
 	if (fseek(f, 0, SEEK_END) == -1)
-		err(1, "fseek");
+		fatal("fseek");
 
 	oz = ftello(f);
 
 	if (fseek(f, 0, SEEK_SET) == -1)
-		err(1, "fseek");
+		fatal("fseek");
 
 	if ((size_t)oz >= SIZE_MAX)
-		errx(1, "too big");
+		fatal("too big");
 
 	sz = oz;
 
 	buf = xmalloc(sz + 1, "loadfile");
 
 	if (fread(buf, 1, sz, f) != sz)
-		err(1, "fread");
+		fatal("fread");
 
 	buf[sz] = '\0';
 
@@ -528,7 +527,7 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if (argc == 0)
-		errx(1, "missing path");
+		fatalx("missing path");
 	path = argv[0];
 
 	Py_Initialize();
