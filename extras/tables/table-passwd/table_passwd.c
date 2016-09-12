@@ -91,7 +91,7 @@ table_passwd_update(void)
 
 	/* parse configuration */
 	if ((fp = fopen(config, "r")) == NULL) {
-		log_warn("warn: table-passwd: \"%s\"", config);
+		log_warn("warn: \"%s\"", config);
 		return 0;
 	}
 
@@ -116,12 +116,12 @@ table_passwd_update(void)
 			continue;
 
 		if (strlcpy(tmp, buf, sizeof(tmp)) >= sizeof(tmp)) {
-			log_warnx("warn: table-passwd: line too long");
+			log_warnx("warn: line too long");
 			goto err;
 		}
 
 		if (!parse_passwd_entry(K_ANY, &pw, tmp)) {
-			log_warnx("warn: table-passwd: invalid entry");
+			log_warnx("warn: invalid entry");
 			goto err;
 		}
 		dict_set(npasswd, pw.pw_name, xstrdup(buf, "update"));
@@ -169,7 +169,7 @@ table_passwd_lookup(int service, struct dict *params, const char *key,
 
 	(void)strlcpy(tmp, line, sizeof(tmp));
 	if (!parse_passwd_entry(service, &pw, tmp)) {
-		log_warnx("warn: table-passwd: invalid entry");
+		log_warnx("warn: invalid entry");
 		return -1;
 	}
 
@@ -177,21 +177,19 @@ table_passwd_lookup(int service, struct dict *params, const char *key,
 	case K_CREDENTIALS:
 		if (snprintf(dst, sz, "%s:%s",
 			pw.pw_name, pw.pw_passwd) >= (ssize_t)sz) {
-			log_warnx("warn: table-passwd: result too large");
+			log_warnx("warn: result too large");
 			return -1;
 		}
 		break;
 	case K_USERINFO:
-		if (snprintf(dst, sz, "%d:%d:%s",
-			pw.pw_uid, pw.pw_gid, pw.pw_dir)
-		    >= (ssize_t)sz) {
-			log_warnx("warn: table-passwd: result too large");
+		if (snprintf(dst, sz, "%d:%d:%s", pw.pw_uid, pw.pw_gid,
+		    pw.pw_dir) >= (ssize_t)sz) {
+			log_warnx("warn: result too large");
 			return -1;
 		}
 		break;
 	default:
-		log_warnx("warn: table-passwd: unknown service %d",
-		    service);
+		log_warnx("warn: unknown service %d", service);
 		return -1;
 	}
 	return 1;

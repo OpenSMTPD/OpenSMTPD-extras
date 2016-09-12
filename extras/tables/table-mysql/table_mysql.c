@@ -79,26 +79,23 @@ table_mysql_prepare_stmt(MYSQL *_db, const char *query, unsigned long nparams,
 	MYSQL_STMT	*stmt;
 
 	if ((stmt = mysql_stmt_init(_db)) == NULL) {
-		log_warnx("warn: table-mysql: mysql_stmt_init: %s",
-		    mysql_error(_db));
+		log_warnx("warn: mysql_stmt_init: %s", mysql_error(_db));
 		goto end;
 	}
 	if (mysql_stmt_prepare(stmt, query, strlen(query))) {
-		log_warnx("warn: table-mysql: mysql_stmt_prepare: %s",
-		    mysql_stmt_error(stmt));
+		log_warnx("warn: mysql_stmt_prepare: %s", mysql_stmt_error(stmt));
 		goto end;
 	}
 	if (mysql_stmt_param_count(stmt) != nparams) {
-		log_warnx("warn: table-mysql: wrong number of params for %s", query);
+		log_warnx("warn: wrong number of params for %s", query);
 		goto end;
 	}
 	if (mysql_stmt_field_count(stmt) != nfields) {
-		log_warnx("warn: table-mysql: wrong number of columns in resultset");
+		log_warnx("warn: wrong number of columns in resultset");
 		goto end;
 	}
 	if (mysql_stmt_bind_result(stmt, results)) {
-		log_warnx("warn: table-mysql: mysql_stmt_bind_results: %s",
-		    mysql_stmt_error(stmt));
+		log_warnx("warn: mysql_stmt_bind_results: %s", mysql_stmt_error(stmt));
 		goto end;
 	}
 
@@ -123,7 +120,7 @@ config_load(const char *path)
 	long long	 ll;
 
 	if ((conf = calloc(1, sizeof(*conf))) == NULL) {
-		log_warn("warn: table-mysql: calloc");
+		log_warn("warn: calloc");
 		return NULL;
 	}
 
@@ -134,7 +131,7 @@ config_load(const char *path)
 	conf->source_expire = DEFAULT_EXPIRE;
 
 	if ((fp = fopen(path, "r")) == NULL) {
-		log_warn("warn: table-mysql: \"%s\"", path);
+		log_warn("warn: \"%s\"", path);
 		goto end;
 	}
 
@@ -159,18 +156,18 @@ config_load(const char *path)
 		}
 
 		if (value == NULL) {
-			log_warnx("warn: table-mysql: missing value for key %s", key);
+			log_warnx("warn: missing value for key %s", key);
 			goto end;
 		}
 
 		if (dict_check(&conf->conf, key)) {
-			log_warnx("warn: table-mysql: duplicate key %s", key);
+			log_warnx("warn: duplicate key %s", key);
 			goto end;
 		}
-		
+
 		value = strdup(value);
 		if (value == NULL) {
-			log_warn("warn: table-mysql: strdup");
+			log_warn("warn: strdup");
 			goto end;
 		}
 
@@ -181,7 +178,7 @@ config_load(const char *path)
 		e = NULL;
 		ll = strtonum(value, 0, INT_MAX, &e);
 		if (e) {
-			log_warnx("warn: table-mysql: bad value for fetch_source_expire: %s", e);
+			log_warnx("warn: bad value for fetch_source_expire: %s", e);
 			goto end;
 		}
 		conf->source_expire = ll;
@@ -190,7 +187,7 @@ config_load(const char *path)
 		e = NULL;
 		ll = strtonum(value, 0, INT_MAX, &e);
 		if (e) {
-			log_warnx("warn: table-mysql: bad value for fetch_source_refresh: %s", e);
+			log_warnx("warn: bad value for fetch_source_refresh: %s", e);
 			goto end;
 		}
 		conf->source_refresh = ll;
@@ -260,21 +257,19 @@ config_connect(struct config *conf)
 
 	conf->db = mysql_init(NULL);
 	if (conf->db == NULL) {
-		log_warnx("warn: table-mysql: mysql_init failed");
+		log_warnx("warn: mysql_init failed");
 		goto end;
 	}
 
 	reconn = 1;
 	if (mysql_options(conf->db, MYSQL_OPT_RECONNECT, &reconn) != 0) {
-		log_warnx("warn: table-mysql: mysql_options: %s",
-		    mysql_error(conf->db));
+		log_warnx("warn: mysql_options: %s", mysql_error(conf->db));
 		goto end;
 	}
 
 	if (!mysql_real_connect(conf->db, host, username, password, database,
 	    0, NULL, 0)) {
-		log_warnx("warn: table-mysql: mysql_real_connect: %s",
-		    mysql_error(conf->db));
+		log_warnx("warn: mysql_real_connect: %s", mysql_error(conf->db));
 		goto end;
 	}
 
@@ -353,7 +348,7 @@ retry:
 		return NULL;
 
 	if (strlcpy(buffer, key, sizeof(buffer)) >= sizeof(buffer)) {
-		log_warnx("warn: table-mysql: key too long: \"%s\"", key);
+		log_warnx("warn: key too long: \"%s\"", key);
 		return NULL;
 	}
 
@@ -366,8 +361,7 @@ retry:
 	param[0].length = &keylen;
 
 	if (mysql_stmt_bind_param(stmt, param)) {
-		log_warnx("warn: table-mysql: mysql_stmt_bind_param: %s",
-		    mysql_stmt_error(stmt));
+		log_warnx("warn: mysql_stmt_bind_param: %s", mysql_stmt_error(stmt));
 		return NULL;
 	}
 
@@ -375,17 +369,14 @@ retry:
 		if (mysql_stmt_errno(stmt) == CR_SERVER_LOST ||
 		    mysql_stmt_errno(stmt) == CR_SERVER_GONE_ERROR ||
 		    mysql_stmt_errno(stmt) == CR_COMMANDS_OUT_OF_SYNC) {
-			log_warnx("warn: table-mysql: trying to reconnect after error: %s",
-			    mysql_stmt_error(stmt));
+			log_warnx("warn: trying to reconnect after error: %s", mysql_stmt_error(stmt));
 			if (config_connect(config))
 				goto retry;
 			return NULL;
 		}
-		log_warnx("warn: table-mysql: mysql_stmt_execute: %s",
-		    mysql_stmt_error(stmt));
+		log_warnx("warn: mysql_stmt_execute: %s", mysql_stmt_error(stmt));
 		return NULL;
 	}
-
 	return stmt;
 }
 
@@ -410,13 +401,10 @@ table_mysql_check(int service, struct dict *params, const char *key)
 	else if (s == MYSQL_NO_DATA)
 		r = 0;
 	else
-		log_warnx("warn: table-mysql: mysql_stmt_fetch: %s",
-		    mysql_stmt_error(stmt));
+		log_warnx("warn: mysql_stmt_fetch: %s", mysql_stmt_error(stmt));
 
 	if (mysql_stmt_free_result(stmt))
-		log_warnx("warn: table-mysql: mysql_stmt_free_result: %s",
-		    mysql_stmt_error(stmt));
-
+		log_warnx("warn: mysql_stmt_free_result: %s", mysql_stmt_error(stmt));
 	return r;
 }
 
@@ -439,8 +427,7 @@ table_mysql_lookup(int service, struct dict *params, const char *key, char *dst,
 	
 	if (s != 0) {
 		r = -1;
-		log_warnx("warn: table-mysql: mysql_stmt_fetch: %s",
-		    mysql_stmt_error(stmt));
+		log_warnx("warn: mysql_stmt_fetch: %s", mysql_stmt_error(stmt));
 		goto end;
 	}
 
@@ -451,12 +438,12 @@ table_mysql_lookup(int service, struct dict *params, const char *key, char *dst,
 		memset(dst, 0, sz);
 		do {
 			if (dst[0] && strlcat(dst, ", ", sz) >= sz) {
-				log_warnx("warn: table-mysql: result too large");
+				log_warnx("warn: result too large");
 				r = -1;
 				break;
 			}
 			if (strlcat(dst, results_buffer[0], sz) >= sz) {
-				log_warnx("warn: table-mysql: result too large");
+				log_warnx("warn: result too large");
 				r = -1;
 				break;
 			}
@@ -464,8 +451,7 @@ table_mysql_lookup(int service, struct dict *params, const char *key, char *dst,
 		} while (s == 0);
 
 		if (s && s != MYSQL_NO_DATA) {
-			log_warnx("warn: table-mysql: mysql_stmt_fetch: %s",
-			    mysql_stmt_error(stmt));
+			log_warnx("warn: mysql_stmt_fetch: %s", mysql_stmt_error(stmt));
 			r = -1;
 		}
 		break;
@@ -473,7 +459,7 @@ table_mysql_lookup(int service, struct dict *params, const char *key, char *dst,
 		if (snprintf(dst, sz, "%s:%s",
 		    results_buffer[0],
 		    results_buffer[1]) > (ssize_t)sz) {
-			log_warnx("warn: table-mysql: result too large");
+			log_warnx("warn: result too large");
 			r = -1;
 		}
 		break;
@@ -482,7 +468,7 @@ table_mysql_lookup(int service, struct dict *params, const char *key, char *dst,
 		    results_buffer[0],
 		    results_buffer[1],
 		    results_buffer[2]) > (ssize_t)sz) {
-			log_warnx("warn: table-mysql: result too large");
+			log_warnx("warn: result too large");
 			r = -1;
 		}
 		break;
@@ -492,21 +478,19 @@ table_mysql_lookup(int service, struct dict *params, const char *key, char *dst,
 	case K_MAILADDR:
 	case K_ADDRNAME:
 		if (strlcpy(dst, results_buffer[0], sz) >= sz) {
-			log_warnx("warn: table-mysql: result too large");
+			log_warnx("warn: result too large");
 			r = -1;
 		}
 		break;
 	default:
-		log_warnx("warn: table-mysql: unknown service %d",
+		log_warnx("warn: unknown service %d",
 		    service);
 		r = -1;
 	}
 
 end:
 	if (mysql_stmt_free_result(stmt))
-		log_warnx("warn: table-mysql: mysql_stmt_free_result: %s",
-		    mysql_stmt_error(stmt));
-
+		log_warnx("warn: mysql_stmt_free_result: %s", mysql_stmt_error(stmt));
 	return r;
 }
 
@@ -535,14 +519,12 @@ retry:
 		if (mysql_stmt_errno(stmt) == CR_SERVER_LOST ||
 		    mysql_stmt_errno(stmt) == CR_SERVER_GONE_ERROR ||
 		    mysql_stmt_errno(stmt) == CR_COMMANDS_OUT_OF_SYNC) {
-			log_warnx("warn: table-mysql: trying to reconnect after error: %s",
-			    mysql_stmt_error(stmt));
+			log_warnx("warn: trying to reconnect after error: %s", mysql_stmt_error(stmt));
 			if (config_connect(config))
 				goto retry;
 			return -1;
 		}
-		log_warnx("warn: table-mysql: mysql_stmt_execute: %s",
-		    mysql_stmt_error(stmt));
+		log_warnx("warn: mysql_stmt_execute: %s", mysql_stmt_error(stmt));
 		return -1;
 	}
 
@@ -554,11 +536,10 @@ retry:
 		dict_set(&config->sources, results_buffer[0], NULL);
 
 	if (s && s != MYSQL_NO_DATA)
-		log_warnx("warn: table-mysql: mysql_stmt_fetch: %s",
-		    mysql_stmt_error(stmt));
+		log_warnx("warn: mysql_stmt_fetch: %s", mysql_stmt_error(stmt));
 
 	if (mysql_stmt_free_result(stmt))
-		log_warnx("warn: table-mysql: mysql_stmt_free_result: %s",
+		log_warnx("warn: mysql_stmt_free_result: %s",
 		    mysql_stmt_error(stmt));
 
 	config->source_update = time(NULL);

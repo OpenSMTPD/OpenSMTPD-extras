@@ -160,11 +160,11 @@ table_python_lookup(int service, struct dict *params, const char *key, char *buf
 		r = 1;
 		s = PyString_AS_STRING(ret);
 		if (strlcpy(buf, s, sz) >= sz) {
-			log_warnx("table-python: lookup: result too long");
+			log_warnx("warn: lookup: result too long");
 			r = -1;
 		}
 	} else {
-		log_warnx("table-python: lookup: invalid object returned");
+		log_warnx("warn: lookup: invalid object returned");
 		r = -1;
 	}
 
@@ -204,11 +204,11 @@ table_python_fetch(int service, struct dict *params, char *buf, size_t sz)
 		r = 1;
 		s = PyString_AS_STRING(ret);
 		if (strlcpy(buf, s, sz) >= sz) {
-			log_warnx("table-python: lookup: result too long");
+			log_warnx("warn: lookup: result too long");
 			r = -1;
 		}
 	} else {
-		log_warnx("table-python: lookup: invalid object returned");
+		log_warnx("warn: lookup: invalid object returned");
 		r = -1;
 	}
 

@@ -62,10 +62,8 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc != 0) {
-		log_warnx("warn: table-stub: bogus argument(s)");
-		return 1;
-	}
+	if (argc)
+		fatalx("bogus argument(s)");
 
 	table_api_on_update(table_stub_update);
 	table_api_on_check(table_stub_check);

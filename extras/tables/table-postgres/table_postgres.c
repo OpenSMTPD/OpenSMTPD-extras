@@ -74,14 +74,13 @@ table_postgres_prepare_stmt(PGconn *_db, const char *query, int nparams,
 	char			*stmt;
 
 	if (asprintf(&stmt, "stmt%u", n++) == -1) {
-		log_warn("warn: table-postgres: asprintf");
+		log_warn("warn: asprintf");
 		return NULL;
 	}
 
 	res = PQprepare(_db, stmt, query, nparams, NULL);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-		log_warnx("warn: table-postgres: PQprepare: %s",
-		    PQerrorMessage(_db));
+		log_warnx("warn: PQprepare: %s", PQerrorMessage(_db));
 		free(stmt);
 		stmt = NULL;
 	}
@@ -102,7 +101,7 @@ config_load(const char *path)
 	long long	 ll;
 
 	if ((conf = calloc(1, sizeof(*conf))) == NULL) {
-		log_warn("warn: table-postgres: calloc");
+		log_warn("warn: calloc");
 		return NULL;
 	}
 
@@ -113,7 +112,7 @@ config_load(const char *path)
 	conf->source_expire = DEFAULT_EXPIRE;
 
 	if ((fp = fopen(path, "r")) == NULL) {
-		log_warn("warn: table-postgres: \"%s\"", path);
+		log_warn("warn: \"%s\"", path);
 		goto end;
 	}
 
@@ -138,18 +137,18 @@ config_load(const char *path)
 		}
 
 		if (value == NULL) {
-			log_warnx("warn: table-postgres: missing value for key %s", key);
+			log_warnx("warn: missing value for key %s", key);
 			goto end;
 		}
 
 		if (dict_check(&conf->conf, key)) {
-			log_warnx("warn: table-postgres: duplicate key %s", key);
+			log_warnx("warn: duplicate key %s", key);
 			goto end;
 		}
-		
+
 		value = strdup(value);
 		if (value == NULL) {
-			log_warn("warn: table-postgres: strdup");
+			log_warn("warn: strdup");
 			goto end;
 		}
 
@@ -160,7 +159,7 @@ config_load(const char *path)
 		e = NULL;
 		ll = strtonum(value, 0, INT_MAX, &e);
 		if (e) {
-			log_warnx("warn: table-postgres: bad value for fetch_source_expire: %s", e);
+			log_warnx("warn: bad value for fetch_source_expire: %s", e);
 			goto end;
 		}
 		conf->source_expire = ll;
@@ -169,7 +168,7 @@ config_load(const char *path)
 		e = NULL;
 		ll = strtonum(value, 0, INT_MAX, &e);
 		if (e) {
-			log_warnx("warn: table-postgres: bad value for fetch_source_refresh: %s", e);
+			log_warnx("warn: bad value for fetch_source_refresh: %s", e);
 			goto end;
 		}
 		conf->source_refresh = ll;
@@ -232,17 +231,17 @@ config_connect(struct config *conf)
 
 	conninfo = dict_get(&conf->conf, "conninfo");
 	if (conninfo == NULL) {
-		log_warnx("warn: table-postgres: missing \"conninfo\" configuration directive");
+		log_warnx("warn: missing \"conninfo\" configuration directive");
 		goto end;
 	}
 
 	conf->db = PQconnectdb(conninfo);
 	if (conf->db == NULL) {
-		log_warnx("warn: table-postgres: PQconnectdb return NULL");
+		log_warnx("warn: PQconnectdb return NULL");
 		goto end;
 	}
 	if (PQstatus(conf->db) != CONNECTION_OK) {
-		log_warnx("warn: table-postgres: PQconnectdb: %s",
+		log_warnx("warn: PQconnectdb: %s",
 		    PQerrorMessage(conf->db));
 		goto end;
 	}
@@ -326,15 +325,13 @@ retry:
 	if (PQresultStatus(res) != PGRES_TUPLES_OK) {
 		errfld = PQresultErrorField(res, PG_DIAG_SQLSTATE);
 		if (errfld[0] == '0' && errfld[1] == '8') {
-			log_warnx("warn: table-postgres: trying to reconnect after error: %s",
-			    PQerrorMessage(config->db));
+			log_warnx("warn: trying to reconnect after error: %s", PQerrorMessage(config->db));
 			PQclear(res);
 			if (config_connect(config))
 				goto retry;
 			return NULL;
 		}
-		log_warnx("warn: table-postgres: PQexecPrepared: %s",
-		    PQerrorMessage(config->db));
+		log_warnx("warn: PQexecPrepared: %s", PQerrorMessage(config->db));
 		PQclear(res);
 		return NULL;
 	}
@@ -386,12 +383,12 @@ table_postgres_lookup(int service, struct dict *params, const char *key, char *d
 		memset(dst, 0, sz);
 		for (i = 0; i < PQntuples(res); i++) {
 			if (dst[0] && strlcat(dst, ", ", sz) >= sz) {
-				log_warnx("warn: table-postgres: result too large");
+				log_warnx("warn: result too large");
 				r = -1;
 				break;
 			}
 			if (strlcat(dst, PQgetvalue(res, i, 0), sz) >= sz) {
-				log_warnx("warn: table-postgres: result too large");
+				log_warnx("warn: esult too large");
 				r = -1;
 				break;
 			}
@@ -400,7 +397,7 @@ table_postgres_lookup(int service, struct dict *params, const char *key, char *d
 	case K_CREDENTIALS:
 		if (snprintf(dst, sz, "%s:%s", PQgetvalue(res, 0, 0),
  		    PQgetvalue(res, 0, 1)) > (ssize_t)sz) {
-			log_warnx("warn: table-postgres: result too large");
+			log_warnx("warn: result too large");
 			r = -1;
 		}
 		break;
@@ -408,7 +405,7 @@ table_postgres_lookup(int service, struct dict *params, const char *key, char *d
 		if (snprintf(dst, sz, "%s:%s:%s", PQgetvalue(res, 0, 0),
 		    PQgetvalue(res, 0, 1),
 		    PQgetvalue(res, 0, 2)) > (ssize_t)sz) {
-			log_warnx("warn: table-postgres: result too large");
+			log_warnx("warn: result too large");
 			r = -1;
 		}
 		break;
@@ -456,19 +453,16 @@ retry:
 	    goto fetch;
 
 	res = PQexecPrepared(config->db, stmt, 0, NULL, NULL, NULL, 0);
-
 	if (PQresultStatus(res) != PGRES_TUPLES_OK) {
 		errfld = PQresultErrorField(res, PG_DIAG_SQLSTATE);
 		if (errfld[0] == '0' && errfld[1] == '8') {
-			log_warnx("warn: table-postgres: trying to reconnect after error: %s",
-			    PQerrorMessage(config->db));
+			log_warnx("warn: trying to reconnect after error: %s", PQerrorMessage(config->db));
 			PQclear(res);
 			if (config_connect(config))
 				goto retry;
 			return -1;
 		}
-		log_warnx("warn: table-postgres: PQexecPrepared: %s",
-		    PQerrorMessage(config->db));
+		log_warnx("warn: PQexecPrepared: %s", PQerrorMessage(config->db));
 		PQclear(res);
 		return -1;
 	}

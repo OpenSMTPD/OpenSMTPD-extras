@@ -123,7 +123,7 @@ ldap_connect(const char *addr)
 
 	/* aldap_parse_url frees buf on success */
 	if (aldap_parse_url(buf, &lu) != 1) {
-		log_warnx("warn: table-ldap: ldap_parse_url fail");
+		log_warnx("warn: ldap_parse_url fail");
 		free(buf);
 		return NULL;
 	}
@@ -135,8 +135,8 @@ ldap_connect(const char *addr)
 	if (error == EAI_AGAIN || error == EAI_NODATA || error == EAI_NONAME)
 		return NULL;
 	if (error) {
-		log_warnx("warn: table-ldap: could not parse \"%s\": %s",
-		    lu.host, gai_strerror(error));
+		log_warnx("warn: could not parse \"%s\": %s", lu.host,
+		    gai_strerror(error));
 		return NULL;
 	}
 
@@ -172,15 +172,13 @@ read_value(char **store, const char *key, const char *value)
 {
 	log_debug("debug: reading key \"%s\" -> \"%s\"", key, value);
 	if (*store) {
-		log_warnx("warn: table-ldap: duplicate key %s", key);
+		log_warnx("warn: duplicate key %s", key);
 		return 0;
 	}
-	
 	if ((*store = strdup(value)) == NULL) {
-		log_warn("warn: table-ldap: strdup");
+		log_warn("warn: strdup");
 		return 0;
 	}
-
 	return 1;
 }
 
@@ -214,7 +212,7 @@ ldap_parse_attributes(struct query *query, const char *key, const char *line,
 	for (n = 0; n < m; ++n) {
 		query->attrs[n] = strdup(p);
 		if (query->attrs[n] == NULL) {
-			log_warnx("warn: table-ldap: strdup");
+			log_warnx("warn: strdup");
 			return 0; /* XXX cleanup */
 		}
 		p += strlen(p) + 1;
@@ -232,7 +230,7 @@ ldap_config(void)
 	char		*key, *value, *buf = NULL;
 
 	if ((fp = fopen(config, "r")) == NULL) {
-		log_warn("warn: table-ldap: \"%s\"", config);
+		log_warn("warn: \"%s\"", config);
 		return 0;
 	}
 
@@ -257,7 +255,7 @@ ldap_config(void)
 		}
 
 		if (value == NULL) {
-			log_warnx("warn: table-ldap: missing value for key %s", key);
+			log_warnx("warn: missing value for key %s", key);
 			continue;
 		}
 
@@ -310,17 +308,17 @@ ldap_open(void)
 
 	aldap = ldap_connect(url);
 	if (aldap == NULL) {
-		log_warnx("warn: table-ldap: ldap_connect error");
+		log_warnx("warn: ldap_connect error");
 		goto err;
 	}
 
 	if (aldap_bind(aldap, username, password) == -1) {
-		log_warnx("warn: table-ldap: aldap_bind error");
+		log_warnx("warn: aldap_bind error");
 		goto err;
 	}
 
 	if ((amsg = aldap_parse(aldap)) == NULL) {
-		log_warnx("warn: table-ldap: aldap_parse");
+		log_warnx("warn: aldap_parse");
 		goto err;
 	}
 
@@ -329,10 +327,10 @@ ldap_open(void)
 		log_debug("debug: ldap server accepted credentials");
 		break;
 	case LDAP_INVALID_CREDENTIALS:
-		log_warnx("warn: table-ldap: ldap server refused credentials");
+		log_warnx("warn: ldap server refused credentials");
 		goto err;
 	default:
-		log_warnx("warn: table-ldap: failed to bind, result #%d",
+		log_warnx("warn: failed to bind, result #%d",
 		    aldap_get_resultcode(amsg));
 		goto err;
 	}
@@ -432,7 +430,7 @@ ldap_run_query(int type, const char *key, char *dst, size_t sz)
 
 	if (snprintf(filter, sizeof(filter), q->filter, key)
 	    >= (int)sizeof(filter)) {
-		log_warnx("warn: table-ldap: filter too large");
+		log_warnx("warn: filter too large");
 		return -1;
 	}
 
@@ -471,12 +469,12 @@ ldap_run_query(int type, const char *key, char *dst, size_t sz)
 			ret = -1;
 		break;
 	default:
-		log_warnx("warn: table-ldap: unsupported lookup kind");
+		log_warnx("warn: unsupported lookup kind");
 		ret = -1;
 	}
 
 	if (ret == -1)
-		log_warnx("warn: table-ldap: could not format result");
+		log_warnx("warn: could not format result");
 
 end:
 	for (i = 0; i < q->attrn; ++i)

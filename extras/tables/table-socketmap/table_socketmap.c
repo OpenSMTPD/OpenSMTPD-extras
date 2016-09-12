@@ -51,7 +51,7 @@ table_socketmap_connect(const char *s)
 	struct sockaddr_un	sun;
 
 	if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-		log_warn("warn: table-socketmap");
+		log_warn("warn: socket");
 		goto err;
 	}
 
@@ -59,17 +59,17 @@ table_socketmap_connect(const char *s)
 	sun.sun_family = AF_UNIX;
 	if (strlcpy(sun.sun_path, s, sizeof(sun.sun_path)) >=
 	    sizeof(sun.sun_path)) {
-		log_warnx("warn: table-socketmap: socket path too long");
+		log_warnx("warn: socket path too long");
 		goto err;
 	}
 
 	if (connect(sock, (struct sockaddr *)&sun, sizeof(sun)) == -1) {
-		log_warn("warn: table-socketmap");
+		log_warn("warn: connect");
 		goto err;
 	}
 
 	if ((sockstream = fdopen(sock, "w+")) == NULL) {
-		log_warn("warn: table-socketmap");
+		log_warn("warn: fdopen");
 		goto err;
 	}
 
@@ -96,7 +96,7 @@ table_socketmap_query(const char *name, const char *key)
 	fflush(sockstream);
 
 	if ((len = getline(&buf, &sz, sockstream)) != -1) {
-		log_warnx("warn: table-socketmap: socketmap has lost its socket");
+		log_warnx("warn: socketmap has lost its socket");
 		(void)strlcpy(repbuffer, "lost connection to socket", sizeof repbuffer);
 		ret = SM_PERM;
 		goto err;
@@ -105,7 +105,7 @@ table_socketmap_query(const char *name, const char *key)
 		buf[len - 1] = '\0';
 
 	if (strlcpy(repbuffer, buf, sizeof repbuffer) >= sizeof repbuffer) {
-		log_warnx("warn: table-socketmap: socketmap reply too large (>%zu bytes)",
+		log_warnx("warn: socketmap reply too large (>%zu bytes)",
 			sizeof repbuffer);
 		(void)strlcpy(repbuffer, "socketmap reply too large", sizeof repbuffer);
 		ret = SM_PERM;
@@ -164,11 +164,11 @@ table_socketmap_lookup(int service, struct dict *params, const char *key, char *
 	if (rep == SM_NOTFOUND)
 		return 0;
 	if (rep != SM_OK) {
-		log_warnx("warn: table-socketmap: %s", repbuffer);
+		log_warnx("warn: %s", repbuffer);
 		return -1;
 	}
 	if (strlcpy(dst, repbuffer, sz) >= sz) {
-		log_warnx("warn: table-socketmap: result too large");
+		log_warnx("warn: result too large");
 		return -1;
 	}
 
@@ -184,7 +184,7 @@ table_socketmap_lookup(int service, struct dict *params, const char *key, char *
 	case K_ADDRNAME:
 		break;
 	default:
-		log_warnx("warn: table-socketmap: unknown service %d", service);
+		log_warnx("warn: unknown service %d", service);
 		r = -1;
 	}
 

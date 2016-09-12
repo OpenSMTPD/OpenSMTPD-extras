@@ -60,7 +60,7 @@ static int
 table_sqlite_getconfstr(const char *key, const char *value, char **var)
 {
 	if (*var) {
-		log_warnx("warn: table-sqlite: duplicate %s %s", key, value);
+		log_warnx("warn: duplicate %s %s", key, value);
 		free(*var);
 	}
 	if ((*var = strdup(value)) == NULL) {
@@ -76,12 +76,11 @@ table_sqlite_prepare_stmt(sqlite3 *_db, const char *query, int ncols)
 	sqlite3_stmt	*stmt;
 
 	if (sqlite3_prepare_v2(_db, query, -1, &stmt, 0) != SQLITE_OK) {
-		log_warnx("warn: table-sqlite: sqlite3_prepare_v2: %s",
-		    sqlite3_errmsg(_db));
+		log_warnx("warn: sqlite3_prepare_v2: %s", sqlite3_errmsg(_db));
 		goto end;
 	}
 	if (sqlite3_column_count(stmt) != ncols) {
-		log_warnx("warn: table-sqlite: columns: invalid columns count for query: %s", query);
+		log_warnx("warn: columns: invalid columns count for query: %s", query);
 		goto end;
 	}
 
@@ -135,7 +134,7 @@ table_sqlite_update(void)
 
 	/* parse configuration */
 	if ((fp = fopen(config, "r")) == NULL) {
-		log_warn("warn: table-sqlite: \"%s\"", config);
+		log_warn("warn: \"%s\"", config);
 		return 0;
 	}
 	while ((flen = getline(&buf, &sz, fp)) != -1) {
@@ -159,7 +158,7 @@ table_sqlite_update(void)
 		}
 
 		if (value == NULL) {
-			log_warnx("warn: table-sqlite: missing value for key %s", key);
+			log_warnx("warn: missing value for key %s", key);
 			continue;
 		}
 
@@ -177,7 +176,7 @@ table_sqlite_update(void)
 			e = NULL;
 			ll = strtonum(value, 0, INT_MAX, &e);
 			if (e) {
-				log_warnx("warn: table-sqlite: bad value for %s: %s", key, e);
+				log_warnx("warn: bad value for %s: %s", key, e);
 				goto end;
 			}
 			_source_expire = ll;
@@ -187,7 +186,7 @@ table_sqlite_update(void)
 			e = NULL;
 			ll = strtonum(value, 0, INT_MAX, &e);
 			if (e) {
-				log_warnx("warn: table-sqlite: bad value for %s: %s", key, e);
+				log_warnx("warn: bad value for %s: %s", key, e);
 				goto end;
 			}
 			_source_refresh = ll;
@@ -198,12 +197,12 @@ table_sqlite_update(void)
 			if (!strcmp(qspec[i].name, key))
 				break;
 		if (i == SQL_MAX) {
-			log_warnx("warn: table-sqlite: bogus key %s", key);
+			log_warnx("warn: bogus key %s", key);
 			continue;
 		}
 
 		if (queries[i]) {
-			log_warnx("warn: table-sqlite: duplicate key %s", key);
+			log_warnx("warn: duplicate key %s", key);
 			continue;
 		}
 
@@ -217,8 +216,7 @@ table_sqlite_update(void)
 	log_debug("debug: opening %s", dbpath);
 
 	if (sqlite3_open(dbpath, &_db) != SQLITE_OK) {
-		log_warnx("warn: table-sqlite: open: %s",
-		    sqlite3_errmsg(_db));
+		log_warnx("warn: open: %s", sqlite3_errmsg(_db));
 		goto end;
 	}
 
@@ -291,7 +289,7 @@ table_sqlite_query(const char *key, int service)
 		return NULL;
 
 	if (sqlite3_bind_text(stmt, 1, key, strlen(key), NULL) != SQLITE_OK) {
-		log_warnx("warn: table-sqlite: sqlite3_bind_text: %s",
+		log_warnx("warn: sqlite3_bind_text: %s",
 		    sqlite3_errmsg(db));
 		return NULL;
 	}
@@ -339,8 +337,7 @@ table_sqlite_lookup(int service, struct dict *params, const char *key, char *dst
 	}
 
 	if (s != SQLITE_ROW) {
-		log_warnx("warn: table-sqlite: sqlite3_step: %s",
-		    sqlite3_errmsg(db));
+		log_warnx("warn: sqlite3_step: %s", sqlite3_errmsg(db));
 		sqlite3_reset(stmt);
 		return -1;
 	}
@@ -353,27 +350,26 @@ table_sqlite_lookup(int service, struct dict *params, const char *key, char *dst
 		do {
 			value = sqlite3_column_text(stmt, 0);
 			if (dst[0] && strlcat(dst, ", ", sz) >= sz) {
-				log_warnx("warn: table-sqlite: result too large");
+				log_warnx("warn: result too large");
 				r = -1;
 				break;
 			}
 			if (strlcat(dst, value, sz) >= sz) {
-				log_warnx("warn: table-sqlite: result too large");
+				log_warnx("warn: result too large");
 				r = -1;
 				break;
 			}
 			s = sqlite3_step(stmt);
 		} while (s == SQLITE_ROW);
 		if (s !=  SQLITE_ROW && s != SQLITE_DONE) {
-			log_warnx("warn: table-sqlite: sqlite3_step: %s",
-			    sqlite3_errmsg(db));
+			log_warnx("warn: sqlite3_step: %s", sqlite3_errmsg(db));
 			r = -1;
 		}
 		break;
 	case K_CREDENTIALS:
 		if (snprintf(dst, sz, "%s:%s", sqlite3_column_text(stmt, 0),
 		    sqlite3_column_text(stmt, 1)) >= (ssize_t)sz) {
-			log_warnx("warn: table-sqlite: result too large");
+			log_warnx("warn: result too large");
 			r = -1;
 		}
 		break;
@@ -381,7 +377,7 @@ table_sqlite_lookup(int service, struct dict *params, const char *key, char *dst
 		if (snprintf(dst, sz, "%d:%d:%s", sqlite3_column_int(stmt, 0),
 		    sqlite3_column_int(stmt, 1),
 		    sqlite3_column_text(stmt, 2)) >= (ssize_t)sz) {
-			log_warnx("warn: table-sqlite: result too large");
+			log_warnx("warn: result too large");
 			r = -1;
 		}
 		break;
@@ -391,12 +387,12 @@ table_sqlite_lookup(int service, struct dict *params, const char *key, char *dst
 	case K_MAILADDR:
 	case K_ADDRNAME:
 		if (strlcpy(dst, sqlite3_column_text(stmt, 0), sz) >= sz) {
-			log_warnx("warn: table-sqlite: result too large");
+			log_warnx("warn: result too large");
 			r = -1;
 		}
 		break;
 	default:
-		log_warnx("warn: table-sqlite: unknown service %d", service);
+		log_warnx("warn: unknown service %d", service);
 		r = -1;
 	}
 
@@ -428,8 +424,7 @@ table_sqlite_fetch(int service, struct dict *params, char *dst, size_t sz)
 		dict_set(&sources, sqlite3_column_text(stmt_fetch_source, 0), NULL);
 
 	if (s != SQLITE_DONE)
-		log_warnx("warn: table-sqlite: sqlite3_step: %s",
-		    sqlite3_errmsg(db));
+		log_warnx("warn: sqlite3_step: %s", sqlite3_errmsg(db));
 
 	sqlite3_reset(stmt_fetch_source);
 
