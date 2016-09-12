@@ -1184,7 +1184,7 @@ SPLAY_GENERATE(prioqtree, rq_envelope, t_entry, rq_envelope_cmp);
 int
 main(int argc, char **argv)
 {
-	int	ch;
+	int ch;
 
 	log_init(1);
 	log_verbose(~0);

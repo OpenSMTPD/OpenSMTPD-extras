@@ -507,10 +507,9 @@ static PyMethodDef py_methods[] = {
 int
 main(int argc, char **argv)
 {
-	int		 ch;
-	char		*path;
-	char		*buf;
-	PyObject	*self, *code, *module;
+	int ch;
+	char *path, *buf;
+	PyObject *self, *code, *module;
 
 	log_init(1);
 

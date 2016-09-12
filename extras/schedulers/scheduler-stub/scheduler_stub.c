@@ -117,7 +117,7 @@ scheduler_stub_resume(uint64_t evpid)
 int
 main(int argc, char **argv)
 {
-	int	ch;
+	int ch;
 
 	log_init(1);
 

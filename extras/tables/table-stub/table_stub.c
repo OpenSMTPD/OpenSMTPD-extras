@@ -48,7 +48,7 @@ table_stub_fetch(int service, struct dict *params, char *dst, size_t sz)
 int
 main(int argc, char **argv)
 {
-	int	ch;
+	int ch;
 
 	log_init(1);
 

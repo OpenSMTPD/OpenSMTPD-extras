@@ -122,7 +122,7 @@ queue_null_init(int server)
 int
 main(int argc, char **argv)
 {
-	int	ch;
+	int ch;
 
 	log_init(1);
 
