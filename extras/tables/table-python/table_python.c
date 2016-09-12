@@ -61,12 +61,10 @@ dispatch(PyObject *handler, PyObject *args)
 static PyObject *
 dict_to_py(struct dict *dict)
 {
-	PyObject	*o, *s;
+	PyObject *o = PyDict_New(), *s;
 	const char *key;
 	char *value;
 	void *iter;
-
-	o = PyDict_New();
 
 	iter = NULL;
 	while (dict_iter(dict, &iter, &key, (void **)&value)) {
