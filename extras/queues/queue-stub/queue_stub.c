@@ -133,7 +133,6 @@ main(int argc, char **argv)
 	argv += optind;
 
 	queue_stub_init(1);
-
 	queue_api_dispatch();
 
 	return 0;

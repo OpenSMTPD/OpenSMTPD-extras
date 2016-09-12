@@ -76,7 +76,6 @@ dict_to_py(struct dict *dict)
 		if (PyDict_SetItemString(o, key, s) == -1)
 			goto fail;
 	}
-
 	return o;
 
     fail:
@@ -84,7 +83,6 @@ dict_to_py(struct dict *dict)
 		Py_DECREF(o);
 	if (s)
 		Py_DECREF(s);
-
 	return NULL;
 }
 
@@ -129,7 +127,6 @@ table_python_check(int service, struct dict *params, const char *key)
 
 	r = PyObject_IsTrue(ret);
 	Py_DECREF(ret);
-
 	return r;
 }
 
@@ -153,7 +150,6 @@ table_python_lookup(int service, struct dict *params, const char *key, char *buf
 
 	if ((ret = dispatch(py_on_lookup, args)) == NULL)
 		return -1;
-
 	if (ret == Py_None)
 		r = 0;
 	else if (PyString_CheckExact(ret)) {
@@ -169,7 +165,6 @@ table_python_lookup(int service, struct dict *params, const char *key, char *buf
 	}
 
 	Py_DECREF(ret);
-
 	return r;
 }
 
@@ -179,7 +174,7 @@ table_python_fetch(int service, struct dict *params, char *buf, size_t sz)
 	PyObject *dict, *args, *ret;
 	char	 *s;
 	int	  r;
-	
+
 	if (py_on_fetch == NULL)
 		return -1;
 
@@ -213,7 +208,6 @@ table_python_fetch(int service, struct dict *params, char *buf, size_t sz)
 	}
 
 	Py_DECREF(ret);
-
 	return r;
 }
 

@@ -163,7 +163,6 @@ ldap_connect(const char *addr)
 		close(fd);
 		fd = -1;
 	}
-
 	return NULL;
 }
 
@@ -480,7 +479,6 @@ end:
 	for (i = 0; i < q->attrn; ++i)
 		if (res[i])
 			aldap_free_attr(res[i]);
-
 	return ret;
 }
 

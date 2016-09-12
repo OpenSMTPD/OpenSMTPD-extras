@@ -70,7 +70,6 @@ queue_ram_message_create(uint32_t *msgid)
 	} while (tree_check(&messages, *msgid));
 
 	tree_xset(&messages, *msgid, msg);
-
 	return 1;
 }
 
@@ -117,7 +116,6 @@ queue_ram_message_commit(uint32_t msgid, const char *path)
 		stat_increment("queue.ram.message.size", msg->len);
 	}
 	fclose(f);
-
 	return ret;
 }
 

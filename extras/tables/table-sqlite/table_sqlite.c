@@ -264,10 +264,8 @@ end:
 	}
 	if (_db)
 		sqlite3_close(_db);
-
 	free(dbpath);
 	free(_query_fetch_source);
-
 	free(buf);
 	fclose(fp);
 	return ret;
@@ -293,7 +291,6 @@ table_sqlite_query(const char *key, int service)
 		    sqlite3_errmsg(db));
 		return NULL;
 	}
-
 	return stmt;
 }
 
@@ -315,7 +312,6 @@ table_sqlite_check(int service, struct dict *params, const char *key)
 
 	if (r == SQLITE_DONE)
 		return 0;
-
 	return -1;
 }
 
@@ -442,7 +438,6 @@ fetch:
 
 	if (strlcpy(dst, k, sz) >= sz)
 		return -1;
-
 	return 1;
 }
 

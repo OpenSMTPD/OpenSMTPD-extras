@@ -98,13 +98,11 @@ table_mysql_prepare_stmt(MYSQL *_db, const char *query, unsigned long nparams,
 		log_warnx("warn: mysql_stmt_bind_results: %s", mysql_stmt_error(stmt));
 		goto end;
 	}
-
 	return stmt;
 
     end:
 	if (stmt)
 		mysql_stmt_close(stmt);
-
 	return NULL;
 }
 
@@ -323,7 +321,6 @@ table_mysql_update(void)
 
 	config_free(config);
 	config = c;
-
 	return 1;
 }
 
@@ -424,7 +421,7 @@ table_mysql_lookup(int service, struct dict *params, const char *key, char *dst,
 		r = 0;
 		goto end;
 	}
-	
+
 	if (s != 0) {
 		r = -1;
 		log_warnx("warn: mysql_stmt_fetch: %s", mysql_stmt_error(stmt));
@@ -432,7 +429,6 @@ table_mysql_lookup(int service, struct dict *params, const char *key, char *dst,
 	}
 
 	r = 1;
-
 	switch(service) {
 	case K_ALIAS:
 		memset(dst, 0, sz);
@@ -556,7 +552,6 @@ fetch:
 
 	if (strlcpy(dst, k, sz) >= sz)
 		return -1;
-
 	return 1;
 }
 

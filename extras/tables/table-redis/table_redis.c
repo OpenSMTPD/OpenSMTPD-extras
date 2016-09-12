@@ -323,7 +323,6 @@ config_free(struct config *config)
 
 	while (dict_poproot(&config->conf, &value))
 		free(value);
-
 	free(config);
 }
 
@@ -387,7 +386,6 @@ retry:
 
 		return NULL;
 	}
-
 	return res;
 }
 
@@ -426,7 +424,6 @@ table_redis_check(int service, struct dict *params, const char *key)
 	}
 
 	freeReplyObject(reply);
-
 	return r;
 }
 
