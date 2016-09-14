@@ -177,9 +177,9 @@ config_connect(struct config *config)
 
 	redisReply	*res = NULL;
 
-	log_debug("debug: table-redis: (re)connecting");
+	log_debug("debug: (re)connecting");
 
-	/* Disconnect first, if needed */
+	/* disconnect first, if needed */
 	config_reset(config);
 
 	if ((value = dict_get(&config->conf, "master")))
