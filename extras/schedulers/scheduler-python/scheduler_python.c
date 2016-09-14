@@ -319,6 +319,7 @@ scheduler_python_batch(int mask, int *delay, size_t *count, uint64_t *evpids, in
 	Py_DECREF(py_ret);
 
 	check_err("batch");
+
 	return 1;
 }
 
@@ -347,6 +348,7 @@ scheduler_python_messages(uint32_t msgid, uint32_t *dst, size_t sz)
 	Py_DECREF(py_ret);
 
 	check_err("messages");
+
 	return r;
 }
 
@@ -394,6 +396,7 @@ scheduler_python_envelopes(uint64_t evpid, struct evpstate *dst, size_t sz)
 	Py_DECREF(py_ret);
 
 	check_err("envelopes");
+
 	return r;
 }
 

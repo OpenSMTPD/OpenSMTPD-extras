@@ -167,6 +167,7 @@ duration_to_text(time_t t)
 		(void)snprintf(buf, sizeof buf, "%ds", s);
 		(void)strlcat(dst, buf, sizeof dst);
 	}
+
 	return dst;
 }
 
@@ -188,6 +189,7 @@ scheduler_next(time_t t0, time_t base, uint32_t step)
 	/* XXX be more efficient */
 	while ((t = scheduler_backoff(t0, base, step)) <= currtime)
 		step++;
+
 	return t;
 }
 
@@ -199,6 +201,7 @@ scheduler_ram_init(void)
 	tree_init(&holdqs[D_MDA]);
 	tree_init(&holdqs[D_MTA]);
 	tree_init(&holdqs[D_BOUNCE]);
+
 	return 1;
 }
 
@@ -249,6 +252,7 @@ scheduler_ram_insert(struct scheduler_info *si)
 	TAILQ_INSERT_TAIL(&update->q_pending, envelope, entry);
 
 	si->nexttry = envelope->sched;
+
 	return 1;
 }
 
@@ -275,6 +279,7 @@ scheduler_ram_commit(uint32_t msgid)
 
 	free(update);
 	stat_decrement("scheduler.ramqueue.update", 1);
+
 	return r;
 }
 
@@ -298,6 +303,7 @@ scheduler_ram_rollback(uint32_t msgid)
 
 	free(update);
 	stat_decrement("scheduler.ramqueue.update", 1);
+
 	return r;
 }
 
@@ -339,6 +345,7 @@ scheduler_ram_update(struct scheduler_info *si)
 		sorted_insert(&ramqueue, evp);
 
 	si->nexttry = evp->sched;
+
 	return 1;
 }
 
@@ -362,6 +369,7 @@ scheduler_ram_delete(uint64_t evpid)
 	TAILQ_REMOVE(&ramqueue.q_inflight, evp, entry);
 
 	rq_envelope_delete(&ramqueue, evp);
+
 	return 1;
 }
 
@@ -422,6 +430,7 @@ scheduler_ram_hold(uint64_t evpid, uint64_t holdq)
 	TAILQ_INSERT_HEAD(&hq->q, evp, entry);
 	hq->count += 1;
 	stat_increment("scheduler.ramqueue.hold", 1);
+
 	return 1;
 }
 
@@ -469,6 +478,7 @@ scheduler_ram_release(int type, uint64_t holdq, int n)
 		stat_decrement("scheduler.ramqueue.holdq", 1);
 	}
 	stat_decrement("scheduler.ramqueue.hold", i);
+
 	return i;
 }
 
@@ -655,6 +665,7 @@ scheduler_ram_envelopes(uint64_t from, struct evpstate *dst, size_t size)
 
 		n++;
 	}
+
 	return n;
 }
 
@@ -896,6 +907,7 @@ rq_envelope_list(struct rq_queue *rq, struct rq_envelope *evp)
 	switch (evp->state) {
 	case RQ_EVPSTATE_PENDING:
 		return &rq->q_pending;
+
 	case RQ_EVPSTATE_SCHEDULED:
 		if (evp->flags & RQ_ENVELOPE_EXPIRED)
 			return &rq->q_expired;
@@ -997,6 +1009,7 @@ rq_envelope_remove(struct rq_queue *rq, struct rq_envelope *evp)
 	evp->state = RQ_EVPSTATE_SCHEDULED;
 	evp->flags |= RQ_ENVELOPE_REMOVED;
 	evp->t_scheduled = currtime;
+
 	return 1;
 }
 
@@ -1026,7 +1039,9 @@ rq_envelope_suspend(struct rq_queue *rq, struct rq_envelope *evp)
 		if (evl == &rq->q_pending)
 			SPLAY_REMOVE(prioqtree, &rq->q_priotree, evp);
 	}
+
 	evp->flags |= RQ_ENVELOPE_SUSPEND;
+
 	return 1;
 }
 
@@ -1045,7 +1060,9 @@ rq_envelope_resume(struct rq_queue *rq, struct rq_envelope *evp)
 		else
 			TAILQ_INSERT_TAIL(evl, evp, entry);
 	}
+
 	evp->flags &= ~RQ_ENVELOPE_SUSPEND;
+
 	return 1;
 }
 
@@ -1120,6 +1137,7 @@ rq_envelope_to_text(struct rq_envelope *e)
 		(void)strlcat(buf, ",suspended", sizeof buf);
 
 	(void)strlcat(buf, "]", sizeof buf);
+
 	return buf;
 }
 
@@ -1154,8 +1172,10 @@ rq_envelope_cmp(struct rq_envelope *e1, struct rq_envelope *e2)
 	ref2 = (e2->sched < e2->expire) ? e2->sched : e2->expire;
 	if (ref1 != ref2)
 		return (ref1 < ref2) ? -1 : 1;
+
 	if (e1->evpid != e2->evpid)
 		return (e1->evpid < e2->evpid) ? -1 : 1;
+
 	return 0;
 }
 

@@ -85,6 +85,7 @@ table_postgres_prepare_stmt(PGconn *_db, const char *query, int nparams,
 		stmt = NULL;
 	}
 	PQclear(res);
+
 	return stmt;
 }
 
@@ -296,6 +297,7 @@ table_postgres_update(void)
 
 	config_free(config);
 	config = c;
+
 	return 1;
 }
 
@@ -333,6 +335,7 @@ retry:
 		PQclear(res);
 		return NULL;
 	}
+
 	return res;
 }
 
@@ -352,6 +355,7 @@ table_postgres_check(int service, struct dict *params, const char *key)
 	r = (PQntuples(res) == 0) ? 0 : 1;
 
 	PQclear(res);
+
 	return r;
 }
 
@@ -483,8 +487,10 @@ fetch:
 		if (!dict_iter(&config->sources, &config->source_iter, &k, (void **)NULL))
 			return 0;
 	}
+
 	if (strlcpy(dst, k, sz) >= sz)
 		return -1;
+
 	return 1;
 }
 

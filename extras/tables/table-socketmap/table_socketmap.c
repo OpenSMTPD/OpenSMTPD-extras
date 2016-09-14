@@ -72,6 +72,7 @@ table_socketmap_connect(const char *s)
 		log_warn("warn: fdopen");
 		goto err;
 	}
+
 	return 1;
 
 err:
@@ -186,6 +187,7 @@ table_socketmap_lookup(int service, struct dict *params, const char *key, char *
 		log_warnx("warn: unknown service %d", service);
 		r = -1;
 	}
+
 	return r;
 }
 
