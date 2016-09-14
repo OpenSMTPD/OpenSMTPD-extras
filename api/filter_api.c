@@ -278,34 +278,22 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 			break;
 		case EVENT_DISCONNECT:
 			filter_dispatch_disconnect(id);
-			s = tree_xget(&sessions, id);
+			s = tree_xpop(&sessions, id);
 			if (fi.cb.session_free && s->usession)
 				fi.cb.session_free(s->usession);
-			if (s->data_buffer)
-				data_buffered_release(s);
-			s = tree_xpop(&sessions, id);
 			free(s);
 			break;
 		case EVENT_RESET:
 			filter_dispatch_reset(id);
-			s = tree_xget(&sessions, id);
-			if (s->data_buffer)
-				data_buffered_release(s);
 			break;
 		case EVENT_TX_BEGIN:
 			filter_dispatch_tx_begin(id);
 			break;
 		case EVENT_TX_COMMIT:
 			filter_dispatch_tx_commit(id);
-			s = tree_xget(&sessions, id);
-			if (s->data_buffer)
-				data_buffered_release(s);
 			break;
 		case EVENT_TX_ROLLBACK:
 			filter_dispatch_tx_rollback(id);
-			s = tree_xget(&sessions, id);
-			if (s->data_buffer)
-				data_buffered_release(s);
 			break;
 		default:
 			log_warnx("warn: filter-api:%s bad event %d", filter_name, type);
@@ -347,12 +335,6 @@ filter_dispatch(struct mproc *p, struct imsg *imsg)
 			break;
 		case QUERY_DATA:
 			m_end(&m);
-
-			if (fi.data_buffered) {
-				s = tree_xget(&sessions, id);
-				data_buffered_setup(s);
-			}
-
 			filter_register_query(id, qid, type);
 			filter_dispatch_data(id);
 			break;
@@ -529,6 +511,9 @@ filter_dispatch_tx_commit(uint64_t id)
 		fi.cb.tx_free(s->utx);
 		s->utx = NULL;
 	}
+
+	if (s->data_buffer)
+		data_buffered_release(s);
 }
 
 static void
@@ -553,6 +538,9 @@ filter_dispatch_tx_rollback(uint64_t id)
 		fi.cb.tx_free(s->utx);
 		s->utx = NULL;
 	}
+
+	if (s->data_buffer)
+		data_buffered_release(s);
 }
 
 static void
@@ -574,6 +562,14 @@ filter_dispatch_msg_line(uint64_t id, const char *data)
 static void
 filter_dispatch_msg_start(uint64_t id)
 {
+
+	struct filter_session *s;
+
+	if (fi.data_buffered) {
+		s = tree_xget(&sessions, id);
+		data_buffered_setup(s);
+	}
+
 	if (fi.cb.msg_start)
 		fi.cb.msg_start(id);
 }
