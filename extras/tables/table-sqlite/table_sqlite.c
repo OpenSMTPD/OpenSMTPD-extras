@@ -106,19 +106,31 @@ table_sqlite_update(void)
 		{ "query_mailaddr",	1 },
 		{ "query_addrname",	1 },
 	};
-	sqlite3 *_db = NULL;
-	sqlite3_stmt *_statements[SQL_MAX], *_stmt_fetch_source = NULL;
-	char *_query_fetch_source = NULL, *queries[SQL_MAX];
-	ssize_t flen;
-	size_t sz = 0, _source_refresh = DEFAULT_REFRESH;
-	int _source_expire = DEFAULT_EXPIRE, i, ret = 0;
-	FILE *fp;
-	char *key, *value, *buf = NULL, *dbpath = NULL;
-	const char *e;
-	long long ll;
+	sqlite3		*_db;
+	sqlite3_stmt	*_statements[SQL_MAX];
+	sqlite3_stmt	*_stmt_fetch_source;
+	char		*_query_fetch_source;
+	char		*queries[SQL_MAX];
+	ssize_t		 flen;
+	size_t		 sz = 0, _source_refresh;
+	int		 _source_expire;
+	FILE		*fp;
+	char		*key, *value, *buf = NULL, *dbpath;
+	const char	*e;
+	int		 i, ret;
+	long long	 ll;
 
+	dbpath = NULL;
+	_db = NULL;
 	memset(queries, 0, sizeof(queries));
 	memset(_statements, 0, sizeof(_statements));
+	_query_fetch_source = NULL;
+	_stmt_fetch_source = NULL;
+
+	_source_refresh = DEFAULT_REFRESH;
+	_source_expire = DEFAULT_EXPIRE;
+
+	ret = 0;
 
 	/* parse configuration */
 	if ((fp = fopen(config, "r")) == NULL) {

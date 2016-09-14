@@ -160,17 +160,26 @@ config_connect(struct config *config)
 		{ "query_mailaddr",	"GET mailaddr:%s" },
 		{ "query_addrname",	"GET addrname:%s" },
 	};
-	size_t i;
-	char *master = "127.0.0.1", *slave = "NULL", *password = NULL;
-	int master_port = 6379, slave_port = 6380, database = 0;
-	char *q, *value;
-	const char *e = NULL;
-	long long ll;
-	redisReply *res = NULL;
+	size_t	 i;
 
-	log_debug("debug: (re)connecting");
+	char	*master = "127.0.0.1";
+	int	master_port = 6379;
+	char	*slave = "NULL";
+	int	slave_port = 6380;
+	char	*password = NULL;
+	int	database = 0;
 
-	/* disconnect first, if needed */
+	char	*q;
+
+	char		*value;
+	const char	*e;
+	long long	 ll;
+
+	redisReply	*res = NULL;
+
+	log_debug("debug: table-redis: (re)connecting");
+
+	/* Disconnect first, if needed */
 	config_reset(config);
 
 	if ((value = dict_get(&config->conf, "master")))
@@ -179,6 +188,7 @@ config_connect(struct config *config)
 		slave = value;
 
 	if ((value = dict_get(&config->conf, "master_port"))) {
+		e = NULL;
 		ll = strtonum(value, 0, 65535, &e);
 		if (e) {
 			log_warnx("warn: bad value for master_port: %s", e);
