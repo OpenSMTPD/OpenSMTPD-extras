@@ -177,7 +177,7 @@ table_python_fetch(int service, struct dict *params, char *buf, size_t sz)
 	PyObject *dict, *args, *ret;
 	char	 *s;
 	int	  r;
-	
+
 	if (py_on_fetch == NULL)
 		return -1;
 

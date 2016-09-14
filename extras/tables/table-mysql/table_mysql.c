@@ -424,7 +424,7 @@ table_mysql_lookup(int service, struct dict *params, const char *key, char *dst,
 		r = 0;
 		goto end;
 	}
-	
+
 	if (s != 0) {
 		r = -1;
 		log_warnx("warn: mysql_stmt_fetch: %s", mysql_stmt_error(stmt));
