@@ -1,0 +1,214 @@
+.\" 
+.\" Copyright (c) 2013 Eric Faurot <eric@openbsd.org>
+.\" 
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\" 
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\" 
+.Dd $Mdocdate: September 30 2016 $
+.Dt TABLE_POSTGRESQL 5
+.Os
+.Sh NAME
+.Nm table_postgresql
+.Nd format description for smtpd PostgreSQL tables
+.Sh DESCRIPTION
+This manual page documents the file format of PostgreSQL tables used
+by the
+.Xr smtpd 8
+mail daemon.
+.Pp
+The format described here applies to tables as defined in
+.Xr smtpd.conf 5 .
+.Sh POSTGRESQL TABLE
+A postgresql table allows the storing of usernames, passwords, aliases, and domains
+in a format that is shareable across various machines that support
+.Xr postgres 1 .
+.Pp
+The table is used by
+.Xr smtpd 8
+when authenticating a user, when user information such as user-id and/or
+home directory is required for a delivery, when a domain lookup may be required,
+and/or when looking for an alias.
+.Pp
+A PostgreSQL table consists of one or more
+.Xr postgresql 1
+databases with one or more tables.
+.Pp
+If the table is used for authentication, the password should be
+encrypted using the
+.Xr crypt 3
+function. Such passwords can be generated using the
+.Xr encrypt 1
+utility or
+.Xr smtpctl 8
+encrypt command.
+
+.Sh POSTGRESQL TABLE CONFIG FILE
+The following configuration options are available:
+.Pp
+.Bl -tag -width Ds
+.It Xo
+.Ic conninfo
+.Cm host Ns = Ns Ar 'host'
+.Cm user Ns = Ns Ar 'user'
+.Cm password Ns = Ns Ar 'password'
+.Cm dbname Ns = Ns Ar 'dbname'
+.Xc
+Connection info needed to connect to the PostgreSQL database.
+For example:
+.Bd -literal -offset indent
+.Ed
+.Ic conninfo
+.Cm host Ns = Ns Ar 'db.example.com'
+.Cm user Ns = Ns Ar 'maildba'
+.Cm password Ns = Ns Ar 'OpenSMTPDRules!'
+.Cm dbname Ns = Ns Ar 'opensmtpdb'
+.Xc
+.Pp
+
+.It Xo
+.Ic query_alias
+.Ar SQL statement
+.Xc
+This is used to provide a query to look up aliases. The question mark
+is replaced with the appropriate data. For alias it is the left hand side of
+the SMTP address. This expects one VARCHAR to be returned with the user name
+the alias resolves to.
+.Pp
+
+.It Xo
+.Ic query_credentials
+.Ar SQL statement
+.Xc
+This is used to provide a query for looking up user credentials. The question
+mark is replaced with the appropriate data. For credentials it is the left
+hand side of the SMTP address. The query expects that there are two VARCHARS
+returned, one with a user name and one with a password in
+.Xr crypt 3
+format.
+.Pp
+
+.It Xo
+.Ic query_domain
+.Ar SQL statement
+.Xc
+This is used to provide a query for looking up a domain. The question mark
+is replaced with the appropriate data. For the domain it would be the
+right hand side of the SMTP address. This expects one VARCHAR to be returned
+with a matching domain name.
+.El
+
+A generic SQL statement would be something like:
+.Bd -literal -offset indent
+query_ SELECT value FROM table WHERE key=$1;
+.Ed
+
+.Sh EXAMPLES
+.Ss GENERIC EXAMPLE
+Example based on the OpenSMTPD FAQ: Building a Mail Server
+The filtering part is excluded in this example.
+
+The configuration below is for a medium-size mail server which handles
+multiple domains with multiple virtual users and is based on several
+assumptions. One is that a single system user named vmail is used for all
+virtual users. This user needs to be created:
+
+.Bd -literal
+# useradd -g =uid -c "Virtual Mail" -d /var/vmail -s /sbin/nologin vmail
+# mkdir /var/vmail
+# chown vmail:vmail /var/vmail
+.Ed
+
+.Ic Pa PostgreSQL schema
+.Bd -literal -compact
+CREATE TABLE domains (
+  id SERIAL,
+  domain VARCHAR(255) NOT NULL DEFAULT ''
+);
+CREATE TABLE virtuals (
+    id SERIAL,
+    email VARCHAR(255) NOT NULL DEFAULT '',
+    destination VARCHAR(255) NOT NULL DEFAULT ''
+);
+CREATE TABLE credentials (
+    id SERIAL,
+    email VARCHAR(255) NOT NULL DEFAULT '',
+    password VARCHAR(255) NOT NULL DEFAULT ''
+);
+INSERT INTO domains VALUES (1, "example.com");
+INSERT INTO domains VALUES (2, "example.net");
+INSERT INTO domains VALUES (3, "example.org");
+
+INSERT INTO virtuals VALUES (1, "abuse@example.com", "bob@example.com");
+INSERT INTO virtuals VALUES (2, "postmaster@example.com", "bob@example.com");
+INSERT INTO virtuals VALUES (3, "webmaster@example.com", "bob@example.com");
+INSERT INTO virtuals VALUES (4, "bob@example.com", "vmail");
+INSERT INTO virtuals VALUES (5, "abuse@example.net", "alice@example.net");
+INSERT INTO virtuals VALUES (6, "postmaster@example.net", "alice@example.net");
+INSERT INTO virtuals VALUES (7, "webmaster@example.net", "alice@example.net");
+INSERT INTO virtuals VALUES (8, "alice@example.net", "vmail");
+
+INSERT INTO credentials VALUES (1, "bob@example.com", "$2b$08$ANGFKBL.BnDLL0bUl7I6aumTCLRJSQluSQLuueWRG.xceworWrUIu");
+INSERT INTO credentials VALUES (2, "alice@example.net", "$2b$08$AkHdB37kaj2NEoTcISHSYOCEBA5vyW1RcD8H1HG.XX0P/G1KIYwii");
+.Ed
+
+.Ic Pa /etc/mail/postgresql.conf
+.Bd -literal -compact
+conninfo host='db.example.com' user='maildba' password='OpenSMTPDRules!' dbname='opensmtpdb'
+query_alias SELECT destination FROM virtuals WHERE email=$1;
+query_credentials SELECT email, password FROM credentials WHERE email=$1;
+query_domain SELECT domain FROM domains WHERE domain=$1;
+.Ed
+
+.Ic Pa /etc/mail/smtpd.conf
+.Bd -literal -compact
+table domains postgres:/etc/mail/postgres.conf
+table virtuals postgres:/etc/mail/postgres.conf
+table credentials postgres:/etc/mail/postgres.conf
+listen on egress port 25 tls pki mail.example.com
+listen on egress port 587 tls-require pki mail.example.com auth <credentials>
+accept from any for domain <domains> virtual <virtuals> deliver to mbox
+.Ed
+
+.Ss MOVING FROM POSTFIX (& POSTFIXADMIN)
+.Ic Pa /etc/mail/postgres.conf
+.Bd -literal -compact
+conninfo host='db.example.com' user='postfix' password='PostfixOutOpenSMTPDin' dbname='postfix'
+query_alias SELECT destination FROM alias WHERE email=$1;
+query_credentials SELECT username, password FROM mailbox WHERE username=$1;
+query_domain SELECT domain FROM domain WHERE domain=$1;
+.Ed
+The rest of the config remains the same.
+
+.Sh FILES
+.Bl -tag -width "/etc/mail/postgres.conf" -compact
+.It Pa /etc/mail/postgres.conf
+Default
+.Xr table-postgresql 8
+configuration file.
+.El
+
+.Sh TODO
+Documenting the following query options:
+.Bd -literal -offset indent -compact
+.Ic query_netaddr
+.Ic query_userinfo
+.Ic query_source
+.Ic query_mailaddr
+.Ic query_addrname
+.Ed
+
+.Sh SEE ALSO
+.Xr smtpd.conf 5 ,
+.Xr smtpctl 8 ,
+.Xr smtpd 8 ,
+.Xr encrypt 1 ,
+.Xr crypt 3
