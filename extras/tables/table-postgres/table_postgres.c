@@ -89,6 +89,42 @@ table_postgres_prepare_stmt(PGconn *_db, const char *query, int nparams,
 	return stmt;
 }
 
+static void
+config_reset(struct config *conf)
+{
+	size_t	i;
+
+	for (i = 0; i < SQL_MAX; i++)
+		if (conf->statements[i]) {
+			free(conf->statements[i]);
+			conf->statements[i] = NULL;
+		}
+	if (conf->stmt_fetch_source) {
+		free(conf->stmt_fetch_source);
+		conf->stmt_fetch_source = NULL;
+	}
+	if (conf->db) {
+		PQfinish(conf->db);
+		conf->db = NULL;
+	}
+}
+
+static void
+config_free(struct config *conf)
+{
+	void	*value;
+
+	config_reset(conf);
+
+	while (dict_poproot(&conf->conf, &value))
+		free(value);
+
+	while (dict_poproot(&conf->sources, NULL))
+		;
+
+	free(conf);
+}
+
 static struct config *
 config_load(const char *path)
 {
@@ -185,26 +221,6 @@ end:
 	return NULL;
 }
 
-static void
-config_reset(struct config *conf)
-{
-	size_t	i;
-
-	for (i = 0; i < SQL_MAX; i++)
-		if (conf->statements[i]) {
-			free(conf->statements[i]);
-			conf->statements[i] = NULL;
-		}
-	if (conf->stmt_fetch_source) {
-		free(conf->stmt_fetch_source);
-		conf->stmt_fetch_source = NULL;
-	}
-	if (conf->db) {
-		PQfinish(conf->db);
-		conf->db = NULL;
-	}
-}
-
 static int
 config_connect(struct config *conf)
 {
@@ -265,22 +281,6 @@ config_connect(struct config *conf)
     end:
 	config_reset(conf);
 	return 0;
-}
-
-static void
-config_free(struct config *conf)
-{
-	void	*value;
-
-	config_reset(conf);
-
-	while (dict_poproot(&conf->conf, &value))
-		free(value);
-
-	while (dict_poproot(&conf->sources, NULL))
-		;
-
-	free(conf);
 }
 
 static int
