@@ -567,8 +567,8 @@ m_add_msgid(struct mproc *m, uint32_t v)
 void
 m_add_sockaddr(struct mproc *m, const struct sockaddr *sa)
 {
-	m_add_size(m, sa->sa_len);
-	m_add(m, sa, sa->sa_len);
+	m_add_size(m, SA_LEN(sa));
+	m_add(m, sa, SA_LEN(sa));
 }
 
 void
