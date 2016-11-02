@@ -16,6 +16,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#ifndef _SMTPD_DEFINES_H
+#define _SMTPD_DEFINES_H
+
 #ifndef nitems
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
 #endif
@@ -69,3 +72,5 @@ enum smtp_proc_type {
 #define PATH_SPOOL		"/var/spool/smtpd"
 
 #define TAG_CHAR	'+'	/* gilles+tag@ */
+
+#endif
