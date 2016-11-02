@@ -19,7 +19,9 @@
 #ifndef _RFC2822_H_
 #define	_RFC2822_H_
 
+#ifdef HAVE_STDINT_H
 #include <stdint.h>
+#endif
 
 #define	RFC2822_MAX_LINE_SIZE		4096
 
