@@ -408,7 +408,7 @@ filter_register_query(uint64_t id, uint64_t qid, int type)
 
 	s = tree_xget(&sessions, id);
 	if (s->qid) {
-		log_warnx("warn: filter-api:%s query already in progess",
+		log_warnx("warn: filter-api:%s query already in progress",
 		    filter_name);
 		fatalx("filter-api: exiting");
 	}
