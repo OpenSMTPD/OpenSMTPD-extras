@@ -71,8 +71,6 @@ static void		 config_reset(struct config *);
 static int		 config_connect(struct config *);
 static void		 config_free(struct config *);
 
-#define SQL_MAX_RESULT	5
-
 #define	DEFAULT_EXPIRE	60
 #define	DEFAULT_REFRESH	1000
 
