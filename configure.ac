@@ -643,6 +643,20 @@ AC_DEFINE_UNQUOTED([SMTPD_USER], ["$SMTPD_USER"],
 	[non-privileged user for privilege separation])
 AC_SUBST([SMTPD_USER])
 
+SMTPD_QUEUE_USER=_smtpq
+AC_ARG_WITH([queue-user-smtpd],
+    [  --with-queue-user-smtpd=user Specify non-privileged user for accessing the message queue with privilege separation (default=_smtpq)],
+    [
+        if test -n "$withval"  &&  test "x$withval" != "xno"  &&  \
+            test "x${withval}" != "xyes"; then
+            SMTPD_QUEUE_USER=$withval
+        fi
+    ]
+)
+AC_DEFINE_UNQUOTED([SMTPD_QUEUE_USER], ["$SMTPD_QUEUE_USER"],
+    [non-privileged user for accessing the message queue with privilege separation])
+AC_SUBST([SMTPD_QUEUE_USER])
+
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_MODE_T
 AC_TYPE_OFF_T
