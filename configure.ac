@@ -644,8 +644,8 @@ AC_DEFINE_UNQUOTED([SMTPD_USER], ["$SMTPD_USER"],
 AC_SUBST([SMTPD_USER])
 
 SMTPD_QUEUE_USER=_smtpq
-AC_ARG_WITH([queue-user-smtpd],
-    [  --with-queue-user-smtpd=user Specify non-privileged user for accessing the message queue with privilege separation (default=_smtpq)],
+AC_ARG_WITH([user-queue],
+    [  --with-user-queue=user Specify non-privileged user for accessing the message queue with privilege separation (default=_smtpq)],
     [
         if test -n "$withval"  &&  test "x$withval" != "xno"  &&  \
             test "x${withval}" != "xyes"; then
