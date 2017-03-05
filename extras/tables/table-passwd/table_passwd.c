@@ -218,7 +218,7 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc)
+	if (argc != 1)
 		fatalx("bogus argument(s)");
 
 	config = argv[0];
