@@ -13,24 +13,24 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\" 
-.Dd $Mdocdate: July 4 2016 $
-.Dt TABLE_MYSQL 5
+.Dd $Mdocdate: September 30 2016 $
+.Dt TABLE_POSTGRESQL 5
 .Os
 .Sh NAME
-.Nm table_mysql
-.Nd format description for smtpd MySQL or MariaDB tables
+.Nm table_postgresql
+.Nd format description for smtpd PostgreSQL tables
 .Sh DESCRIPTION
-This manual page documents the file format of MySQL or MariaDB tables used
+This manual page documents the file format of PostgreSQL tables used
 by the
 .Xr smtpd 8
 mail daemon.
 .Pp
 The format described here applies to tables as defined in
 .Xr smtpd.conf 5 .
-.Sh MYSQL TABLE
-A mysql table allows the storing of usernames, passwords, aliases, and domains
+.Sh POSTGRESQL TABLE
+A postgresql table allows the storing of usernames, passwords, aliases, and domains
 in a format that is shareable across various machines that support
-.Xr mysql 1 .
+.Xr postgres 1 .
 .Pp
 The table is used by
 .Xr smtpd 8
@@ -38,8 +38,8 @@ when authenticating a user, when user information such as user-id and/or
 home directory is required for a delivery, when a domain lookup may be required,
 and/or when looking for an alias.
 .Pp
-A MySQL table consists of one or more
-.Xr mysql 1
+A PostgreSQL table consists of one or more
+.Xr postgresql 1
 databases with one or more tables.
 .Pp
 If the table is used for authentication, the password should be
@@ -51,52 +51,27 @@ utility or
 .Xr smtpctl 8
 encrypt command.
 
-.Sh MYSQL TABLE CONFIG FILE
+.Sh POSTGRESQL TABLE CONFIG FILE
 The following configuration options are available:
 .Pp
 .Bl -tag -width Ds
 .It Xo
-.Ic host
-.Ar hostname
+.Ic conninfo
+.Cm host Ns = Ns Ar 'host'
+.Cm user Ns = Ns Ar 'user'
+.Cm password Ns = Ns Ar 'password'
+.Cm dbname Ns = Ns Ar 'dbname'
 .Xc
-This is the host running MySQL or MariaDB.
+Connection info needed to connect to the PostgreSQL database.
 For example:
 .Bd -literal -offset indent
-host db.example.com
 .Ed
-.Pp
-
-.It Xo
-.Ic username
-.Ar username
+.Ic conninfo
+.Cm host Ns = Ns Ar 'db.example.com'
+.Cm user Ns = Ns Ar 'maildba'
+.Cm password Ns = Ns Ar 'OpenSMTPDRules!'
+.Cm dbname Ns = Ns Ar 'opensmtpdb'
 .Xc
-The username required to talk to the MySQL or MariaDB database.
-For example:
-.Bd -literal -offset indent
-username maildba
-.Ed
-.Pp
-
-.It Xo
-.Ic password
-.Ar password
-.Xc
-The password required to talk to the MySQL or MariaDB database.
-For example:
-.Bd -literal -offset indent
-password OpenSMTPDRules!
-.Ed
-.Pp
-
-.It Xo
-.Ic database
-.Ar databse
-.Xc
-The name of the MySQL or MariaDB database.
-For example:
-.Bd -literal -offset indent
-databse opensmtpdb
-.Ed
 .Pp
 
 .It Xo
@@ -133,7 +108,7 @@ with a matching domain name.
 
 A generic SQL statement would be something like:
 .Bd -literal -offset indent
-query_ SELECT value FROM table WHERE key=?;
+query_ SELECT value FROM table WHERE key=$1;
 .Ed
 
 .Sh EXAMPLES
@@ -152,19 +127,19 @@ virtual users. This user needs to be created:
 # chown vmail:vmail /var/vmail
 .Ed
 
-.Ic Pa MySQL schema
+.Ic Pa PostgreSQL schema
 .Bd -literal -compact
 CREATE TABLE domains (
-  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  id SERIAL,
   domain VARCHAR(255) NOT NULL DEFAULT ''
 );
 CREATE TABLE virtuals (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL,
     email VARCHAR(255) NOT NULL DEFAULT '',
     destination VARCHAR(255) NOT NULL DEFAULT ''
 );
 CREATE TABLE credentials (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL,
     email VARCHAR(255) NOT NULL DEFAULT '',
     password VARCHAR(255) NOT NULL DEFAULT ''
 );
@@ -185,45 +160,39 @@ INSERT INTO credentials VALUES (1, "bob@example.com", "$2b$08$ANGFKBL.BnDLL0bUl7
 INSERT INTO credentials VALUES (2, "alice@example.net", "$2b$08$AkHdB37kaj2NEoTcISHSYOCEBA5vyW1RcD8H1HG.XX0P/G1KIYwii");
 .Ed
 
-.Ic Pa /etc/mail/mysql.conf
+.Ic Pa /etc/mail/postgresql.conf
 .Bd -literal -compact
-host db.example.com
-username maildba
-password OpenSMTPDRules!
-database opensmtpdb
-query_alias SELECT destination FROM virtuals WHERE email=?;
-query_credentials SELECT email, password FROM credentials WHERE email=?;
-query_domain SELECT domain FROM domains WHERE domain=?;
+conninfo host='db.example.com' user='maildba' password='OpenSMTPDRules!' dbname='opensmtpdb'
+query_alias SELECT destination FROM virtuals WHERE email=$1;
+query_credentials SELECT email, password FROM credentials WHERE email=$1;
+query_domain SELECT domain FROM domains WHERE domain=$1;
 .Ed
 
 .Ic Pa /etc/mail/smtpd.conf
 .Bd -literal -compact
-table domains mysql:/etc/mail/mysql.conf
-table virtuals mysql:/etc/mail/mysql.conf
-table credentials mysql:/etc/mail/mysql.conf
+table domains postgres:/etc/mail/postgres.conf
+table virtuals postgres:/etc/mail/postgres.conf
+table credentials postgres:/etc/mail/postgres.conf
 listen on egress port 25 tls pki mail.example.com
 listen on egress port 587 tls-require pki mail.example.com auth <credentials>
 accept from any for domain <domains> virtual <virtuals> deliver to mbox
 .Ed
 
 .Ss MOVING FROM POSTFIX (& POSTFIXADMIN)
-.Ic Pa /etc/mail/mysql.conf
+.Ic Pa /etc/mail/postgres.conf
 .Bd -literal -compact
-host db.example.com
-username postfix
-password PostfixOutOpenSMTPDin
-database postfix
-query_alias SELECT destination FROM alias WHERE email=?;
-query_credentials SELECT username, password FROM mailbox WHERE username=?;
-query_domain SELECT domain FROM domain WHERE domain=?;
+conninfo host='db.example.com' user='postfix' password='PostfixOutOpenSMTPDin' dbname='postfix'
+query_alias SELECT destination FROM alias WHERE email=$1;
+query_credentials SELECT username, password FROM mailbox WHERE username=$1;
+query_domain SELECT domain FROM domain WHERE domain=$1;
 .Ed
 The rest of the config remains the same.
 
 .Sh FILES
-.Bl -tag -width "/etc/mail/mysql.conf" -compact
-.It Pa /etc/mail/mysql.conf
+.Bl -tag -width "/etc/mail/postgres.conf" -compact
+.It Pa /etc/mail/postgres.conf
 Default
-.Xr table-mysql 8
+.Xr table-postgresql 8
 configuration file.
 .El
 

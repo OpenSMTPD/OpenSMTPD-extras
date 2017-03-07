@@ -324,8 +324,11 @@ retry:
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK) {
 		errfld = PQresultErrorField(res, PG_DIAG_SQLSTATE);
-		if (errfld[0] == '0' && errfld[1] == '8') {
-			log_warnx("warn: trying to reconnect after error: %s", PQerrorMessage(config->db));
+		/* PQresultErrorField can return NULL if the connection to the server
+		   suddenly closed (e.g. server restart) */
+		if (errfld == NULL || (errfld[0] == '0' && errfld[1] == '8')) {
+			log_warnx("warn: table-postgres: trying to reconnect after error: %s",
+			    PQerrorMessage(config->db));
 			PQclear(res);
 			if (config_connect(config))
 				goto retry;
