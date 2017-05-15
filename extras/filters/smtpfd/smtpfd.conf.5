@@ -1,0 +1,137 @@
+.\"	$OpenBSD$
+.\"
+.\" Copyright (c) 2005 Esben Norby <norby@openbsd.org>
+.\" Copyright (c) 2004 Claudio Jeker <claudio@openbsd.org>
+.\" Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
+.\" Copyright (c) 2002 Daniel Hartmeier <dhartmei@openbsd.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd $Mdocdate: March 11 2015 $
+.Dt NEWD.CONF 5
+.Os
+.Sh NAME
+.Nm newd.conf
+.Nd New Daemon configuration file
+.Sh DESCRIPTION
+The
+.Xr newd 8
+daemon is a skeleton daemon implementing a privileged separated daemon
+in accord with current
+.Ox
+practices.
+.Sh SECTIONS
+The
+.Nm
+config file is divided into three sections.
+.Bl -tag -width xxxx
+.It Sy Macros
+User-defined variables may be defined and used later, simplifying the
+configuration file.
+.It Sy Global Configuration
+Zero or more
+.Xr newd 8
+attibutes.
+.It Sy Groups
+Named lists of
+zero or more
+.Xr newd 8
+attributes.
+.El
+.Pp
+Additional configuration files can be included with the
+.Ic include
+keyword.
+.Sh MACROS
+Macros can be defined that will later be expanded in context.
+Macro names must start with a letter, digit, or underscore,
+and may contain any of those characters.
+Macro names may not be reserved words (for example,
+.Ic group )
+Macros are not expanded inside quotes.
+.Sh GLOBAL CONFIGURATION
+The global configuration section is a list of attribute specifications.
+.Pp
+Attributes with a
+.Sq global-
+prefix can be used
+.Em only
+in the global configuration section. These are
+.Pp
+.Bl -tag -width Ds -compact
+.It Ic global-text Ar string
+.El
+.Sh GROUPS
+A group is a named list of attributes, specified with
+.Bl -tag -width group-name
+.It Ic group Ar name { attribute list }
+.El
+.Pp
+Attibutes with the
+.Sq group-
+prefix can be used only a group. These are
+.Pp
+.Bl -tag -width Ds -compact
+.It Ic group-v4address Ar IPv4address
+.Pp
+.It Ic group-v6address Ar IPv6address
+.El
+.Sh COMMON ATTRIBUTES
+Attributes with neither
+.Sq global-
+nor
+.Sq group-
+prefixes can be used in either or both global and group configuration
+sections.
+If used in only the global configuration section then the specification is
+inherited by all groups.
+If used in both the sections, the specification in the group will take
+precedence in that group.
+.Pp
+These are
+.Pp
+.Bl -tag -width Ds -compact
+.It Xo
+.Ic yesno
+.Pq Ic yes Ns | Ns Ic no
+.Xc
+.Pp
+.It Ic integer Ar integer
+.El
+.Sh EXAMPLE
+.Bd -literal -offset indent
+include "/etc/newd.sub.conf"
+hi="5"
+integer=$hi
+yesno no;
+group Barrymore {
+	yesno yes;
+	integer 1;
+	group-v4address 1.2.3.4/32;
+}
+.Ed
+.Sh FILES
+.Bl -tag -width "/etc/newd.conf" -compact
+.It Pa /etc/newd.conf
+.Xr newd 8
+configuration file
+.El
+.Sh SEE ALSO
+.Xr newd 8 ,
+.Xr newdfctl 8 ,
+.Xr rc.conf.local 8
+.Sh HISTORY
+The
+.Nm
+file format first appeared in
+.Ox X.Y .
