@@ -61,7 +61,7 @@ transaction_allocator(uint64_t id)
 	tx = xcalloc(1, sizeof *tx, "transaction_allocator");
 	tx->id = id;
 
-	iobuf_xinit(&tx->iobuf, LINE_MAX, LINE_MAX, "on_eom");
+	iobuf_xinit(&tx->iobuf, 0, 0, "on_eom");
 	io_init(&tx->io, -1, tx, rspamd_io, &tx->iobuf);
 
 	dict_init(&tx->rcpts);
