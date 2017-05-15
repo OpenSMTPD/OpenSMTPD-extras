@@ -79,10 +79,17 @@ XS(XS_filter_reject)
 {
 	dXSARGS;
 	uint64_t	id;
+	uint64_t	status;
 	int		ret;
 
 	id = SvUV(ST(0));
-	ret = filter_api_reject(id, FILTER_CLOSE);
+	status = SvUV(ST(1));
+
+	if (status != FILTER_CLOSE) {
+		status = FILTER_FAIL;
+	}
+
+	ret = filter_api_reject(id, status);
 	XPUSHs(sv_2mortal(newSViv(ret)));
 	XSRETURN(1);
 }
@@ -90,6 +97,24 @@ XS(XS_filter_reject)
 XS(XS_filter_reject_code)
 {
 	dXSARGS;
+	uint64_t	id;
+	uint64_t	status;
+	uint64_t	code;
+	const char	*line;
+	int		ret;
+
+	id = SvUV(ST(0));
+	status = SvUV(ST(1));
+	code = SvUV(ST(2));
+	line = SvPVX(ST(3));
+
+	if (status != FILTER_CLOSE) {
+		status = FILTER_FAIL;
+	}
+
+	ret = filter_api_reject_code(id, status, code, line);
+
+	XPUSHs(sv_2mortal(newSViv(ret)));
 	XSRETURN(1);
 }
 
@@ -258,12 +283,17 @@ main(int argc, char **argv)
 	log_init(d);
 	log_verbose(v);
 
+	log_info("script: %s", argv[0]);
+
 	pi = perl_alloc();
+	my_perl = pi;
 	perl_construct(pi);
 	perl_parse(pi, xs_init, 2, fake_argv, NULL);
+	perl_run(pi);
 
 	newXS("smtpd::filter_api_accept", XS_filter_accept, __FILE__);
 	newXS("smtpd::filter_api_reject", XS_filter_reject, __FILE__);
+	newXS("smtpd::filter_api_reject_code", XS_filter_reject_code, __FILE__);
 	newXS("smtpd::filter_api_writeln", XS_filter_writeln, __FILE__);
 
 	log_debug("debug: starting...");
