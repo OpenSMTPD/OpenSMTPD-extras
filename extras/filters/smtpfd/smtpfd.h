@@ -25,8 +25,8 @@
 #define OPT_VERBOSE2	0x00000002
 #define OPT_NOACTION	0x00000004
 
-#define NEWD_MAXTEXT		256
-#define NEWD_MAXGROUPNAME	16
+#define SMTPFD_MAXTEXT		256
+#define SMTPFD_MAXGROUPNAME	16
 
 static const char * const log_procnames[] = {
 	"main",
@@ -63,7 +63,7 @@ enum {
 
 struct group {
 	LIST_ENTRY(group)	 entry;
-	char		name[NEWD_MAXGROUPNAME];
+	char		name[SMTPFD_MAXGROUPNAME];
 	int		yesno;
 	int		integer;
 	int		group_v4_bits;
@@ -75,18 +75,18 @@ struct group {
 struct smtpfd_conf {
 	int		yesno;
 	int		integer;
-	char		global_text[NEWD_MAXTEXT];
+	char		global_text[SMTPFD_MAXTEXT];
 	LIST_HEAD(, group)	group_list;
 };
 
 struct ctl_frontend_info {
 	int		yesno;
 	int		integer;
-	char		global_text[NEWD_MAXTEXT];
+	char		global_text[SMTPFD_MAXTEXT];
 };
 
 struct ctl_engine_info {
-	char		name[NEWD_MAXGROUPNAME];
+	char		name[SMTPFD_MAXGROUPNAME];
 	int		yesno;
 	int		integer;
 	int		group_v4_bits;
@@ -96,12 +96,12 @@ struct ctl_engine_info {
 };
 
 struct ctl_main_info {
-	char		text[NEWD_MAXTEXT];
+	char		text[SMTPFD_MAXTEXT];
 };
 
 extern uint32_t	 cmd_opts;
 
-/* newd.c */
+/* smtpfd.c */
 void	main_imsg_compose_frontend(int, pid_t, void *, uint16_t);
 void	main_imsg_compose_engine(int, pid_t, void *, uint16_t);
 void	merge_config(struct smtpfd_conf *, struct smtpfd_conf *);

@@ -122,7 +122,7 @@ main(int argc, char *argv[])
 
 	saved_argv0 = argv[0];
 	if (saved_argv0 == NULL)
-		saved_argv0 = "newd";
+		saved_argv0 = "smtpfd";
 
 	while ((ch = getopt(argc, argv, "dEFf:ns:v")) != -1) {
 		switch (ch) {

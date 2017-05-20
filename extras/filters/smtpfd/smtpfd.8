@@ -15,10 +15,10 @@
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
 .Dd $Mdocdate: July 27 2015 $
-.Dt NEWD 8
+.Dt SMTPFD 8
 .Os
 .Sh NAME
-.Nm newd
+.Nm smtpfd
 .Nd sample daemon
 .Sh SYNOPSIS
 .Nm
@@ -37,7 +37,7 @@ is usually started at boot time, and can be enabled by
 setting the following in
 .Pa /etc/rc.conf.local :
 .Pp
-.Dl newd_flags=\&"\&"
+.Dl smtpfd_flags=\&"\&"
 .Pp
 See
 .Xr rc 8
@@ -71,18 +71,18 @@ Use an alternate location for the default control socket.
 Produce more verbose output.
 .El
 .Sh FILES
-.Bl -tag -width "/var/run/newd.sockXX" -compact
-.It Pa /etc/newd.conf
+.Bl -tag -width "/var/run/smtpfd.sockXX" -compact
+.It Pa /etc/mail/smtpfd.conf
 Default
 .Nm
 configuration file.
-.It Pa /var/run/newd.sock
+.It Pa /var/run/smtpfd.sock
 .Ux Ns -domain
 socket used for communication with
 .Xr newctl 8 .
 .El
 .Sh SEE ALSO
-.Xr newd.conf 5 ,
+.Xr smtpfd.conf 5 ,
 .Xr newctl 8
 .Sh HISTORY
 The

@@ -303,7 +303,7 @@ engine_dispatch_main(int fd, short event, void *bula)
 void
 engine_showinfo_ctl(struct imsg *imsg)
 {
-	char filter[NEWD_MAXGROUPNAME];
+	char filter[SMTPFD_MAXGROUPNAME];
 	struct ctl_engine_info cei;
 	struct group *g;
 

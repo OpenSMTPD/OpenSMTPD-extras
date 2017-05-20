@@ -18,14 +18,14 @@
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
 .Dd $Mdocdate: March 11 2015 $
-.Dt NEWD.CONF 5
+.Dt SMTPFD.CONF 5
 .Os
 .Sh NAME
-.Nm newd.conf
+.Nm smtpfd.conf
 .Nd New Daemon configuration file
 .Sh DESCRIPTION
 The
-.Xr newd 8
+.Xr smtpfd 8
 daemon is a skeleton daemon implementing a privileged separated daemon
 in accord with current
 .Ox
@@ -40,12 +40,12 @@ User-defined variables may be defined and used later, simplifying the
 configuration file.
 .It Sy Global Configuration
 Zero or more
-.Xr newd 8
+.Xr smtpfd 8
 attibutes.
 .It Sy Groups
 Named lists of
 zero or more
-.Xr newd 8
+.Xr smtpfd 8
 attributes.
 .El
 .Pp
@@ -110,7 +110,7 @@ These are
 .El
 .Sh EXAMPLE
 .Bd -literal -offset indent
-include "/etc/newd.sub.conf"
+include "/etc/mail/smtpfd.sub.conf"
 hi="5"
 integer=$hi
 yesno no;
@@ -121,14 +121,14 @@ group Barrymore {
 }
 .Ed
 .Sh FILES
-.Bl -tag -width "/etc/newd.conf" -compact
-.It Pa /etc/newd.conf
-.Xr newd 8
+.Bl -tag -width "/etc/mail/smtpfd.conf" -compact
+.It Pa /etc/mail/smtpfd.conf
+.Xr smtpfd 8
 configuration file
 .El
 .Sh SEE ALSO
-.Xr newd 8 ,
-.Xr newdfctl 8 ,
+.Xr smtpfd 8 ,
+.Xr smtpfdfctl 8 ,
 .Xr rc.conf.local 8
 .Sh HISTORY
 The

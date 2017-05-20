@@ -75,7 +75,7 @@ frontend(int debug, int verbose, char *sockname)
 	log_init(debug, LOG_DAEMON);
 	log_setverbose(verbose);
 
-	/* Create newd control socket outside chroot. */
+	/* Create smtpfd control socket outside chroot. */
 	if (control_init(sockname) == -1)
 		fatalx("control socket setup failed");
 
