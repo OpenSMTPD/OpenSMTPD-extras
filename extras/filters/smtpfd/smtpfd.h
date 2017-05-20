@@ -17,7 +17,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#define CONF_FILE		"/etc/smtpfd.conf"
+#define CONF_FILE		"/etc/mail/smtpfd.conf"
 #define	SMTPFD_SOCKET		"/var/run/smtpfd.sock"
 #define SMTPFD_USER		"_smtpfd"
 
