@@ -246,7 +246,7 @@ main(int argc, char *argv[])
 		fatal("could not establish imsg links");
 	main_imsg_send_config(main_conf);
 
-	if (pledge("rpath stdio sendfd", NULL) == -1)
+	if (pledge("rpath stdio sendfd cpath", NULL) == -1)
 		fatal("pledge");
 
 	event_dispatch();
