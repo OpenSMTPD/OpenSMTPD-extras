@@ -206,9 +206,9 @@ main(int argc, char *argv[])
 	frontend_pid = start_child(PROC_FRONTEND, saved_argv0,
 	    pipe_main2frontend[1], debug, cmd_opts & OPT_VERBOSE, csock);
 
-	newd_process = PROC_MAIN;
-	setproctitle(log_procnames[newd_process]);
-	log_procinit(log_procnames[newd_process]);
+	smtpfd_process = PROC_MAIN;
+	setproctitle(log_procnames[smtpfd_process]);
+	log_procinit(log_procnames[smtpfd_process]);
 
 	event_init();
 

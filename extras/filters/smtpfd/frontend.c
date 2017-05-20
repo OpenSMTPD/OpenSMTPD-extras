@@ -87,9 +87,9 @@ frontend(int debug, int verbose, char *sockname)
 	if (chdir("/") == -1)
 		fatal("chdir(\"/\")");
 
-	newd_process = PROC_FRONTEND;
-	setproctitle(log_procnames[newd_process]);
-	log_procinit(log_procnames[newd_process]);
+	smtpfd_process = PROC_FRONTEND;
+	setproctitle(log_procnames[smtpfd_process]);
+	log_procinit(log_procnames[smtpfd_process]);
 
 	if (setgroups(1, &pw->pw_gid) ||
 	    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||

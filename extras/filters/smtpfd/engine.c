@@ -85,9 +85,9 @@ engine(int debug, int verbose)
 	if (chdir("/") == -1)
 		fatal("chdir(\"/\")");
 
-	newd_process = PROC_ENGINE;
-	setproctitle(log_procnames[newd_process]);
-	log_procinit(log_procnames[newd_process]);
+	smtpfd_process = PROC_ENGINE;
+	setproctitle(log_procnames[smtpfd_process]);
+	log_procinit(log_procnames[smtpfd_process]);
 
 	if (setgroups(1, &pw->pw_gid) ||
 	    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||

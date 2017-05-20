@@ -59,7 +59,7 @@ enum {
 	PROC_MAIN,
 	PROC_ENGINE,
 	PROC_FRONTEND
-} newd_process;
+} smtpfd_process;
 
 struct group {
 	LIST_ENTRY(group)	 entry;
