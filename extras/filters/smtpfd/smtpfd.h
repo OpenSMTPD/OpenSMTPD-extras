@@ -72,7 +72,7 @@ struct group {
 	struct in6_addr	group_v6address;
 };
 
-struct newd_conf {
+struct smtpfd_conf {
 	int		yesno;
 	int		integer;
 	char		global_text[NEWD_MAXTEXT];
@@ -104,17 +104,17 @@ extern uint32_t	 cmd_opts;
 /* newd.c */
 void	main_imsg_compose_frontend(int, pid_t, void *, uint16_t);
 void	main_imsg_compose_engine(int, pid_t, void *, uint16_t);
-void	merge_config(struct newd_conf *, struct newd_conf *);
+void	merge_config(struct smtpfd_conf *, struct smtpfd_conf *);
 void	imsg_event_add(struct imsgev *);
 int	imsg_compose_event(struct imsgev *, uint16_t, uint32_t, pid_t,
 	    int, void *, uint16_t);
 
-struct newd_conf       *config_new_empty(void);
-void			config_clear(struct newd_conf *);
+struct smtpfd_conf       *config_new_empty(void);
+void			config_clear(struct smtpfd_conf *);
 
 /* printconf.c */
-void	print_config(struct newd_conf *);
+void	print_config(struct smtpfd_conf *);
 
 /* parse.y */
-struct newd_conf	*parse_config(char *);
+struct smtpfd_conf	*parse_config(char *);
 int			 cmdline_symset(char *);

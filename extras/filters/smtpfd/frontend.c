@@ -43,7 +43,7 @@
 __dead void	 frontend_shutdown(void);
 void		 frontend_sig_handler(int, short, void *);
 
-struct newd_conf	*frontend_conf;
+struct smtpfd_conf	*frontend_conf;
 struct imsgev		*iev_main;
 struct imsgev		*iev_engine;
 
@@ -167,12 +167,12 @@ frontend_imsg_compose_engine(int type, uint32_t peerid, pid_t pid,
 void
 frontend_dispatch_main(int fd, short event, void *bula)
 {
-	static struct newd_conf	*nconf;
-	struct imsg		 imsg;
-	struct group		*g;
-	struct imsgev		*iev = bula;
-	struct imsgbuf		*ibuf = &iev->ibuf;
-	int			 n, shut = 0;
+	static struct smtpfd_conf	*nconf;
+	struct imsg			 imsg;
+	struct group			*g;
+	struct imsgev			*iev = bula;
+	struct imsgbuf			*ibuf = &iev->ibuf;
+	int				 n, shut = 0;
 
 	if (event & EV_READ) {
 		if ((n = imsg_read(ibuf)) == -1 && errno != EAGAIN)
@@ -224,10 +224,10 @@ frontend_dispatch_main(int fd, short event, void *bula)
 			event_add(&iev_engine->ev, NULL);
 			break;
 		case IMSG_RECONF_CONF:
-			if ((nconf = malloc(sizeof(struct newd_conf))) ==
+			if ((nconf = malloc(sizeof(struct smtpfd_conf))) ==
 			    NULL)
 				fatal(NULL);
-			memcpy(nconf, imsg.data, sizeof(struct newd_conf));
+			memcpy(nconf, imsg.data, sizeof(struct smtpfd_conf));
 			LIST_INIT(&nconf->group_list);
 			break;
 		case IMSG_RECONF_GROUP:

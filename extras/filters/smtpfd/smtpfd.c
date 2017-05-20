@@ -54,13 +54,13 @@ void	main_dispatch_frontend(int, short, void *);
 void	main_dispatch_engine(int, short, void *);
 
 static int	main_imsg_send_ipc_sockets(struct imsgbuf *, struct imsgbuf *);
-static int	main_imsg_send_config(struct newd_conf *);
+static int	main_imsg_send_config(struct smtpfd_conf *);
 
 int	main_reload(void);
 int	main_sendboth(enum imsg_type, void *, uint16_t);
 void	main_showinfo_ctl(struct imsg *);
 
-struct newd_conf	*main_conf;
+struct smtpfd_conf	*main_conf;
 struct imsgev		*iev_frontend;
 struct imsgev		*iev_engine;
 char			*conffile;
@@ -507,7 +507,7 @@ main_imsg_send_ipc_sockets(struct imsgbuf *frontend_buf,
 int
 main_reload(void)
 {
-	struct newd_conf *xconf;
+	struct smtpfd_conf *xconf;
 
 	if ((xconf = parse_config(conffile)) == NULL)
 		return (-1);
@@ -521,7 +521,7 @@ main_reload(void)
 }
 
 int
-main_imsg_send_config(struct newd_conf *xconf)
+main_imsg_send_config(struct smtpfd_conf *xconf)
 {
 	struct group	 *g;
 
@@ -584,7 +584,7 @@ main_showinfo_ctl(struct imsg *imsg)
 }
 
 void
-merge_config(struct newd_conf *conf, struct newd_conf *xconf)
+merge_config(struct smtpfd_conf *conf, struct smtpfd_conf *xconf)
 {
 	struct group	*g;
 
@@ -608,10 +608,10 @@ merge_config(struct newd_conf *conf, struct newd_conf *xconf)
 	free(xconf);
 }
 
-struct newd_conf *
+struct smtpfd_conf *
 config_new_empty(void)
 {
-	struct newd_conf	*xconf;
+	struct smtpfd_conf	*xconf;
 
 	xconf = calloc(1, sizeof(*xconf));
 	if (xconf == NULL)
@@ -623,9 +623,9 @@ config_new_empty(void)
 }
 
 void
-config_clear(struct newd_conf *conf)
+config_clear(struct smtpfd_conf *conf)
 {
-	struct newd_conf	*xconf;
+	struct smtpfd_conf	*xconf;
 
 	/* Merge current config with an empty config. */
 	xconf = config_new_empty();

@@ -45,7 +45,7 @@ void		 engine_dispatch_frontend(int, short, void *);
 void		 engine_dispatch_main(int, short, void *);
 void		 engine_showinfo_ctl(struct imsg *);
 
-struct newd_conf	*engine_conf;
+struct smtpfd_conf	*engine_conf;
 struct imsgev		*iev_frontend;
 struct imsgev		*iev_main;
 
@@ -209,13 +209,13 @@ engine_dispatch_frontend(int fd, short event, void *bula)
 void
 engine_dispatch_main(int fd, short event, void *bula)
 {
-	static struct newd_conf	*nconf;
-	struct imsg		 imsg;
-	struct group		*g;
-	struct imsgev		*iev = bula;
-	struct imsgbuf		*ibuf;
-	ssize_t			 n;
-	int			 shut = 0;
+	static struct smtpfd_conf	*nconf;
+	struct imsg			 imsg;
+	struct group			*g;
+	struct imsgev			*iev = bula;
+	struct imsgbuf			*ibuf;
+	ssize_t				 n;
+	int				 shut = 0;
 
 	ibuf = &iev->ibuf;
 
@@ -269,9 +269,9 @@ engine_dispatch_main(int fd, short event, void *bula)
 			event_add(&iev_frontend->ev, NULL);
 			break;
 		case IMSG_RECONF_CONF:
-			if ((nconf = malloc(sizeof(struct newd_conf))) == NULL)
+			if ((nconf = malloc(sizeof(struct smtpfd_conf))) == NULL)
 				fatal(NULL);
-			memcpy(nconf, imsg.data, sizeof(struct newd_conf));
+			memcpy(nconf, imsg.data, sizeof(struct smtpfd_conf));
 			LIST_INIT(&nconf->group_list);
 			break;
 		case IMSG_RECONF_GROUP:
