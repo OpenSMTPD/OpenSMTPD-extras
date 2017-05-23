@@ -311,13 +311,7 @@ frontend_dispatch_engine(int fd, short event, void *bula)
 void
 frontend_showinfo_ctl(struct ctl_conn *c)
 {
-	static struct ctl_frontend_info cfi;
-
-	cfi.yesno = frontend_conf->yesno;
-	cfi.integer = frontend_conf->integer;
-
-	memcpy(cfi.global_text, frontend_conf->global_text,
-	    sizeof(cfi.global_text));
+	struct ctl_frontend_info cfi;
 
 	imsg_compose_event(&c->iev, IMSG_CTL_SHOW_FRONTEND_INFO, 0, 0, -1,
 	    &cfi, sizeof(struct ctl_frontend_info));

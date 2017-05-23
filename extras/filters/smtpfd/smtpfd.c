@@ -555,25 +555,8 @@ main_sendboth(enum imsg_type type, void *buf, uint16_t len)
 void
 main_showinfo_ctl(struct imsg *imsg)
 {
-	struct ctl_main_info cmi;
-	size_t n;
-
 	switch (imsg->hdr.type) {
 	case IMSG_CTL_SHOW_MAIN_INFO:
-		memset(cmi.text, 0, sizeof(cmi.text));
-		n = strlcpy(cmi.text, "I'm a little teapot.",
-		    sizeof(cmi.text));
-		if (n >= sizeof(cmi.text))
-			log_debug("%s: I was cut off!", __func__);
-		main_imsg_compose_frontend(IMSG_CTL_SHOW_MAIN_INFO,
-		    imsg->hdr.pid, &cmi, sizeof(cmi));
-		memset(cmi.text, 0, sizeof(cmi.text));
-		n = strlcpy(cmi.text, "Full of sencha.",
-		    sizeof(cmi.text));
-		if (n >= sizeof(cmi.text))
-			log_debug("%s: I was cut off!", __func__);
-		main_imsg_compose_frontend(IMSG_CTL_SHOW_MAIN_INFO,
-		    imsg->hdr.pid, &cmi, sizeof(cmi));
 		main_imsg_compose_frontend(IMSG_CTL_END, imsg->hdr.pid, NULL,
 		    0);
 		break;

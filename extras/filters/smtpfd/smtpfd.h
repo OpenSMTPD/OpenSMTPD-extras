@@ -80,23 +80,12 @@ struct smtpfd_conf {
 };
 
 struct ctl_frontend_info {
-	int		yesno;
-	int		integer;
-	char		global_text[SMTPFD_MAXTEXT];
 };
 
 struct ctl_engine_info {
-	char		name[SMTPFD_MAXGROUPNAME];
-	int		yesno;
-	int		integer;
-	int		group_v4_bits;
-	int		group_v6_bits;
-	struct in_addr	group_v4address;
-	struct in6_addr	group_v6address;
 };
 
 struct ctl_main_info {
-	char		text[SMTPFD_MAXTEXT];
 };
 
 extern uint32_t	 cmd_opts;
