@@ -36,18 +36,19 @@
 #include <unistd.h>
 
 #include "log.h"
+#include "proc.h"
 #include "smtpfd.h"
 #include "engine.h"
 
 __dead void	 engine_shutdown(void);
 void		 engine_sig_handler(int sig, short, void *);
-void		 engine_dispatch_frontend(int, short, void *);
-void		 engine_dispatch_main(int, short, void *);
+void		 engine_dispatch_frontend(struct imsgproc *, struct imsg *, void *);
+void		 engine_dispatch_main(struct imsgproc *, struct imsg *, void *);
 void		 engine_showinfo_ctl(struct imsg *);
 
 struct smtpfd_conf	*engine_conf;
-struct imsgev		*iev_frontend;
-struct imsgev		*iev_main;
+struct imsgproc		*p_frontend;
+struct imsgproc		*p_main;
 
 void
 engine_sig_handler(int sig, short event, void *arg)
@@ -108,17 +109,9 @@ engine(int debug, int verbose)
 	signal(SIGHUP, SIG_IGN);
 
 	/* Setup pipe and event handler to the main process. */
-	if ((iev_main = malloc(sizeof(struct imsgev))) == NULL)
-		fatal(NULL);
-
-	imsg_init(&iev_main->ibuf, 3);
-	iev_main->handler = engine_dispatch_main;
-
-	/* Setup event handlers. */
-	iev_main->events = EV_READ;
-	event_set(&iev_main->ev, iev_main->ibuf.fd, iev_main->events,
-	    iev_main->handler, iev_main);
-	event_add(&iev_main->ev, NULL);
+	p_main = proc_attach(PROC_MAIN, 3);
+	proc_setcallback(p_main, engine_dispatch_main, NULL);
+	proc_enable(p_main);
 
 	event_dispatch();
 
@@ -129,15 +122,10 @@ __dead void
 engine_shutdown(void)
 {
 	/* Close pipes. */
-	msgbuf_clear(&iev_frontend->ibuf.w);
-	close(iev_frontend->ibuf.fd);
-	msgbuf_clear(&iev_main->ibuf.w);
-	close(iev_main->ibuf.fd);
+	proc_free(p_main);
+	proc_free(p_frontend);
 
 	config_clear(engine_conf);
-
-	free(iev_frontend);
-	free(iev_main);
 
 	log_info("engine exiting");
 	exit(0);
@@ -147,156 +135,90 @@ int
 engine_imsg_compose_frontend(int type, pid_t pid, void *data,
     uint16_t datalen)
 {
-	return (imsg_compose_event(iev_frontend, type, 0, pid, -1,
-	    data, datalen));
+	return proc_compose(p_frontend, type, 0, pid, -1, data, datalen);
 }
 
 void
-engine_dispatch_frontend(int fd, short event, void *bula)
+engine_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *bula)
 {
-	struct imsgev		*iev = bula;
-	struct imsgbuf		*ibuf;
-	struct imsg		 imsg;
-	ssize_t			 n;
-	int			 shut = 0, verbose;
+	int verbose;
 
-	ibuf = &iev->ibuf;
-
-	if (event & EV_READ) {
-		if ((n = imsg_read(ibuf)) == -1 && errno != EAGAIN)
-			fatal("imsg_read error");
-		if (n == 0)	/* Connection closed. */
-			shut = 1;
-	}
-	if (event & EV_WRITE) {
-		if ((n = msgbuf_write(&ibuf->w)) == -1 && errno != EAGAIN)
-			fatal("msgbuf_write");
-		if (n == 0)	/* Connection closed. */
-			shut = 1;
-	}
-
-	for (;;) {
-		if ((n = imsg_get(ibuf, &imsg)) == -1)
-			fatal("%s: imsg_get error", __func__);
-		if (n == 0)	/* No more messages. */
-			break;
-
-		switch (imsg.hdr.type) {
-		case IMSG_CTL_LOG_VERBOSE:
-			/* Already checked by frontend. */
-			memcpy(&verbose, imsg.data, sizeof(verbose));
-			log_setverbose(verbose);
-			break;
-		case IMSG_CTL_SHOW_ENGINE_INFO:
-			engine_showinfo_ctl(&imsg);
-			break;
-		default:
-			log_debug("%s: unexpected imsg %d", __func__,
-			    imsg.hdr.type);
-			break;
-		}
-		imsg_free(&imsg);
-	}
-	if (!shut)
-		imsg_event_add(iev);
-	else {
-		/* This pipe is dead. Remove its event handler. */
-		event_del(&iev->ev);
+	if (imsg == NULL) {
 		event_loopexit(NULL);
+		return;
+	}
+
+	switch (imsg->hdr.type) {
+	case IMSG_CTL_LOG_VERBOSE:
+		/* Already checked by frontend. */
+		memcpy(&verbose, imsg->data, sizeof(verbose));
+		log_setverbose(verbose);
+		break;
+	case IMSG_CTL_SHOW_ENGINE_INFO:
+		engine_showinfo_ctl(imsg);
+		break;
+	default:
+		log_debug("%s: unexpected imsg %d", __func__,
+		    imsg->hdr.type);
+		break;
 	}
 }
 
 void
-engine_dispatch_main(int fd, short event, void *bula)
+engine_dispatch_main(struct imsgproc *p, struct imsg *imsg, void *bula)
 {
-	static struct smtpfd_conf	*nconf;
-	struct imsg			 imsg;
-	struct group			*g;
-	struct imsgev			*iev = bula;
-	struct imsgbuf			*ibuf;
-	ssize_t				 n;
-	int				 shut = 0;
+	static struct smtpfd_conf *nconf;
+	struct group *g;
 
-	ibuf = &iev->ibuf;
-
-	if (event & EV_READ) {
-		if ((n = imsg_read(ibuf)) == -1 && errno != EAGAIN)
-			fatal("imsg_read error");
-		if (n == 0)	/* Connection closed. */
-			shut = 1;
-	}
-	if (event & EV_WRITE) {
-		if ((n = msgbuf_write(&ibuf->w)) == -1 && errno != EAGAIN)
-			fatal("msgbuf_write");
-		if (n == 0)	/* Connection closed. */
-			shut = 1;
+	if (imsg == NULL) {
+		event_loopexit(NULL);
+		return;
 	}
 
-	for (;;) {
-		if ((n = imsg_get(ibuf, &imsg)) == -1)
-			fatal("%s: imsg_get error", __func__);
-		if (n == 0)	/* No more messages. */
-			break;
-
-		switch (imsg.hdr.type) {
-		case IMSG_SOCKET_IPC:
-			/*
-			 * Setup pipe and event handler to the frontend
-			 * process.
-			 */
-			if (iev_frontend) {
-				log_warnx("%s: received unexpected imsg fd "
-				    "to engine", __func__);
-				break;
-			}
-			if ((fd = imsg.fd) == -1) {
-				log_warnx("%s: expected to receive imsg fd to "
-				   "engine but didn't receive any", __func__);
-				break;
-			}
-
-			iev_frontend = malloc(sizeof(struct imsgev));
-			if (iev_frontend == NULL)
-				fatal(NULL);
-
-			imsg_init(&iev_frontend->ibuf, fd);
-			iev_frontend->handler = engine_dispatch_frontend;
-			iev_frontend->events = EV_READ;
-
-			event_set(&iev_frontend->ev, iev_frontend->ibuf.fd,
-			iev_frontend->events, iev_frontend->handler,
-			    iev_frontend);
-			event_add(&iev_frontend->ev, NULL);
-			break;
-		case IMSG_RECONF_CONF:
-			if ((nconf = malloc(sizeof(struct smtpfd_conf))) == NULL)
-				fatal(NULL);
-			memcpy(nconf, imsg.data, sizeof(struct smtpfd_conf));
-			LIST_INIT(&nconf->group_list);
-			break;
-		case IMSG_RECONF_GROUP:
-			if ((g = malloc(sizeof(struct group))) == NULL)
-				fatal(NULL);
-			memcpy(g, imsg.data, sizeof(struct group));
-			LIST_INSERT_HEAD(&nconf->group_list, g, entry);
-			break;
-		case IMSG_RECONF_END:
-			merge_config(engine_conf, nconf);
-			nconf = NULL;
-			break;
-		default:
-			log_debug("%s: unexpected imsg %d", __func__,
-			    imsg.hdr.type);
+	switch (imsg->hdr.type) {
+	case IMSG_SOCKET_IPC:
+		/*
+		 * Setup pipe and event handler to the frontend
+		 * process.
+		 */
+		if (p_frontend) {
+			log_warnx("%s: received unexpected imsg fd "
+			    "to engine", __func__);
 			break;
 		}
-		imsg_free(&imsg);
-	}
-	if (!shut)
-		imsg_event_add(iev);
-	else {
-		/* This pipe is dead. Remove its event handler. */
-		event_del(&iev->ev);
-		event_loopexit(NULL);
+		if (imsg->fd == -1) {
+			log_warnx("%s: expected to receive imsg fd to "
+			   "engine but didn't receive any", __func__);
+			break;
+		}
+
+		p_frontend = proc_attach(PROC_FRONTEND, imsg->fd);
+		if (p_frontend == NULL)
+			fatal(NULL);
+
+		proc_setcallback(p_frontend, engine_dispatch_frontend, NULL);
+		proc_enable(p_frontend);
+		break;
+	case IMSG_RECONF_CONF:
+		if ((nconf = malloc(sizeof(struct smtpfd_conf))) == NULL)
+			fatal(NULL);
+		memcpy(nconf, imsg->data, sizeof(struct smtpfd_conf));
+		LIST_INIT(&nconf->group_list);
+		break;
+	case IMSG_RECONF_GROUP:
+		if ((g = malloc(sizeof(struct group))) == NULL)
+			fatal(NULL);
+		memcpy(g, imsg->data, sizeof(struct group));
+		LIST_INSERT_HEAD(&nconf->group_list, g, entry);
+		break;
+	case IMSG_RECONF_END:
+		merge_config(engine_conf, nconf);
+		nconf = NULL;
+		break;
+	default:
+		log_debug("%s: unexpected imsg %d", __func__,
+		    imsg->hdr.type);
+		break;
 	}
 }
 
