@@ -38,6 +38,7 @@
 #include <unistd.h>
 
 #include "log.h"
+#include "proc.h"
 #include "smtpfd.h"
 #include "frontend.h"
 #include "engine.h"
@@ -48,12 +49,8 @@ __dead void	main_shutdown(void);
 
 void	main_sig_handler(int, short, void *);
 
-static pid_t	start_child(int, char *, int, int, int, char *);
-
-void	main_dispatch_frontend(int, short, void *);
-void	main_dispatch_engine(int, short, void *);
-
-static int	main_imsg_send_ipc_sockets(struct imsgbuf *, struct imsgbuf *);
+void	main_dispatch_frontend(struct imsgproc *, struct imsg*, void *);
+void	main_dispatch_engine(struct imsgproc *, struct imsg*, void *);
 static int	main_imsg_send_config(struct smtpfd_conf *);
 
 int	main_reload(void);
@@ -61,13 +58,10 @@ int	main_sendboth(enum imsg_type, void *, uint16_t);
 void	main_showinfo_ctl(struct imsg *);
 
 struct smtpfd_conf	*main_conf;
-struct imsgev		*iev_frontend;
-struct imsgev		*iev_engine;
+struct imsgproc		*p_frontend;
+struct imsgproc		*p_engine;
 char			*conffile;
 char			*csock;
-
-pid_t	 frontend_pid;
-pid_t	 engine_pid;
 
 uint32_t cmd_opts;
 
@@ -108,11 +102,10 @@ int
 main(int argc, char *argv[])
 {
 	struct event	 ev_sigint, ev_sigterm, ev_sighup;
-	int		 ch;
+	int		 ch, sp[2], rargc = 0;
 	int		 debug = 0, engine_flag = 0, frontend_flag = 0;
 	char		*saved_argv0;
-	int		 pipe_main2frontend[2];
-	int		 pipe_main2engine[2];
+	char		*rargv[7];
 
 	conffile = CONF_FILE;
 	csock = SMTPFD_SOCKET;
@@ -193,18 +186,21 @@ main(int argc, char *argv[])
 
 	log_info("startup");
 
-	if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK,
-	    PF_UNSPEC, pipe_main2frontend) == -1)
-		fatal("main2frontend socketpair");
-	if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK,
-	    PF_UNSPEC, pipe_main2engine) == -1)
-		fatal("main2engine socketpair");
+	rargc = 0;
+	rargv[rargc++] = saved_argv0;
+	rargv[rargc++] = "-F";
+	if (debug)
+		rargv[rargc++] = "-d";
+	if (cmd_opts & OPT_VERBOSE)
+		rargv[rargc++] = "-v";
+	rargv[rargc++] = "-s";
+	rargv[rargc++] = csock;
+	rargv[rargc++] = NULL;
 
-	/* Start children. */
-	engine_pid = start_child(PROC_ENGINE, saved_argv0, pipe_main2engine[1],
-	    debug, cmd_opts & OPT_VERBOSE, NULL);
-	frontend_pid = start_child(PROC_FRONTEND, saved_argv0,
-	    pipe_main2frontend[1], debug, cmd_opts & OPT_VERBOSE, csock);
+	p_frontend = proc_exec(PROC_FRONTEND, rargv);
+	rargv[1] = "-E";
+	rargv[argc - 3] = NULL;
+	p_engine = proc_exec(PROC_ENGINE, rargv);
 
 	smtpfd_process = PROC_MAIN;
 	setproctitle(log_procnames[smtpfd_process]);
@@ -221,29 +217,21 @@ main(int argc, char *argv[])
 	signal_add(&ev_sighup, NULL);
 	signal(SIGPIPE, SIG_IGN);
 
-	/* Setup pipes to children. */
+	/* Start children */
+	proc_enable(p_frontend);
+	proc_enable(p_engine);
 
-	if ((iev_frontend = malloc(sizeof(struct imsgev))) == NULL ||
-	    (iev_engine = malloc(sizeof(struct imsgev))) == NULL)
-		fatal(NULL);
-	imsg_init(&iev_frontend->ibuf, pipe_main2frontend[0]);
-	iev_frontend->handler = main_dispatch_frontend;
-	imsg_init(&iev_engine->ibuf, pipe_main2engine[0]);
-	iev_engine->handler = main_dispatch_engine;
+	/* Connect the two children */
+	if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK,
+	    PF_UNSPEC, sp) == -1)
+		fatal("socketpair");
+	if (proc_compose(p_frontend, IMSG_SOCKET_IPC, 0, 0, sp[0], NULL, 0)
+	    == -1)
+		fatal("proc_compose");
+	if (proc_compose(p_engine, IMSG_SOCKET_IPC, 0, 0, sp[1], NULL, 0)
+	    == -1)
+		fatal("proc_compose");
 
-	/* Setup event handlers for pipes to engine & frontend. */
-	iev_frontend->events = EV_READ;
-	event_set(&iev_frontend->ev, iev_frontend->ibuf.fd,
-	    iev_frontend->events, iev_frontend->handler, iev_frontend);
-	event_add(&iev_frontend->ev, NULL);
-
-	iev_engine->events = EV_READ;
-	event_set(&iev_engine->ev, iev_engine->ibuf.fd, iev_engine->events,
-	    iev_engine->handler, iev_engine);
-	event_add(&iev_engine->ev, NULL);
-
-	if (main_imsg_send_ipc_sockets(&iev_frontend->ibuf, &iev_engine->ibuf))
-		fatal("could not establish imsg links");
 	main_imsg_send_config(main_conf);
 
 	if (pledge("rpath stdio sendfd cpath", NULL) == -1)
@@ -259,13 +247,16 @@ __dead void
 main_shutdown(void)
 {
 	pid_t	 pid;
+	pid_t	 frontend_pid;
+	pid_t	 engine_pid;
 	int	 status;
 
+	frontend_pid = proc_getpid(p_frontend);
+	engine_pid = proc_getpid(p_frontend);
+
 	/* Close pipes. */
-	msgbuf_clear(&iev_frontend->ibuf.w);
-	close(iev_frontend->ibuf.fd);
-	msgbuf_clear(&iev_engine->ibuf.w);
-	close(iev_engine->ibuf.fd);
+	proc_free(p_frontend);
+	proc_free(p_engine);
 
 	config_clear(main_conf);
 
@@ -281,182 +272,72 @@ main_shutdown(void)
 			    "frontend", WTERMSIG(status));
 	} while (pid != -1 || (pid == -1 && errno == EINTR));
 
-	free(iev_frontend);
-	free(iev_engine);
-
 	control_cleanup(csock);
 
 	log_info("terminating");
 	exit(0);
 }
 
-static pid_t
-start_child(int p, char *argv0, int fd, int debug, int verbose, char *sockname)
+void
+main_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *arg)
 {
-	char	*argv[7];
-	int	 argc = 0;
-	pid_t	 pid;
+	int verbose;
 
-	switch (pid = fork()) {
-	case -1:
-		fatal("cannot fork");
-	case 0:
+	if (imsg == NULL) {
+		event_loopexit(NULL);
+		return;
+	}
+
+	switch (imsg->hdr.type) {
+	case IMSG_CTL_RELOAD:
+		if (main_reload() == -1)
+			log_warnx("configuration reload failed");
+		else
+			log_warnx("configuration reloaded");
+		break;
+	case IMSG_CTL_LOG_VERBOSE:
+		/* Already checked by frontend. */
+		memcpy(&verbose, imsg->data, sizeof(verbose));
+		log_setverbose(verbose);
+		break;
+	case IMSG_CTL_SHOW_MAIN_INFO:
+		main_showinfo_ctl(imsg);
 		break;
 	default:
-		close(fd);
-		return (pid);
-	}
-
-	if (dup2(fd, 3) == -1)
-		fatal("cannot setup imsg fd");
-
-	argv[argc++] = argv0;
-	switch (p) {
-	case PROC_MAIN:
-		fatalx("Can not start main process");
-	case PROC_ENGINE:
-		argv[argc++] = "-E";
+		log_debug("%s: error handling imsg %d", __func__,
+		    imsg->hdr.type);
 		break;
-	case PROC_FRONTEND:
-		argv[argc++] = "-F";
-		break;
-	}
-	if (debug)
-		argv[argc++] = "-d";
-	if (verbose)
-		argv[argc++] = "-v";
-	if (sockname) {
-		argv[argc++] = "-s";
-		argv[argc++] = sockname;
-	}
-	argv[argc++] = NULL;
-
-	execvp(argv0, argv);
-	fatal("execvp");
-}
-
-void
-main_dispatch_frontend(int fd, short event, void *bula)
-{
-	struct imsgev		*iev = bula;
-	struct imsgbuf		*ibuf;
-	struct imsg		 imsg;
-	ssize_t			 n;
-	int			 shut = 0, verbose;
-
-	ibuf = &iev->ibuf;
-
-	if (event & EV_READ) {
-		if ((n = imsg_read(ibuf)) == -1 && errno != EAGAIN)
-			fatal("imsg_read error");
-		if (n == 0)	/* Connection closed. */
-			shut = 1;
-	}
-	if (event & EV_WRITE) {
-		if ((n = msgbuf_write(&ibuf->w)) == -1 && errno != EAGAIN)
-			fatal("msgbuf_write");
-		if (n == 0)	/* Connection closed. */
-			shut = 1;
-	}
-
-	for (;;) {
-		if ((n = imsg_get(ibuf, &imsg)) == -1)
-			fatal("imsg_get");
-		if (n == 0)	/* No more messages. */
-			break;
-
-		switch (imsg.hdr.type) {
-		case IMSG_CTL_RELOAD:
-			if (main_reload() == -1)
-				log_warnx("configuration reload failed");
-			else
-				log_warnx("configuration reloaded");
-			break;
-		case IMSG_CTL_LOG_VERBOSE:
-			/* Already checked by frontend. */
-			memcpy(&verbose, imsg.data, sizeof(verbose));
-			log_setverbose(verbose);
-			break;
-		case IMSG_CTL_SHOW_MAIN_INFO:
-			main_showinfo_ctl(&imsg);
-			break;
-		default:
-			log_debug("%s: error handling imsg %d", __func__,
-			    imsg.hdr.type);
-			break;
-		}
-		imsg_free(&imsg);
-	}
-	if (!shut)
-		imsg_event_add(iev);
-	else {
-		/* This pipe is dead. Remove its event handler */
-		event_del(&iev->ev);
-		event_loopexit(NULL);
 	}
 }
 
 void
-main_dispatch_engine(int fd, short event, void *bula)
+main_dispatch_engine(struct imsgproc *p, struct imsg *imsg, void *arg)
 {
-	struct imsgev	*iev = bula;
-	struct imsgbuf  *ibuf;
-	struct imsg	 imsg;
-	ssize_t		 n;
-	int		 shut = 0;
-
-	ibuf = &iev->ibuf;
-
-	if (event & EV_READ) {
-		if ((n = imsg_read(ibuf)) == -1 && errno != EAGAIN)
-			fatal("imsg_read error");
-		if (n == 0)	/* Connection closed. */
-			shut = 1;
-	}
-	if (event & EV_WRITE) {
-		if ((n = msgbuf_write(&ibuf->w)) == -1 && errno != EAGAIN)
-			fatal("msgbuf_write");
-		if (n == 0)	/* Connection closed. */
-			shut = 1;
-	}
-
-	for (;;) {
-		if ((n = imsg_get(ibuf, &imsg)) == -1)
-			fatal("imsg_get");
-		if (n == 0)	/* No more messages. */
-			break;
-
-		switch (imsg.hdr.type) {
-		default:
-			log_debug("%s: error handling imsg %d", __func__,
-			    imsg.hdr.type);
-			break;
-		}
-		imsg_free(&imsg);
-	}
-	if (!shut)
-		imsg_event_add(iev);
-	else {
-		/* This pipe is dead. Remove its event handler. */
-		event_del(&iev->ev);
+	if (imsg == NULL) {
 		event_loopexit(NULL);
+		return;
+	}
+
+	switch (imsg->hdr.type) {
+	default:
+		log_debug("%s: error handling imsg %d", __func__,
+		    imsg->hdr.type);
+		break;
 	}
 }
 
 void
 main_imsg_compose_frontend(int type, pid_t pid, void *data, uint16_t datalen)
 {
-	if (iev_frontend)
-		imsg_compose_event(iev_frontend, type, 0, pid, -1, data,
-		    datalen);
+	if (p_frontend)
+		proc_compose(p_frontend, type, 0, pid, -1, data, datalen);
 }
 
 void
 main_imsg_compose_engine(int type, pid_t pid, void *data, uint16_t datalen)
 {
-	if (iev_engine)
-		imsg_compose_event(iev_engine, type, 0, pid, -1, data,
-		    datalen);
+	if (p_engine)
+		proc_compose(p_engine, type, 0, pid, -1, data, datalen);
 }
 
 void
@@ -475,33 +356,13 @@ int
 imsg_compose_event(struct imsgev *iev, uint16_t type, uint32_t peerid,
     pid_t pid, int fd, void *data, uint16_t datalen)
 {
-	int	ret;
+	int ret;
 
 	if ((ret = imsg_compose(&iev->ibuf, type, peerid, pid, fd, data,
 	    datalen)) != -1)
 		imsg_event_add(iev);
 
 	return (ret);
-}
-
-static int
-main_imsg_send_ipc_sockets(struct imsgbuf *frontend_buf,
-    struct imsgbuf *engine_buf)
-{
-	int pipe_frontend2engine[2];
-
-	if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK,
-	    PF_UNSPEC, pipe_frontend2engine) == -1)
-		return (-1);
-
-	if (imsg_compose(frontend_buf, IMSG_SOCKET_IPC, 0, 0,
-	    pipe_frontend2engine[0], NULL, 0) == -1)
-		return (-1);
-	if (imsg_compose(engine_buf, IMSG_SOCKET_IPC, 0, 0,
-	    pipe_frontend2engine[1], NULL, 0) == -1)
-		return (-1);
-
-	return (0);
 }
 
 int
@@ -545,9 +406,9 @@ main_imsg_send_config(struct smtpfd_conf *xconf)
 int
 main_sendboth(enum imsg_type type, void *buf, uint16_t len)
 {
-	if (imsg_compose_event(iev_frontend, type, 0, 0, -1, buf, len) == -1)
+	if (proc_compose(p_frontend, type, 0, 0, -1, buf, len) == -1)
 		return (-1);
-	if (imsg_compose_event(iev_engine, type, 0, 0, -1, buf, len) == -1)
+	if (proc_compose(p_engine, type, 0, 0, -1, buf, len) == -1)
 		return (-1);
 	return (0);
 }
