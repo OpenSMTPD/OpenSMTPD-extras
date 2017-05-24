@@ -2,6 +2,7 @@
 
 PROG=	smtpfd
 SRCS=	control.c engine.c frontend.c log.c smtpfd.c parse.y printconf.c
+SRCS+=	proc.c
 
 MAN=	smtpfd.8 smtpfd.conf.5
 
