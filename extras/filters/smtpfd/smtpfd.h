@@ -19,7 +19,7 @@
 
 #define CONF_FILE		"/etc/mail/smtpfd.conf"
 #define	SMTPFD_SOCKET		"/var/run/smtpfd.sock"
-#define SMTPFD_USER		"_smtpd"
+#define SMTPFD_USER		"_smtpfd"
 
 #define OPT_VERBOSE	0x00000001
 #define OPT_VERBOSE2	0x00000002
