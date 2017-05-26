@@ -19,7 +19,7 @@
 
 #define CONF_FILE		"/etc/mail/smtpfd.conf"
 #define	SMTPFD_SOCKET		"/var/run/smtpfd.sock"
-#define SMTPFD_USER		"_smtpfd"
+#define SMTPFD_USER		"_smtpd"
 
 #define OPT_VERBOSE	0x00000001
 #define OPT_VERBOSE2	0x00000002
@@ -31,7 +31,8 @@
 static const char * const log_procnames[] = {
 	"main",
 	"frontend",
-	"engine"
+	"engine",
+	"client"
 };
 
 struct imsgev {
@@ -58,7 +59,8 @@ enum imsg_type {
 enum {
 	PROC_MAIN,
 	PROC_ENGINE,
-	PROC_FRONTEND
+	PROC_FRONTEND,
+	PROC_CLIENT,
 } smtpfd_process;
 
 struct group {

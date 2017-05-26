@@ -33,15 +33,17 @@
 #include <unistd.h>
 
 #include "log.h"
+#include "proc.h"
 #include "smtpfd.h"
 #include "control.h"
 #include "frontend.h"
 
 #define	CONTROL_BACKLOG	5
 
-struct ctl_conn	*control_connbyfd(int);
-struct ctl_conn	*control_connbypid(pid_t);
-void		 control_close(int);
+static struct ctl_conn	*control_connbypid(pid_t);
+static void control_accept(int, short, void *);
+static void control_close(struct ctl_conn *);
+static void control_dispatch_imsg(struct imsgproc *, struct imsg *, void *);
 
 int
 control_init(char *path)
@@ -151,27 +153,11 @@ control_accept(int listenfd, short event, void *bula)
 		return;
 	}
 
-	imsg_init(&c->iev.ibuf, connfd);
-	c->iev.handler = control_dispatch_imsg;
-	c->iev.events = EV_READ;
-	event_set(&c->iev.ev, c->iev.ibuf.fd, c->iev.events,
-	    c->iev.handler, &c->iev);
-	event_add(&c->iev.ev, NULL);
+	c->proc = proc_attach(PROC_CLIENT, connfd);
+	proc_setcallback(c->proc, control_dispatch_imsg, c);
+	proc_enable(c->proc);
 
 	TAILQ_INSERT_TAIL(&ctl_conns, c, entry);
-}
-
-struct ctl_conn *
-control_connbyfd(int fd)
-{
-	struct ctl_conn	*c;
-
-	TAILQ_FOREACH(c, &ctl_conns, entry) {
-		if (c->iev.ibuf.fd == fd)
-			break;
-	}
-
-	return (c);
 }
 
 struct ctl_conn *
@@ -180,7 +166,7 @@ control_connbypid(pid_t pid)
 	struct ctl_conn	*c;
 
 	TAILQ_FOREACH(c, &ctl_conns, entry) {
-		if (c->iev.ibuf.pid == pid)
+		if (proc_getpid(c->proc) == pid)
 			break;
 	}
 
@@ -188,20 +174,11 @@ control_connbypid(pid_t pid)
 }
 
 void
-control_close(int fd)
+control_close(struct ctl_conn *c)
 {
-	struct ctl_conn	*c;
-
-	if ((c = control_connbyfd(fd)) == NULL) {
-		log_warnx("%s: fd %d: not found", __func__, fd);
-		return;
-	}
-
-	msgbuf_clear(&c->iev.ibuf.w);
 	TAILQ_REMOVE(&ctl_conns, c, entry);
 
-	event_del(&c->iev.ev);
-	close(c->iev.ibuf.fd);
+	proc_free(c->proc);
 
 	/* Some file descriptors are available again. */
 	if (evtimer_pending(&control_state.evt, NULL)) {
@@ -213,84 +190,55 @@ control_close(int fd)
 }
 
 void
-control_dispatch_imsg(int fd, short event, void *bula)
+control_dispatch_imsg(struct imsgproc *p, struct imsg *imsg, void *arg)
 {
-	struct ctl_conn	*c;
-	struct imsg	 imsg;
-	ssize_t		 n;
-	int		 verbose;
+	struct ctl_conn	*c = arg;
+	int verbose;
 
-	if ((c = control_connbyfd(fd)) == NULL) {
-		log_warnx("%s: fd %d: not found", __func__, fd);
+	if (imsg == NULL) {
+		control_close(c);
 		return;
 	}
 
-	if (event & EV_READ) {
-		if (((n = imsg_read(&c->iev.ibuf)) == -1 && errno != EAGAIN) ||
-		    n == 0) {
-			control_close(fd);
-			return;
-		}
+	switch (imsg->hdr.type) {
+	case IMSG_CTL_RELOAD:
+		frontend_imsg_compose_main(imsg->hdr.type, 0, NULL, 0);
+		break;
+	case IMSG_CTL_LOG_VERBOSE:
+		if (imsg->hdr.len != IMSG_HEADER_SIZE +
+		    sizeof(verbose))
+			break;
+
+		/* Forward to all other processes. */
+		frontend_imsg_compose_main(imsg->hdr.type, imsg->hdr.pid,
+		    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE);
+		frontend_imsg_compose_engine(imsg->hdr.type, 0,
+		    imsg->hdr.pid, imsg->data,
+		    imsg->hdr.len - IMSG_HEADER_SIZE);
+
+		memcpy(&verbose, imsg->data, sizeof(verbose));
+		log_setverbose(verbose);
+		break;
+	case IMSG_CTL_SHOW_MAIN_INFO:
+		proc_setpid(c->proc, imsg->hdr.pid);
+		frontend_imsg_compose_main(imsg->hdr.type, imsg->hdr.pid,
+		    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE);
+		break;
+	case IMSG_CTL_SHOW_FRONTEND_INFO:
+		frontend_showinfo_ctl(c);
+		proc_compose(c->proc, IMSG_CTL_END, 0, 0, -1, NULL, 0);
+		break;
+	case IMSG_CTL_SHOW_ENGINE_INFO:
+		proc_setpid(c->proc, imsg->hdr.pid);
+		frontend_imsg_compose_engine(imsg->hdr.type, 0,
+		    imsg->hdr.pid,
+		    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE);
+		break;
+	default:
+		log_debug("%s: error handling imsg %d", __func__,
+		    imsg->hdr.type);
+		break;
 	}
-	if (event & EV_WRITE) {
-		if (msgbuf_write(&c->iev.ibuf.w) <= 0 && errno != EAGAIN) {
-			control_close(fd);
-			return;
-		}
-	}
-
-	for (;;) {
-		if ((n = imsg_get(&c->iev.ibuf, &imsg)) == -1) {
-			control_close(fd);
-			return;
-		}
-		if (n == 0)
-			break;
-
-		switch (imsg.hdr.type) {
-		case IMSG_CTL_RELOAD:
-			frontend_imsg_compose_main(imsg.hdr.type, 0, NULL, 0);
-			break;
-		case IMSG_CTL_LOG_VERBOSE:
-			if (imsg.hdr.len != IMSG_HEADER_SIZE +
-			    sizeof(verbose))
-				break;
-
-			/* Forward to all other processes. */
-			frontend_imsg_compose_main(imsg.hdr.type, imsg.hdr.pid,
-			    imsg.data, imsg.hdr.len - IMSG_HEADER_SIZE);
-			frontend_imsg_compose_engine(imsg.hdr.type, 0,
-			    imsg.hdr.pid, imsg.data,
-			    imsg.hdr.len - IMSG_HEADER_SIZE);
-
-			memcpy(&verbose, imsg.data, sizeof(verbose));
-			log_setverbose(verbose);
-			break;
-		case IMSG_CTL_SHOW_MAIN_INFO:
-			c->iev.ibuf.pid = imsg.hdr.pid;
-			frontend_imsg_compose_main(imsg.hdr.type, imsg.hdr.pid,
-			    imsg.data, imsg.hdr.len - IMSG_HEADER_SIZE);
-			break;
-		case IMSG_CTL_SHOW_FRONTEND_INFO:
-			frontend_showinfo_ctl(c);
-			imsg_compose_event(&c->iev, IMSG_CTL_END, 0, 0, -1,
-			    NULL, 0);
-			break;
-		case IMSG_CTL_SHOW_ENGINE_INFO:
-			c->iev.ibuf.pid = imsg.hdr.pid;
-			frontend_imsg_compose_engine(imsg.hdr.type, 0,
-			    imsg.hdr.pid,
-			    imsg.data, imsg.hdr.len - IMSG_HEADER_SIZE);
-			break;
-		default:
-			log_debug("%s: error handling imsg %d", __func__,
-			    imsg.hdr.type);
-			break;
-		}
-		imsg_free(&imsg);
-	}
-
-	imsg_event_add(&c->iev);
 }
 
 int
@@ -301,6 +249,6 @@ control_imsg_relay(struct imsg *imsg)
 	if ((c = control_connbypid(imsg->hdr.pid)) == NULL)
 		return (0);
 
-	return (imsg_compose_event(&c->iev, imsg->hdr.type, 0, imsg->hdr.pid,
+	return (proc_compose(c->proc, imsg->hdr.type, 0, imsg->hdr.pid,
 	    -1, imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE));
 }

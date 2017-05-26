@@ -23,13 +23,11 @@ struct {
 } control_state;
 
 struct ctl_conn {
-	TAILQ_ENTRY(ctl_conn)	entry;
-	struct imsgev		iev;
+	TAILQ_ENTRY(ctl_conn)	 entry;
+	struct imsgproc		*proc;
 };
 
 int	control_init(char *);
 int	control_listen(void);
-void	control_accept(int, short, void *);
-void	control_dispatch_imsg(int, short, void *);
 int	control_imsg_relay(struct imsg *);
 void	control_cleanup(char *);

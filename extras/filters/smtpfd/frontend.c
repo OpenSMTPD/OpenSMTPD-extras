@@ -238,6 +238,6 @@ frontend_showinfo_ctl(struct ctl_conn *c)
 {
 	struct ctl_frontend_info cfi;
 
-	imsg_compose_event(&c->iev, IMSG_CTL_SHOW_FRONTEND_INFO, 0, 0, -1,
+	proc_compose(c->proc, IMSG_CTL_SHOW_FRONTEND_INFO, 0, 0, -1,
 	    &cfi, sizeof(struct ctl_frontend_info));
 }

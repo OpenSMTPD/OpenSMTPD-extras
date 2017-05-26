@@ -50,6 +50,12 @@ static void proc_event_add(struct imsgproc *);
 
 static TAILQ_HEAD(, imsgproc) procs = TAILQ_HEAD_INITIALIZER(procs);
 
+int
+proc_getfd(struct imsgproc *p)
+{
+	return p->imsgbuf.fd;
+}
+
 pid_t
 proc_getpid(struct imsgproc *p)
 {
@@ -146,6 +152,12 @@ proc_settitle(struct imsgproc *p, const char *title)
 	}
 	else
 		p->title = NULL;
+}
+
+void
+proc_setpid(struct imsgproc *p, pid_t pid)
+{
+	p->pid = pid;
 }
 
 void
