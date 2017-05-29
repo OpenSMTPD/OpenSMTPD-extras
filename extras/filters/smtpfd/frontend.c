@@ -92,20 +92,6 @@ frontend(int debug, int verbose, char *sockname)
 	exit(0);
 }
 
-int
-frontend_imsg_compose_main(int type, pid_t pid, void *data,
-    uint16_t datalen)
-{
-	return proc_compose(p_main, type, 0, pid, -1, data, datalen);
-}
-
-int
-frontend_imsg_compose_engine(int type, uint32_t peerid, pid_t pid,
-    void *data, uint16_t datalen)
-{
-	return proc_compose(p_engine, type, peerid, pid, -1, data, datalen);
-}
-
 static void
 frontend_dispatch_main(struct imsgproc *p, struct imsg *imsg, void *arg)
 {

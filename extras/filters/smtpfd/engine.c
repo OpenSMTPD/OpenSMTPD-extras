@@ -83,13 +83,6 @@ engine(int debug, int verbose)
 	exit(0);
 }
 
-int
-engine_imsg_compose_frontend(int type, pid_t pid, void *data,
-    uint16_t datalen)
-{
-	return proc_compose(p_frontend, type, 0, pid, -1, data, datalen);
-}
-
 void
 engine_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *bula)
 {
@@ -154,8 +147,8 @@ engine_showinfo_ctl(struct imsg *imsg)
 {
 	switch (imsg->hdr.type) {
 	case IMSG_CTL_SHOW_ENGINE_INFO:
-		engine_imsg_compose_frontend(IMSG_CTL_END, imsg->hdr.pid, NULL,
-		    0);
+		proc_compose(p_frontend, IMSG_CTL_END, 0, imsg->hdr.pid, -1,
+		    NULL, 0);
 		break;
 	default:
 		log_debug("%s: unexpected imsg %d", __func__, imsg->hdr.type);

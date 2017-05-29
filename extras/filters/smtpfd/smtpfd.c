@@ -327,20 +327,6 @@ main_dispatch_engine(struct imsgproc *p, struct imsg *imsg, void *arg)
 	}
 }
 
-void
-main_imsg_compose_frontend(int type, pid_t pid, void *data, uint16_t datalen)
-{
-	if (p_frontend)
-		proc_compose(p_frontend, type, 0, pid, -1, data, datalen);
-}
-
-void
-main_imsg_compose_engine(int type, pid_t pid, void *data, uint16_t datalen)
-{
-	if (p_engine)
-		proc_compose(p_engine, type, 0, pid, -1, data, datalen);
-}
-
 int
 main_reload(void)
 {
@@ -387,8 +373,8 @@ main_showinfo_ctl(struct imsg *imsg)
 {
 	switch (imsg->hdr.type) {
 	case IMSG_CTL_SHOW_MAIN_INFO:
-		main_imsg_compose_frontend(IMSG_CTL_END, imsg->hdr.pid, NULL,
-		    0);
+		proc_compose(p_frontend, IMSG_CTL_END, 0, imsg->hdr.pid, -1,
+		    NULL, 0);
 		break;
 	default:
 		log_debug("%s: error handling imsg", __func__);

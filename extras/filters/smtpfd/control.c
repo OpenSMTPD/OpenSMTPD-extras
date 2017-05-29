@@ -202,7 +202,7 @@ control_dispatch_imsg(struct imsgproc *p, struct imsg *imsg, void *arg)
 
 	switch (imsg->hdr.type) {
 	case IMSG_CTL_RELOAD:
-		frontend_imsg_compose_main(imsg->hdr.type, 0, NULL, 0);
+		proc_compose(p_main, imsg->hdr.type, 0, 0, -1, NULL, 0);
 		break;
 	case IMSG_CTL_LOG_VERBOSE:
 		if (imsg->hdr.len != IMSG_HEADER_SIZE +
@@ -210,18 +210,17 @@ control_dispatch_imsg(struct imsgproc *p, struct imsg *imsg, void *arg)
 			break;
 
 		/* Forward to all other processes. */
-		frontend_imsg_compose_main(imsg->hdr.type, imsg->hdr.pid,
+		proc_compose(p_main, imsg->hdr.type, 0, imsg->hdr.pid, -1,
 		    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE);
-		frontend_imsg_compose_engine(imsg->hdr.type, 0,
-		    imsg->hdr.pid, imsg->data,
-		    imsg->hdr.len - IMSG_HEADER_SIZE);
+		proc_compose(p_engine, imsg->hdr.type, 0, imsg->hdr.pid, -1,
+		    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE);
 
 		memcpy(&verbose, imsg->data, sizeof(verbose));
 		log_setverbose(verbose);
 		break;
 	case IMSG_CTL_SHOW_MAIN_INFO:
 		proc_setpid(c->proc, imsg->hdr.pid);
-		frontend_imsg_compose_main(imsg->hdr.type, imsg->hdr.pid,
+		proc_compose(p_main, imsg->hdr.type, 0, imsg->hdr.pid, -1,
 		    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE);
 		break;
 	case IMSG_CTL_SHOW_FRONTEND_INFO:
@@ -230,8 +229,7 @@ control_dispatch_imsg(struct imsgproc *p, struct imsg *imsg, void *arg)
 		break;
 	case IMSG_CTL_SHOW_ENGINE_INFO:
 		proc_setpid(c->proc, imsg->hdr.pid);
-		frontend_imsg_compose_engine(imsg->hdr.type, 0,
-		    imsg->hdr.pid,
+		proc_compose(p_engine, imsg->hdr.type, 0, imsg->hdr.pid, -1,
 		    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE);
 		break;
 	default:
@@ -249,6 +247,6 @@ control_imsg_relay(struct imsg *imsg)
 	if ((c = control_connbypid(imsg->hdr.pid)) == NULL)
 		return (0);
 
-	return (proc_compose(c->proc, imsg->hdr.type, 0, imsg->hdr.pid,
-	    -1, imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE));
+	return (proc_compose(c->proc, imsg->hdr.type, 0, imsg->hdr.pid, -1,
+	    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE));
 }

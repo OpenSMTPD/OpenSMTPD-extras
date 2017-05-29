@@ -76,8 +76,6 @@ extern struct imsgproc *p_engine;
 extern struct imsgproc *p_main;
 
 /* smtpfd.c */
-void	main_imsg_compose_frontend(int, pid_t, void *, uint16_t);
-void	main_imsg_compose_engine(int, pid_t, void *, uint16_t);
 struct smtpfd_conf *config_new_empty(void);
 void config_clear(struct smtpfd_conf *);
 
