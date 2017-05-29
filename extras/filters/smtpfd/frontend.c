@@ -41,33 +41,16 @@
 #include "frontend.h"
 #include "control.h"
 
-__dead void	 frontend_shutdown(void);
-void		 frontend_sig_handler(int, short, void *);
+
+static void frontend_dispatch_main(struct imsgproc *, struct imsg *, void *);
+static void frontend_dispatch_engine(struct imsgproc *, struct imsg *, void *);
 
 struct imsgproc	*p_main;
 struct imsgproc	*p_engine;
 
 void
-frontend_sig_handler(int sig, short event, void *bula)
-{
-	/*
-	 * Normal signal handler rules don't apply because libevent
-	 * decouples for us.
-	 */
-
-	switch (sig) {
-	case SIGINT:
-	case SIGTERM:
-		frontend_shutdown();
-	default:
-		fatalx("unexpected signal");
-	}
-}
-
-void
 frontend(int debug, int verbose, char *sockname)
 {
-	struct event	 ev_sigint, ev_sigterm;
 	struct passwd	*pw;
 
 	log_init(debug, LOG_DAEMON);
@@ -99,14 +82,6 @@ frontend(int debug, int verbose, char *sockname)
 
 	event_init();
 
-	/* Setup signal handler. */
-	signal_set(&ev_sigint, SIGINT, frontend_sig_handler, NULL);
-	signal_set(&ev_sigterm, SIGTERM, frontend_sig_handler, NULL);
-	signal_add(&ev_sigint, NULL);
-	signal_add(&ev_sigterm, NULL);
-	signal(SIGPIPE, SIG_IGN);
-	signal(SIGHUP, SIG_IGN);
-
 	/* Setup pipe and event handler to the parent process. */
 	p_main = proc_attach(PROC_MAIN, 3);
 	proc_setcallback(p_main, frontend_dispatch_main, NULL);
@@ -118,17 +93,6 @@ frontend(int debug, int verbose, char *sockname)
 
 	event_dispatch();
 
-	frontend_shutdown();
-}
-
-__dead void
-frontend_shutdown(void)
-{
-	/* Close pipes. */
-	proc_free(p_engine);
-	proc_free(p_main);
-
-	log_info("frontend exiting");
 	exit(0);
 }
 
@@ -146,10 +110,11 @@ frontend_imsg_compose_engine(int type, uint32_t peerid, pid_t pid,
 	return proc_compose(p_engine, type, peerid, pid, -1, data, datalen);
 }
 
-void
+static void
 frontend_dispatch_main(struct imsgproc *p, struct imsg *imsg, void *arg)
 {
 	if (imsg == NULL) {
+		log_debug("%s: imsg connection lost", __func__);
 		event_loopexit(NULL);
 		return;
 	}
@@ -160,50 +125,39 @@ frontend_dispatch_main(struct imsgproc *p, struct imsg *imsg, void *arg)
 		 * Setup pipe and event handler to the engine
 		 * process.
 		 */
-		if (p_engine) {
-			log_warnx("%s: received unexpected imsg fd "
-			    "to frontend", __func__);
-			break;
-		}
-		if (imsg->fd == -1) {
-			log_warnx("%s: expected to receive imsg fd to "
-			   "frontend but didn't receive any",
-			   __func__);
-			break;
-		}
+		if (p_engine)
+			fatalx("engine process already set");
+
+		if (imsg->fd == -1)
+			fatalx("failed to receive engine process fd");
 
 		p_engine = proc_attach(PROC_ENGINE, imsg->fd);
+		if (p_engine == NULL)
+			fatal("proc_attach");
 		proc_setcallback(p_engine, frontend_dispatch_engine, NULL);
 		proc_enable(p_engine);
 		break;
-	case IMSG_CTL_END:
-	case IMSG_CTL_SHOW_MAIN_INFO:
-		control_imsg_relay(imsg);
-		break;
 	default:
-		log_debug("%s: error handling imsg %d", __func__,
-		    imsg->hdr.type);
+		log_debug("%s: unexpected imsg %d", __func__, imsg->hdr.type);
 		break;
 	}
 }
 
-void
+static void
 frontend_dispatch_engine(struct imsgproc *p, struct imsg *imsg, void *arg)
 {
 	if (imsg == NULL) {
+		log_debug("%s: imsg connection lost", __func__);
 		event_loopexit(NULL);
 		return;
 	}
 
 	switch (imsg->hdr.type) {
-	case IMSG_CTL_END:
 	case IMSG_CTL_SHOW_ENGINE_INFO:
 		control_imsg_relay(imsg);
 		break;
 	default:
-		log_debug("%s: error handling imsg %d", __func__,
-		    imsg->hdr.type);
-		break;
+		log_debug("%s: unexpected imsg %d", __func__, imsg->hdr.type);
 	}
 }
 

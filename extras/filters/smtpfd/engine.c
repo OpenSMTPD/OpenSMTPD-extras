@@ -40,36 +40,16 @@
 #include "smtpfd.h"
 #include "engine.h"
 
-__dead void	 engine_shutdown(void);
-void		 engine_sig_handler(int sig, short, void *);
-void		 engine_dispatch_frontend(struct imsgproc *, struct imsg *, void *);
-void		 engine_dispatch_main(struct imsgproc *, struct imsg *, void *);
-void		 engine_showinfo_ctl(struct imsg *);
+static void engine_dispatch_frontend(struct imsgproc *, struct imsg *, void *);
+static void engine_dispatch_main(struct imsgproc *, struct imsg *, void *);
+static void engine_showinfo_ctl(struct imsg *);
 
 struct imsgproc	*p_frontend;
 struct imsgproc	*p_main;
 
 void
-engine_sig_handler(int sig, short event, void *arg)
-{
-	/*
-	 * Normal signal handler rules don't apply because libevent
-	 * decouples for us.
-	 */
-
-	switch (sig) {
-	case SIGINT:
-	case SIGTERM:
-		engine_shutdown();
-	default:
-		fatalx("unexpected signal");
-	}
-}
-
-void
 engine(int debug, int verbose)
 {
-	struct event		 ev_sigint, ev_sigterm;
 	struct passwd		*pw;
 
 	log_init(debug, LOG_DAEMON);
@@ -97,14 +77,6 @@ engine(int debug, int verbose)
 
 	event_init();
 
-	/* Setup signal handler(s). */
-	signal_set(&ev_sigint, SIGINT, engine_sig_handler, NULL);
-	signal_set(&ev_sigterm, SIGTERM, engine_sig_handler, NULL);
-	signal_add(&ev_sigint, NULL);
-	signal_add(&ev_sigterm, NULL);
-	signal(SIGPIPE, SIG_IGN);
-	signal(SIGHUP, SIG_IGN);
-
 	/* Setup pipe and event handler to the main process. */
 	p_main = proc_attach(PROC_MAIN, 3);
 	proc_setcallback(p_main, engine_dispatch_main, NULL);
@@ -112,17 +84,6 @@ engine(int debug, int verbose)
 
 	event_dispatch();
 
-	engine_shutdown();
-}
-
-__dead void
-engine_shutdown(void)
-{
-	/* Close pipes. */
-	proc_free(p_main);
-	proc_free(p_frontend);
-
-	log_info("engine exiting");
 	exit(0);
 }
 
@@ -139,6 +100,7 @@ engine_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *bula)
 	int verbose;
 
 	if (imsg == NULL) {
+		log_debug("%s: imsg connection lost", __func__);
 		event_loopexit(NULL);
 		return;
 	}
@@ -153,8 +115,7 @@ engine_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *bula)
 		engine_showinfo_ctl(imsg);
 		break;
 	default:
-		log_debug("%s: unexpected imsg %d", __func__,
-		    imsg->hdr.type);
+		log_debug("%s: unexpected imsg %d", __func__, imsg->hdr.type);
 		break;
 	}
 }
@@ -163,6 +124,7 @@ void
 engine_dispatch_main(struct imsgproc *p, struct imsg *imsg, void *bula)
 {
 	if (imsg == NULL) {
+		log_debug("%s: imsg connection lost", __func__);
 		event_loopexit(NULL);
 		return;
 	}
@@ -173,27 +135,20 @@ engine_dispatch_main(struct imsgproc *p, struct imsg *imsg, void *bula)
 		 * Setup pipe and event handler to the frontend
 		 * process.
 		 */
-		if (p_frontend) {
-			log_warnx("%s: received unexpected imsg fd "
-			    "to engine", __func__);
-			break;
-		}
-		if (imsg->fd == -1) {
-			log_warnx("%s: expected to receive imsg fd to "
-			   "engine but didn't receive any", __func__);
-			break;
-		}
+		if (p_frontend)
+			fatalx("frontend process already set");
+
+		if (imsg->fd == -1)
+			fatalx("failed to receive frontend process fd");
 
 		p_frontend = proc_attach(PROC_FRONTEND, imsg->fd);
 		if (p_frontend == NULL)
-			fatal(NULL);
-
+			fatal("proc_attach");
 		proc_setcallback(p_frontend, engine_dispatch_frontend, NULL);
 		proc_enable(p_frontend);
 		break;
 	default:
-		log_debug("%s: unexpected imsg %d", __func__,
-		    imsg->hdr.type);
+		log_debug("%s: unexpected imsg %d", __func__, imsg->hdr.type);
 		break;
 	}
 }
@@ -207,7 +162,7 @@ engine_showinfo_ctl(struct imsg *imsg)
 		    0);
 		break;
 	default:
-		log_debug("%s: error handling imsg", __func__);
+		log_debug("%s: unexpected imsg %d", __func__, imsg->hdr.type);
 		break;
 	}
 }
