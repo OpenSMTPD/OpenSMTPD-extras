@@ -55,6 +55,8 @@ frontend(int debug, int verbose, char *sockname)
 
 	log_init(debug, LOG_DAEMON);
 	log_setverbose(verbose);
+	log_procinit("frontend");
+	setproctitle("frontend");
 
 	/* Create smtpfd control socket outside chroot. */
 	if (control_init(sockname) == -1)
@@ -67,10 +69,6 @@ frontend(int debug, int verbose, char *sockname)
 		fatal("chroot");
 	if (chdir("/") == -1)
 		fatal("chdir(\"/\")");
-
-	smtpfd_process = PROC_FRONTEND;
-	setproctitle(log_procnames[smtpfd_process]);
-	log_procinit(log_procnames[smtpfd_process]);
 
 	if (setgroups(1, &pw->pw_gid) ||
 	    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||

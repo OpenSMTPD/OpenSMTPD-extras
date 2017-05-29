@@ -181,6 +181,8 @@ main(int argc, char *argv[])
 
 	log_init(debug, LOG_DAEMON);
 	log_setverbose(cmd_opts & OPT_VERBOSE);
+	log_procinit("main");
+	setproctitle("main");
 
 	if (!debug)
 		daemon(1, 0);
@@ -202,10 +204,6 @@ main(int argc, char *argv[])
 	rargv[1] = "-E";
 	rargv[argc - 3] = NULL;
 	p_engine = proc_exec(PROC_ENGINE, rargv);
-
-	smtpfd_process = PROC_MAIN;
-	setproctitle(log_procnames[smtpfd_process]);
-	log_procinit(log_procnames[smtpfd_process]);
 
 	event_init();
 

@@ -27,13 +27,6 @@
 #define OPT_VERBOSE2	0x00000002
 #define OPT_NOACTION	0x00000004
 
-static const char * const log_procnames[] = {
-	"main",
-	"frontend",
-	"engine",
-	"client"
-};
-
 enum imsg_type {
 	IMSG_NONE,
 	IMSG_CTL_LOG_VERBOSE,
@@ -48,12 +41,12 @@ enum imsg_type {
 	IMSG_SOCKET_IPC
 };
 
-enum {
+enum smtpfd_process {
 	PROC_MAIN,
 	PROC_ENGINE,
 	PROC_FRONTEND,
 	PROC_CLIENT,
-} smtpfd_process;
+};
 
 
 struct filter_conf {

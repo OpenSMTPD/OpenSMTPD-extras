@@ -54,6 +54,8 @@ engine(int debug, int verbose)
 
 	log_init(debug, LOG_DAEMON);
 	log_setverbose(verbose);
+	log_procinit("engine");
+	setproctitle("engine");
 
 	if ((pw = getpwnam(SMTPFD_USER)) == NULL)
 		fatal("getpwnam");
@@ -62,10 +64,6 @@ engine(int debug, int verbose)
 		fatal("chroot");
 	if (chdir("/") == -1)
 		fatal("chdir(\"/\")");
-
-	smtpfd_process = PROC_ENGINE;
-	setproctitle(log_procnames[smtpfd_process]);
-	log_procinit(log_procnames[smtpfd_process]);
 
 	if (setgroups(1, &pw->pw_gid) ||
 	    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||
