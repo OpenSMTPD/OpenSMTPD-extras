@@ -45,8 +45,6 @@
 static void frontend_dispatch_main(struct imsgproc *, struct imsg *, void *);
 static void frontend_dispatch_engine(struct imsgproc *, struct imsg *, void *);
 
-struct imsgproc	*p_main;
-struct imsgproc	*p_engine;
 
 void
 frontend(int debug, int verbose, char *sockname)

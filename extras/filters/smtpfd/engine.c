@@ -44,8 +44,6 @@ static void engine_dispatch_frontend(struct imsgproc *, struct imsg *, void *);
 static void engine_dispatch_main(struct imsgproc *, struct imsg *, void *);
 static void engine_showinfo_ctl(struct imsg *);
 
-struct imsgproc	*p_frontend;
-struct imsgproc	*p_main;
 
 void
 engine(int debug, int verbose)

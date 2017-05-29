@@ -61,6 +61,8 @@ static void	config_print(struct smtpfd_conf *);
 struct smtpfd_conf	*main_conf;
 struct imsgproc		*p_frontend;
 struct imsgproc		*p_engine;
+struct imsgproc		*p_main;
+
 char			*conffile;
 char			*csock;
 
