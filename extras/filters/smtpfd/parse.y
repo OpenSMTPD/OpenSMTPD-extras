@@ -46,7 +46,6 @@
 
 #include "log.h"
 #include "smtpfd.h"
-#include "frontend.h"
 
 TAILQ_HEAD(files, file)		 files = TAILQ_HEAD_INITIALIZER(files);
 static struct file {

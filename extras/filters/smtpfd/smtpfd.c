@@ -40,8 +40,6 @@
 #include "log.h"
 #include "proc.h"
 #include "smtpfd.h"
-#include "frontend.h"
-#include "engine.h"
 #include "control.h"
 
 __dead void	usage(void);

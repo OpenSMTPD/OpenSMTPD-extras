@@ -75,6 +75,14 @@ extern struct imsgproc *p_frontend;
 extern struct imsgproc *p_engine;
 extern struct imsgproc *p_main;
 
+
+/* engine.c */
+void engine(int, int);
+
+/* frontend.c */
+void frontend(int, int, char *);
+void frontend_showinfo_ctl(struct imsgproc *);
+
 /* smtpfd.c */
 struct smtpfd_conf *config_new_empty(void);
 void config_clear(struct smtpfd_conf *);

@@ -38,7 +38,6 @@
 #include "log.h"
 #include "proc.h"
 #include "smtpfd.h"
-#include "engine.h"
 
 static void engine_dispatch_frontend(struct imsgproc *, struct imsg *, void *);
 static void engine_dispatch_main(struct imsgproc *, struct imsg *, void *);

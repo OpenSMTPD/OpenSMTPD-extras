@@ -38,7 +38,6 @@
 #include "log.h"
 #include "proc.h"
 #include "smtpfd.h"
-#include "frontend.h"
 #include "control.h"
 
 

@@ -36,7 +36,6 @@
 #include "proc.h"
 #include "smtpfd.h"
 #include "control.h"
-#include "frontend.h"
 
 #define	CONTROL_BACKLOG	5
 
