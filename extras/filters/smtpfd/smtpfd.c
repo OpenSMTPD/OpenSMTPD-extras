@@ -340,31 +340,6 @@ main_imsg_compose_engine(int type, pid_t pid, void *data, uint16_t datalen)
 		proc_compose(p_engine, type, 0, pid, -1, data, datalen);
 }
 
-void
-imsg_event_add(struct imsgev *iev)
-{
-	iev->events = EV_READ;
-	if (iev->ibuf.w.queued)
-		iev->events |= EV_WRITE;
-
-	event_del(&iev->ev);
-	event_set(&iev->ev, iev->ibuf.fd, iev->events, iev->handler, iev);
-	event_add(&iev->ev, NULL);
-}
-
-int
-imsg_compose_event(struct imsgev *iev, uint16_t type, uint32_t peerid,
-    pid_t pid, int fd, void *data, uint16_t datalen)
-{
-	int ret;
-
-	if ((ret = imsg_compose(&iev->ibuf, type, peerid, pid, fd, data,
-	    datalen)) != -1)
-		imsg_event_add(iev);
-
-	return (ret);
-}
-
 int
 main_reload(void)
 {

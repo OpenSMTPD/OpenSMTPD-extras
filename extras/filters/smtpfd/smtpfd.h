@@ -35,13 +35,6 @@ static const char * const log_procnames[] = {
 	"client"
 };
 
-struct imsgev {
-	struct imsgbuf	 ibuf;
-	void		(*handler)(int, short, void *);
-	struct event	 ev;
-	short		 events;
-};
-
 enum imsg_type {
 	IMSG_NONE,
 	IMSG_CTL_LOG_VERBOSE,
@@ -96,9 +89,6 @@ extern uint32_t	 cmd_opts;
 void	main_imsg_compose_frontend(int, pid_t, void *, uint16_t);
 void	main_imsg_compose_engine(int, pid_t, void *, uint16_t);
 void	merge_config(struct smtpfd_conf *, struct smtpfd_conf *);
-void	imsg_event_add(struct imsgev *);
-int	imsg_compose_event(struct imsgev *, uint16_t, uint32_t, pid_t,
-	    int, void *, uint16_t);
 
 struct smtpfd_conf       *config_new_empty(void);
 void			config_clear(struct smtpfd_conf *);
