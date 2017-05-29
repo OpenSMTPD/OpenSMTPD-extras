@@ -84,7 +84,6 @@ frontend(int debug, int verbose, char *sockname)
 	proc_enable(p_main);
 
 	/* Listen on control socket. */
-	TAILQ_INIT(&ctl_conns);
 	control_listen();
 
 	event_dispatch();
@@ -144,10 +143,10 @@ frontend_dispatch_engine(struct imsgproc *p, struct imsg *imsg, void *arg)
 }
 
 void
-frontend_showinfo_ctl(struct ctl_conn *c)
+frontend_showinfo_ctl(struct imsgproc *proc)
 {
 	struct ctl_frontend_info cfi;
 
-	proc_compose(c->proc, IMSG_CTL_SHOW_FRONTEND_INFO, 0, 0, -1,
+	proc_compose(proc, IMSG_CTL_SHOW_FRONTEND_INFO, 0, 0, -1,
 	    &cfi, sizeof(struct ctl_frontend_info));
 }

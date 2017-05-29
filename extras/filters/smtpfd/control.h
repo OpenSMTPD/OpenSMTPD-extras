@@ -16,17 +16,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-struct {
-	struct event	ev;
-	struct event	evt;
-	int		fd;
-} control_state;
-
-struct ctl_conn {
-	TAILQ_ENTRY(ctl_conn)	 entry;
-	struct imsgproc		*proc;
-};
-
 int	control_init(char *);
 int	control_listen(void);
 int	control_imsg_relay(struct imsg *);

@@ -40,10 +40,24 @@
 
 #define	CONTROL_BACKLOG	5
 
+struct ctl_conn {
+	TAILQ_ENTRY(ctl_conn)	 entry;
+	struct imsgproc		*proc;
+};
+
 static struct ctl_conn	*control_connbypid(pid_t);
 static void control_accept(int, short, void *);
 static void control_close(struct ctl_conn *);
 static void control_dispatch_imsg(struct imsgproc *, struct imsg *, void *);
+
+static struct {
+	struct event	ev;
+	struct event	evt;
+	int		fd;
+} control_state;
+
+static TAILQ_HEAD(ctl_conns, ctl_conn)	ctl_conns;
+
 
 int
 control_init(char *path)
@@ -51,6 +65,8 @@ control_init(char *path)
 	struct sockaddr_un	 sun;
 	int			 fd;
 	mode_t			 old_umask;
+
+	TAILQ_INIT(&ctl_conns);
 
 	if ((fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK,
 	    0)) == -1) {
@@ -224,7 +240,7 @@ control_dispatch_imsg(struct imsgproc *p, struct imsg *imsg, void *arg)
 		    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE);
 		break;
 	case IMSG_CTL_SHOW_FRONTEND_INFO:
-		frontend_showinfo_ctl(c);
+		frontend_showinfo_ctl(c->proc);
 		proc_compose(c->proc, IMSG_CTL_END, 0, 0, -1, NULL, 0);
 		break;
 	case IMSG_CTL_SHOW_ENGINE_INFO:

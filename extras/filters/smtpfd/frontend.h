@@ -16,9 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-TAILQ_HEAD(ctl_conns, ctl_conn)	ctl_conns;
-
 struct imsgproc;
 
 void		 frontend(int, int, char *);
-void		 frontend_showinfo_ctl(struct ctl_conn *);
+void		 frontend_showinfo_ctl(struct imsgproc *);
