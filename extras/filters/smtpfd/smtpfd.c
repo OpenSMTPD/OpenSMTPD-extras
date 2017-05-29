@@ -53,9 +53,10 @@ void	main_dispatch_frontend(struct imsgproc *, struct imsg*, void *);
 void	main_dispatch_engine(struct imsgproc *, struct imsg*, void *);
 static int	main_imsg_send_config(struct smtpfd_conf *);
 
-int	main_reload(void);
-int	main_sendboth(enum imsg_type, void *, uint16_t);
-void	main_showinfo_ctl(struct imsg *);
+static int	main_reload(void);
+static int	main_sendboth(enum imsg_type, void *, uint16_t);
+static void	main_showinfo_ctl(struct imsg *);
+static void	config_print(struct smtpfd_conf *);
 
 struct smtpfd_conf	*main_conf;
 struct imsgproc		*p_frontend;
@@ -164,7 +165,7 @@ main(int argc, char *argv[])
 
 	if (cmd_opts & OPT_NOACTION) {
 		if (cmd_opts & OPT_VERBOSE)
-			print_config(main_conf);
+			config_print(main_conf);
 		else
 			fprintf(stderr, "configuration OK\n");
 		exit(0);
@@ -351,7 +352,8 @@ main_reload(void)
 	if (main_imsg_send_config(xconf) == -1)
 		return (-1);
 
-	merge_config(main_conf, xconf);
+	config_clear(main_conf);
+	main_conf = xconf;
 
 	return (0);
 }
@@ -359,17 +361,9 @@ main_reload(void)
 int
 main_imsg_send_config(struct smtpfd_conf *xconf)
 {
-	struct group	 *g;
-
 	/* Send fixed part of config to children. */
 	if (main_sendboth(IMSG_RECONF_CONF, xconf, sizeof(*xconf)) == -1)
 		return (-1);
-
-	/* Send the group list to children. */
-	LIST_FOREACH(g, &xconf->group_list, entry) {
-		if (main_sendboth(IMSG_RECONF_GROUP, g, sizeof(*g)) == -1)
-			return (-1);
-	}
 
 	/* Tell children the revised config is now complete. */
 	if (main_sendboth(IMSG_RECONF_END, NULL, 0) == -1)
@@ -402,53 +396,47 @@ main_showinfo_ctl(struct imsg *imsg)
 	}
 }
 
-void
-merge_config(struct smtpfd_conf *conf, struct smtpfd_conf *xconf)
-{
-	struct group	*g;
-
-	conf->yesno = xconf->yesno;
-	conf->integer = xconf->integer;
-	memcpy(conf->global_text, xconf->global_text,
-	    sizeof(conf->global_text));
-
-	/* Remove & discard existing groups. */
-	while ((g = LIST_FIRST(&conf->group_list)) != NULL) {
-		LIST_REMOVE(g, entry);
-		free(g);
-	}
-
-	/* Add new groups. */
-	while ((g = LIST_FIRST(&xconf->group_list)) != NULL) {
-		LIST_REMOVE(g, entry);
-		LIST_INSERT_HEAD(&conf->group_list, g, entry);
-	}
-
-	free(xconf);
-}
-
 struct smtpfd_conf *
 config_new_empty(void)
 {
-	struct smtpfd_conf	*xconf;
+	struct smtpfd_conf	*conf;
 
-	xconf = calloc(1, sizeof(*xconf));
-	if (xconf == NULL)
+	conf = calloc(1, sizeof(*conf));
+	if (conf == NULL)
 		fatal(NULL);
 
-	LIST_INIT(&xconf->group_list);
+	TAILQ_INIT(&conf->filters);
 
-	return (xconf);
+	return (conf);
 }
 
 void
 config_clear(struct smtpfd_conf *conf)
 {
-	struct smtpfd_conf	*xconf;
+	struct filter_conf *f;
+	int i;
 
-	/* Merge current config with an empty config. */
-	xconf = config_new_empty();
-	merge_config(conf, xconf);
+	while ((f = TAILQ_FIRST(&conf->filters))) {
+		TAILQ_REMOVE(&conf->filters, f, entry);
+		free(f->name);
+		for (i = 0; i < f->argc; i++)
+			free(f->argv[i]);
+		free(f);
+	}
 
 	free(conf);
+}
+
+void
+config_print(struct smtpfd_conf *conf)
+{
+	struct filter_conf *f;
+	int i;
+
+	TAILQ_FOREACH(f, &conf->filters, entry) {
+		printf("%s %s", f->chain ? "chain":"filter", f->name);
+		for (i = 0; i < f->argc; i++)
+			printf(" %s", f->argv[i]);
+		printf("\n");
+	}
 }

@@ -82,15 +82,9 @@ struct sym {
 int	 symset(const char *, const char *, int);
 char	*symget(const char *);
 
-void	 clear_config(struct smtpfd_conf *xconf);
-
-static struct smtpfd_conf	*conf;
-static int		 errors;
-
-static struct group	*group;
-
-struct group	*conf_get_group(char *);
-void		*conf_del_group(struct group *);
+static struct smtpfd_conf *conf;
+static struct filter_conf *filter;
+static int errors;
 
 typedef struct {
 	union {
@@ -102,24 +96,20 @@ typedef struct {
 
 %}
 
-%token	GROUP YES NO INCLUDE ERROR
-%token	YESNO INTEGER
-%token	GLOBAL_TEXT
-%token	GROUP_V4ADDRESS GROUP_V6ADDRESS
+%token	CHAIN ERROR FILTER INCLUDE
 
 %token	<v.string>	STRING
 %token	<v.number>	NUMBER
-%type	<v.number>	yesno
 %type	<v.string>	string
+%type	<v.number>	filter_or_chain
 
 %%
 
 grammar		: /* empty */
 		| grammar include '\n'
 		| grammar '\n'
-		| grammar conf_main '\n'
+		| grammar filter '\n'
 		| grammar varset '\n'
-		| grammar group '\n'
 		| grammar error '\n'		{ file->errors++; }
 		;
 
@@ -151,10 +141,6 @@ string		: string STRING	{
 		| STRING
 		;
 
-yesno		: YES	{ $$ = 1; }
-		| NO	{ $$ = 0; }
-		;
-
 varset		: STRING '=' string		{
 			char *s = $1;
 			if (cmd_opts & OPT_VERBOSE)
@@ -173,24 +159,53 @@ varset		: STRING '=' string		{
 		}
 		;
 
-conf_main	: YESNO yesno {
-			conf->yesno = $2;
-		}
-		| INTEGER NUMBER {
-			conf->integer = $2;
-		}
-		| GLOBAL_TEXT STRING {
-			size_t n;
-			memset(conf->global_text, 0,
-			    sizeof(conf->global_text));
-			n = strlcpy(conf->global_text, $2,
-			    sizeof(conf->global_text));
-			if (n >= sizeof(conf->global_text)) {
-				yyerror("error parsing global_text: too long");
-				free($2);
+filter_args	: STRING {
+			struct filter_conf *f;
+
+			if (filter->argc == SMTPFD_MAXFILTERARG) {
+				yyerror("too many args for filter %s",
+				    filter->name);
 				YYERROR;
 			}
-		}
+
+			if (filter->chain) {
+				TAILQ_FOREACH(f, &conf->filters, entry)
+					if (!strcmp(f->name, $1))
+						break;
+				if (f == NULL) {
+					yyerror("unknown filter %s", $1);
+					YYERROR;
+				}
+				if (f == filter) {
+					yyerror("cannot chain %s with itself",
+					    f->name);
+					YYERROR;
+				}
+			}
+			filter->argv[filter->argc++] = $1;
+		} filter_args
+		| /* empty */
+		;
+
+filter_or_chain	: FILTER { $$ = 0; }
+		| CHAIN  { $$ = 1; }
+		;
+
+filter		: filter_or_chain STRING {
+			TAILQ_FOREACH(filter, &conf->filters, entry)
+				if (!strcmp(filter->name, $2)) {
+					yyerror("filter %s already defined",
+					    filter->name);
+					YYERROR;
+				}
+			filter = calloc(1, sizeof(*filter));
+			if (filter == NULL)
+				fatal("calloc");
+			filter->chain = $1;
+			filter->name = $2;
+			TAILQ_INSERT_TAIL(&conf->filters, filter, entry);
+		} filter_args
+		;
 
 optnl		: '\n' optnl		/* zero or more newlines */
 		| /*empty*/
@@ -198,50 +213,6 @@ optnl		: '\n' optnl		/* zero or more newlines */
 
 nl		: '\n' optnl		/* one or more newlines */
 		;
-
-group		: GROUP STRING {
-			group = conf_get_group($2);
-		} '{' optnl groupopts_l '}' {
-			group = NULL;
-		}
-		;
-
-groupopts_l	: groupopts_l groupoptsl nl
-		| groupoptsl optnl
-		;
-
-groupoptsl	: GROUP_V4ADDRESS STRING {
-			memset(&group->group_v4address, 0,
-			    sizeof(group->group_v4address));
-			group->group_v4_bits = inet_net_pton(AF_INET, $2,
-			    &group->group_v4address,
-			    sizeof(group->group_v4address));
-			if (group->group_v4_bits == -1) {
-				yyerror("error parsing group_v4address");
-				free($2);
-				YYERROR;
-			}
-		}
-		| GROUP_V6ADDRESS STRING {
-			memset(&group->group_v6address, 0,
-			    sizeof(group->group_v6address));
-			group->group_v6_bits = inet_net_pton(AF_INET6, $2,
-			    &group->group_v6address,
-			    sizeof(group->group_v6address));
-			if (group->group_v6_bits == -1) {
-				yyerror("error parsing group_v6address");
-				free($2);
-				YYERROR;
-			}
-		}
-		| YESNO yesno {
-			group->yesno = $2;
-		}
-		| INTEGER NUMBER {
-			group->integer = $2;
-		}
-		;
-
 %%
 
 struct keywords {
@@ -276,15 +247,9 @@ lookup(char *s)
 {
 	/* This has to be sorted always. */
 	static const struct keywords keywords[] = {
-		{"global-text",		GLOBAL_TEXT},
-		{"group",		GROUP},
-		{"group-v4address",	GROUP_V4ADDRESS},
-		{"group-v6address",	GROUP_V6ADDRESS},
+		{"chain",		CHAIN},
+		{"filter",		FILTER},
 		{"include",		INCLUDE},
-		{"integer",		INTEGER},
-		{"no",			NO},
-		{"yes",			YES},
-		{"yesno",		YESNO}
 	};
 	const struct keywords	*p;
 
@@ -621,8 +586,6 @@ parse_config(char *filename)
 	}
 	topfile = file;
 
-	LIST_INIT(&conf->group_list);
-
 	yyparse();
 	errors = file->errors;
 	popfile();
@@ -641,7 +604,7 @@ parse_config(char *filename)
 	}
 
 	if (errors) {
-		clear_config(conf);
+		config_clear(conf);
 		return (NULL);
 	}
 
@@ -722,44 +685,4 @@ symget(const char *nam)
 		}
 	}
 	return (NULL);
-}
-
-struct group *
-conf_get_group(char *name)
-{
-	struct group	*g;
-	size_t		n;
-
-	LIST_FOREACH(g, &conf->group_list, entry) {
-		if (strcmp(name, g->name) == 0)
-			return (g);
-	}
-
-	g = calloc(1, sizeof(*g));
-	if (g == NULL)
-		errx(1, "get_group: calloc");
-	n = strlcpy(g->name, name, sizeof(g->name));
-	if (n >= sizeof(g->name))
-		errx(1, "get_group: name too long");
-
-	/* Inherit attributes set in global section. */
-	g->yesno = conf->yesno;
-	g->integer = conf->integer;
-
-	LIST_INSERT_HEAD(&conf->group_list, g, entry);
-
-	return (g);
-}
-
-void
-clear_config(struct smtpfd_conf *xconf)
-{
-	struct group	*g;
-
-	while ((g = LIST_FIRST(&xconf->group_list)) != NULL) {
-		LIST_REMOVE(g, entry);
-		free(g);
-	}
-
-	free(xconf);
 }

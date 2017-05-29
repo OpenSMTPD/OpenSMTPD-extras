@@ -21,12 +21,11 @@
 #define	SMTPFD_SOCKET		"/var/run/smtpfd.sock"
 #define SMTPFD_USER		"_smtpfd"
 
+#define SMTPFD_MAXFILTERARG	32
+
 #define OPT_VERBOSE	0x00000001
 #define OPT_VERBOSE2	0x00000002
 #define OPT_NOACTION	0x00000004
-
-#define SMTPFD_MAXTEXT		256
-#define SMTPFD_MAXGROUPNAME	16
 
 static const char * const log_procnames[] = {
 	"main",
@@ -56,22 +55,17 @@ enum {
 	PROC_CLIENT,
 } smtpfd_process;
 
-struct group {
-	LIST_ENTRY(group)	 entry;
-	char		name[SMTPFD_MAXGROUPNAME];
-	int		yesno;
-	int		integer;
-	int		group_v4_bits;
-	int		group_v6_bits;
-	struct in_addr	group_v4address;
-	struct in6_addr	group_v6address;
+
+struct filter_conf {
+	TAILQ_ENTRY(filter_conf)	 entry;
+	char				*name;
+	int				 chain;
+	int				 argc;
+	char				*argv[SMTPFD_MAXFILTERARG + 1];
 };
 
 struct smtpfd_conf {
-	int		yesno;
-	int		integer;
-	char		global_text[SMTPFD_MAXTEXT];
-	LIST_HEAD(, group)	group_list;
+	TAILQ_HEAD(, filter_conf) filters;
 };
 
 struct ctl_frontend_info {
@@ -88,13 +82,8 @@ extern uint32_t	 cmd_opts;
 /* smtpfd.c */
 void	main_imsg_compose_frontend(int, pid_t, void *, uint16_t);
 void	main_imsg_compose_engine(int, pid_t, void *, uint16_t);
-void	merge_config(struct smtpfd_conf *, struct smtpfd_conf *);
-
-struct smtpfd_conf       *config_new_empty(void);
-void			config_clear(struct smtpfd_conf *);
-
-/* printconf.c */
-void	print_config(struct smtpfd_conf *);
+struct smtpfd_conf *config_new_empty(void);
+void config_clear(struct smtpfd_conf *);
 
 /* parse.y */
 struct smtpfd_conf	*parse_config(char *);

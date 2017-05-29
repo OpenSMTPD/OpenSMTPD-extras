@@ -46,9 +46,8 @@ void		 engine_dispatch_frontend(struct imsgproc *, struct imsg *, void *);
 void		 engine_dispatch_main(struct imsgproc *, struct imsg *, void *);
 void		 engine_showinfo_ctl(struct imsg *);
 
-struct smtpfd_conf	*engine_conf;
-struct imsgproc		*p_frontend;
-struct imsgproc		*p_main;
+struct imsgproc	*p_frontend;
+struct imsgproc	*p_main;
 
 void
 engine_sig_handler(int sig, short event, void *arg)
@@ -72,8 +71,6 @@ engine(int debug, int verbose)
 {
 	struct event		 ev_sigint, ev_sigterm;
 	struct passwd		*pw;
-
-	engine_conf = config_new_empty();
 
 	log_init(debug, LOG_DAEMON);
 	log_setverbose(verbose);
@@ -125,8 +122,6 @@ engine_shutdown(void)
 	proc_free(p_main);
 	proc_free(p_frontend);
 
-	config_clear(engine_conf);
-
 	log_info("engine exiting");
 	exit(0);
 }
@@ -167,9 +162,6 @@ engine_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *bula)
 void
 engine_dispatch_main(struct imsgproc *p, struct imsg *imsg, void *bula)
 {
-	static struct smtpfd_conf *nconf;
-	struct group *g;
-
 	if (imsg == NULL) {
 		event_loopexit(NULL);
 		return;
@@ -198,22 +190,6 @@ engine_dispatch_main(struct imsgproc *p, struct imsg *imsg, void *bula)
 
 		proc_setcallback(p_frontend, engine_dispatch_frontend, NULL);
 		proc_enable(p_frontend);
-		break;
-	case IMSG_RECONF_CONF:
-		if ((nconf = malloc(sizeof(struct smtpfd_conf))) == NULL)
-			fatal(NULL);
-		memcpy(nconf, imsg->data, sizeof(struct smtpfd_conf));
-		LIST_INIT(&nconf->group_list);
-		break;
-	case IMSG_RECONF_GROUP:
-		if ((g = malloc(sizeof(struct group))) == NULL)
-			fatal(NULL);
-		memcpy(g, imsg->data, sizeof(struct group));
-		LIST_INSERT_HEAD(&nconf->group_list, g, entry);
-		break;
-	case IMSG_RECONF_END:
-		merge_config(engine_conf, nconf);
-		nconf = NULL;
 		break;
 	default:
 		log_debug("%s: unexpected imsg %d", __func__,

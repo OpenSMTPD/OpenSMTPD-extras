@@ -44,9 +44,8 @@
 __dead void	 frontend_shutdown(void);
 void		 frontend_sig_handler(int, short, void *);
 
-struct smtpfd_conf	*frontend_conf;
-struct imsgproc		*p_main;
-struct imsgproc		*p_engine;
+struct imsgproc	*p_main;
+struct imsgproc	*p_engine;
 
 void
 frontend_sig_handler(int sig, short event, void *bula)
@@ -70,8 +69,6 @@ frontend(int debug, int verbose, char *sockname)
 {
 	struct event	 ev_sigint, ev_sigterm;
 	struct passwd	*pw;
-
-	frontend_conf = config_new_empty();
 
 	log_init(debug, LOG_DAEMON);
 	log_setverbose(verbose);
@@ -131,8 +128,6 @@ frontend_shutdown(void)
 	proc_free(p_engine);
 	proc_free(p_main);
 
-	config_clear(frontend_conf);
-
 	log_info("frontend exiting");
 	exit(0);
 }
@@ -154,10 +149,6 @@ frontend_imsg_compose_engine(int type, uint32_t peerid, pid_t pid,
 void
 frontend_dispatch_main(struct imsgproc *p, struct imsg *imsg, void *arg)
 {
-	static struct smtpfd_conf	*nconf;
-	struct group			*g;
-	int				 fd;
-
 	if (imsg == NULL) {
 		event_loopexit(NULL);
 		return;
@@ -174,33 +165,16 @@ frontend_dispatch_main(struct imsgproc *p, struct imsg *imsg, void *arg)
 			    "to frontend", __func__);
 			break;
 		}
-		if ((fd = imsg->fd) == -1) {
+		if (imsg->fd == -1) {
 			log_warnx("%s: expected to receive imsg fd to "
 			   "frontend but didn't receive any",
 			   __func__);
 			break;
 		}
 
-		p_engine = proc_attach(PROC_ENGINE, fd);
+		p_engine = proc_attach(PROC_ENGINE, imsg->fd);
 		proc_setcallback(p_engine, frontend_dispatch_engine, NULL);
 		proc_enable(p_engine);
-		break;
-	case IMSG_RECONF_CONF:
-		if ((nconf = malloc(sizeof(struct smtpfd_conf))) ==
-		    NULL)
-			fatal(NULL);
-		memcpy(nconf, imsg->data, sizeof(struct smtpfd_conf));
-		LIST_INIT(&nconf->group_list);
-		break;
-	case IMSG_RECONF_GROUP:
-		if ((g = malloc(sizeof(struct group))) == NULL)
-			fatal(NULL);
-		memcpy(g, imsg->data, sizeof(struct group));
-		LIST_INSERT_HEAD(&nconf->group_list, g, entry);
-		break;
-	case IMSG_RECONF_END:
-		merge_config(frontend_conf, nconf);
-		nconf = NULL;
 		break;
 	case IMSG_CTL_END:
 	case IMSG_CTL_SHOW_MAIN_INFO:
