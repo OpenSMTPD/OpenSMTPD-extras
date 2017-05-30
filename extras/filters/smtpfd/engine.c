@@ -35,7 +35,7 @@
 
 static void engine_dispatch_frontend(struct imsgproc *, struct imsg *, void *);
 static void engine_dispatch_main(struct imsgproc *, struct imsg *, void *);
-static void engine_showinfo_ctl(struct imsg *);
+static void engine_dispatch_filter(struct imsgproc *, struct imsg *, void *);
 
 
 void
@@ -77,32 +77,6 @@ engine(int debug, int verbose)
 }
 
 static void
-engine_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *bula)
-{
-	int verbose;
-
-	if (imsg == NULL) {
-		log_debug("%s: imsg connection lost", __func__);
-		event_loopexit(NULL);
-		return;
-	}
-
-	switch (imsg->hdr.type) {
-	case IMSG_CTL_LOG_VERBOSE:
-		/* Already checked by frontend. */
-		memcpy(&verbose, imsg->data, sizeof(verbose));
-		log_setverbose(verbose);
-		break;
-	case IMSG_CTL_SHOW_ENGINE_INFO:
-		engine_showinfo_ctl(imsg);
-		break;
-	default:
-		log_debug("%s: unexpected imsg %d", __func__, imsg->hdr.type);
-		break;
-	}
-}
-
-static void
 engine_dispatch_main(struct imsgproc *p, struct imsg *imsg, void *bula)
 {
 	if (imsg == NULL) {
@@ -129,6 +103,19 @@ engine_dispatch_main(struct imsgproc *p, struct imsg *imsg, void *bula)
 		proc_setcallback(p_frontend, engine_dispatch_frontend, NULL);
 		proc_enable(p_frontend);
 		break;
+
+	case IMSG_RECONF_FILTER:
+		if (imsg->fd == -1)
+			fatalx("failed to receive filter process fd");
+
+		p = proc_attach(PROC_FILTER, imsg->fd);
+		if (p == NULL)
+			fatal("proc_attach");
+		proc_settitle(p, imsg->data);
+		proc_setcallback(p, engine_dispatch_filter, NULL);
+		proc_enable(p);
+		break;
+
 	default:
 		log_debug("%s: unexpected imsg %d", __func__, imsg->hdr.type);
 		break;
@@ -136,15 +123,47 @@ engine_dispatch_main(struct imsgproc *p, struct imsg *imsg, void *bula)
 }
 
 static void
-engine_showinfo_ctl(struct imsg *imsg)
+engine_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *bula)
 {
+	int verbose;
+
+	if (imsg == NULL) {
+		log_debug("%s: imsg connection lost", __func__);
+		event_loopexit(NULL);
+		return;
+	}
+
 	switch (imsg->hdr.type) {
+	case IMSG_CTL_LOG_VERBOSE:
+		/* Already checked by frontend. */
+		memcpy(&verbose, imsg->data, sizeof(verbose));
+		log_setverbose(verbose);
+		break;
 	case IMSG_CTL_SHOW_ENGINE_INFO:
 		proc_compose(p_frontend, IMSG_CTL_END, 0, imsg->hdr.pid, -1,
 		    NULL, 0);
 		break;
 	default:
 		log_debug("%s: unexpected imsg %d", __func__, imsg->hdr.type);
+		break;
+	}
+}
+
+static void
+engine_dispatch_filter(struct imsgproc *p, struct imsg *imsg, void *bula)
+{
+	if (imsg == NULL) {
+		log_debug("%s: imsg connection lost to filter %s", __func__,
+		    proc_gettitle(p));
+		event_loopexit(NULL);
+		return;
+	}
+
+	switch (imsg->hdr.type) {
+	default:
+		log_debug("%s: unexpected imsg %d from filter %s", __func__,
+		    imsg->hdr.type, proc_gettitle(p));
+		proc_compose(p, 1, 0, 0, -1, NULL, 0);
 		break;
 	}
 }

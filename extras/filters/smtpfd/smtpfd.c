@@ -47,6 +47,7 @@ static void	main_dispatch_engine(struct imsgproc *, struct imsg*, void *);
 static int	main_imsg_send_config(struct smtpfd_conf *);
 static int	main_reload(void);
 static int	main_sendboth(enum imsg_type, void *, uint16_t);
+static void	main_runfilter(struct filter_conf *f);
 static void	main_showinfo_ctl(struct imsg *);
 static void	config_print(struct smtpfd_conf *);
 
@@ -63,12 +64,34 @@ struct imsgproc *p_main;
 static void
 main_sig_handler(int sig, short event, void *arg)
 {
+	pid_t pid;
+	int status;
+
 	/*
 	 * Normal signal handler rules don't apply because libevent
 	 * decouples for us.
 	 */
 
 	switch (sig) {
+	case SIGCHLD:
+		do {
+			pid = waitpid(-1, &status, WNOHANG);
+			if (pid <= 0)
+				continue;
+			if (WIFSIGNALED(status))
+				log_warnx("process %d terminated by signal %d",
+				    (int)pid, WTERMSIG(status));
+			else if (WIFEXITED(status) && WEXITSTATUS(status))
+				log_warnx("process %d exited with status %d",
+				    (int)pid, WEXITSTATUS(status));
+			else if (WIFEXITED(status))
+				log_debug("debug: process %d exited normally",
+				    (int)pid);
+			else
+				/* WIFSTOPPED or WIFCONTINUED */
+				continue;
+		} while (pid > 0 || (pid == -1 && errno == EINTR));
+		break;
 	case SIGTERM:
 	case SIGINT:
 		main_shutdown();
@@ -96,7 +119,7 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	struct event	 ev_sigint, ev_sigterm, ev_sighup;
+	struct event	 ev_sigint, ev_sigterm, ev_sighup, ev_sigchld;
 	int		 ch, sp[2], rargc = 0;
 	int		 debug = 0, engine_flag = 0, frontend_flag = 0;
 	char		*saved_argv0;
@@ -212,9 +235,11 @@ main(int argc, char *argv[])
 	signal_set(&ev_sigint, SIGINT, main_sig_handler, NULL);
 	signal_set(&ev_sigterm, SIGTERM, main_sig_handler, NULL);
 	signal_set(&ev_sighup, SIGHUP, main_sig_handler, NULL);
+	signal_set(&ev_sigchld, SIGCHLD, main_sig_handler, NULL);
 	signal_add(&ev_sigint, NULL);
 	signal_add(&ev_sigterm, NULL);
 	signal_add(&ev_sighup, NULL);
+	signal_add(&ev_sigchld, NULL);
 	signal(SIGPIPE, SIG_IGN);
 
 	/* Start children */
@@ -346,9 +371,17 @@ main_reload(void)
 static int
 main_imsg_send_config(struct smtpfd_conf *xconf)
 {
+	struct filter_conf *f;
+
 	/* Send fixed part of config to children. */
 	if (main_sendboth(IMSG_RECONF_CONF, xconf, sizeof(*xconf)) == -1)
 		return (-1);
+
+	TAILQ_FOREACH(f, &xconf->filters, entry) {
+		if (f->chain)
+			continue;
+		main_runfilter(f);
+	}
 
 	/* Tell children the revised config is now complete. */
 	if (main_sendboth(IMSG_RECONF_END, NULL, 0) == -1)
@@ -365,6 +398,38 @@ main_sendboth(enum imsg_type type, void *buf, uint16_t len)
 	if (proc_compose(p_engine, type, 0, 0, -1, buf, len) == -1)
 		return (-1);
 	return (0);
+}
+
+static void
+main_runfilter(struct filter_conf *f)
+{
+	int sp[2];
+	pid_t pid;
+
+	if (socketpair(AF_UNIX, SOCK_STREAM|SOCK_NONBLOCK, PF_UNSPEC, sp) == -1)
+		fatal("socketpair");
+
+	switch (pid = fork()) {
+	case -1:
+		fatal("fork");
+	case 0:
+		break;
+	default:
+		close(sp[0]);
+		log_debug("forked filter %s as pid %d", f->name, (int)pid);
+		proc_compose(p_engine, IMSG_RECONF_FILTER, 0, pid, sp[1],
+		    f->name, strlen(f->name) + 1);
+		return;
+	}
+
+	if (dup2(sp[0], 3) == -1)
+		fatal("dup2");
+
+	if (closefrom(4) == -1)
+		fatal("closefrom");
+
+	execvp(f->argv[0], f->argv+1);
+	fatal("proc_exec: execvp: %s", f->argv[0]);
 }
 
 static void

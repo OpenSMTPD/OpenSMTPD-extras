@@ -90,7 +90,6 @@ typedef struct {
 %token	<v.string>	STRING
 %token	<v.number>	NUMBER
 %type	<v.string>	string
-%type	<v.number>	filter_or_chain
 
 %%
 
@@ -98,6 +97,7 @@ grammar		: /* empty */
 		| grammar include '\n'
 		| grammar '\n'
 		| grammar filter '\n'
+		| grammar chain '\n'
 		| grammar varset '\n'
 		| grammar error '\n'		{ file->errors++; }
 		;
@@ -176,11 +176,7 @@ filter_args	: STRING {
 		| /* empty */
 		;
 
-filter_or_chain	: FILTER { $$ = 0; }
-		| CHAIN  { $$ = 1; }
-		;
-
-filter		: filter_or_chain STRING {
+filter		: FILTER STRING STRING {
 			TAILQ_FOREACH(filter, &conf->filters, entry)
 				if (!strcmp(filter->name, $2)) {
 					yyerror("filter %s already defined",
@@ -190,11 +186,29 @@ filter		: filter_or_chain STRING {
 			filter = calloc(1, sizeof(*filter));
 			if (filter == NULL)
 				fatal("calloc");
-			filter->chain = $1;
-			filter->name = $2;
+			filter->argv[filter->argc++] = $3;
+			filter->argv[filter->argc++] = $2;
+			filter->name = strdup($2);
+			if (filter->name == NULL)
+				fatal("strdup");
 			TAILQ_INSERT_TAIL(&conf->filters, filter, entry);
 		} filter_args
 		;
+
+chain		: CHAIN STRING {
+			TAILQ_FOREACH(filter, &conf->filters, entry)
+				if (!strcmp(filter->name, $2)) {
+					yyerror("filter %s already defined",
+					    filter->name);
+					YYERROR;
+				}
+			filter = calloc(1, sizeof(*filter));
+			if (filter == NULL)
+				fatal("calloc");
+			filter->chain = 1;
+			filter->name = $2;
+			TAILQ_INSERT_TAIL(&conf->filters, filter, entry);
+		} filter_args
 
 optnl		: '\n' optnl		/* zero or more newlines */
 		| /*empty*/
