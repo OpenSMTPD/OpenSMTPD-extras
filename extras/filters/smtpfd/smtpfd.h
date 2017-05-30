@@ -70,7 +70,7 @@ struct ctl_engine_info {
 struct ctl_main_info {
 };
 
-extern uint32_t	 cmd_opts;
+extern uint32_t cmd_opts;
 extern struct imsgproc *p_frontend;
 extern struct imsgproc *p_engine;
 extern struct imsgproc *p_main;

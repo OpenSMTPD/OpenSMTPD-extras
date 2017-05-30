@@ -39,31 +39,28 @@
 #include "smtpfd.h"
 #include "control.h"
 
-__dead void	usage(void);
-__dead void	main_shutdown(void);
-
-void	main_sig_handler(int, short, void *);
-
-void	main_dispatch_frontend(struct imsgproc *, struct imsg*, void *);
-void	main_dispatch_engine(struct imsgproc *, struct imsg*, void *);
+__dead static void	usage(void);
+__dead static void	main_shutdown(void);
+static void	main_sig_handler(int, short, void *);
+static void	main_dispatch_frontend(struct imsgproc *, struct imsg*, void *);
+static void	main_dispatch_engine(struct imsgproc *, struct imsg*, void *);
 static int	main_imsg_send_config(struct smtpfd_conf *);
-
 static int	main_reload(void);
 static int	main_sendboth(enum imsg_type, void *, uint16_t);
 static void	main_showinfo_ctl(struct imsg *);
 static void	config_print(struct smtpfd_conf *);
 
-struct smtpfd_conf	*main_conf;
-struct imsgproc		*p_frontend;
-struct imsgproc		*p_engine;
-struct imsgproc		*p_main;
+static char *conffile;
+static char *csock;
+static struct smtpfd_conf *main_conf;
 
-char			*conffile;
-char			*csock;
-
+/* globals */
 uint32_t cmd_opts;
+struct imsgproc *p_frontend;
+struct imsgproc *p_engine;
+struct imsgproc *p_main;
 
-void
+static void
 main_sig_handler(int sig, short event, void *arg)
 {
 	/*
@@ -86,7 +83,7 @@ main_sig_handler(int sig, short event, void *arg)
 	}
 }
 
-__dead void
+__dead static void
 usage(void)
 {
 	extern char *__progname;
@@ -203,9 +200,11 @@ main(int argc, char *argv[])
 	rargv[rargc++] = NULL;
 
 	p_frontend = proc_exec(PROC_FRONTEND, rargv);
+	proc_setcallback(p_frontend, main_dispatch_frontend, NULL);
 	rargv[1] = "-E";
 	rargv[argc - 3] = NULL;
 	p_engine = proc_exec(PROC_ENGINE, rargv);
+	proc_setcallback(p_engine, main_dispatch_engine, NULL);
 
 	event_init();
 
@@ -244,7 +243,7 @@ main(int argc, char *argv[])
 	return (0);
 }
 
-__dead void
+__dead static void
 main_shutdown(void)
 {
 	pid_t	 pid;
@@ -279,7 +278,7 @@ main_shutdown(void)
 	exit(0);
 }
 
-void
+static void
 main_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *arg)
 {
 	int verbose;
@@ -311,7 +310,7 @@ main_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *arg)
 	}
 }
 
-void
+static void
 main_dispatch_engine(struct imsgproc *p, struct imsg *imsg, void *arg)
 {
 	if (imsg == NULL) {
@@ -327,7 +326,7 @@ main_dispatch_engine(struct imsgproc *p, struct imsg *imsg, void *arg)
 	}
 }
 
-int
+static int
 main_reload(void)
 {
 	struct smtpfd_conf *xconf;
@@ -344,7 +343,7 @@ main_reload(void)
 	return (0);
 }
 
-int
+static int
 main_imsg_send_config(struct smtpfd_conf *xconf)
 {
 	/* Send fixed part of config to children. */
@@ -358,7 +357,7 @@ main_imsg_send_config(struct smtpfd_conf *xconf)
 	return (0);
 }
 
-int
+static int
 main_sendboth(enum imsg_type type, void *buf, uint16_t len)
 {
 	if (proc_compose(p_frontend, type, 0, 0, -1, buf, len) == -1)
@@ -368,7 +367,7 @@ main_sendboth(enum imsg_type type, void *buf, uint16_t len)
 	return (0);
 }
 
-void
+static void
 main_showinfo_ctl(struct imsg *imsg)
 {
 	switch (imsg->hdr.type) {
