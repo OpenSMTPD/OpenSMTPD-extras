@@ -17,14 +17,12 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+
 #include <sys/types.h>
 #include <sys/queue.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
-#include <sys/uio.h>
 #include <sys/wait.h>
-
-#include <netinet/in.h>
 
 #include <err.h>
 #include <errno.h>

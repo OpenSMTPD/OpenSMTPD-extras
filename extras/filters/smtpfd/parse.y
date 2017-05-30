@@ -27,20 +27,10 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 
-#include <netinet/in.h>
-
-#include <arpa/inet.h>
-
 #include <ctype.h>
 #include <err.h>
-#include <errno.h>
-#include <event.h>
-#include <ifaddrs.h>
-#include <imsg.h>
 #include <limits.h>
-#include <stdarg.h>
 #include <stdio.h>
-#include <string.h>
 #include <syslog.h>
 #include <unistd.h>
 

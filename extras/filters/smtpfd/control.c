@@ -15,19 +15,16 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+
 #include <sys/types.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
-#include <sys/uio.h>
 #include <sys/un.h>
-
-#include <netinet/in.h>
 
 #include <errno.h>
 #include <event.h>
 #include <imsg.h>
-#include <md5.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
