@@ -19,18 +19,18 @@
 .Os
 .Sh NAME
 .Nm smtpfd
-.Nd sample daemon
+.Nd SMTP filter daemon
 .Sh SYNOPSIS
 .Nm
 .Op Fl dnv
 .Op Fl f Ar file
 .Op Fl s Ar socket
 .Sh DESCRIPTION
+The
 .Nm
-is an example daemon that does nothing but provide the framework for a
-standard
-.Ox
-privilege separated daemon.
+daemon is an SMTP filter server.  It is typically used by
+.Xr smtpd 8
+to provide custom filtering on SMTP sessions.
 .Pp
 .Nm
 is usually started at boot time, and can be enabled by
@@ -49,11 +49,17 @@ and enabling daemons.
 A running
 .Nm
 can be controlled with the
-.Xr newctl 8
+.Xr smtpfctl 8
 utility.
 .Pp
 The options are as follows:
-.Bl -tag -width Ds
+.Bl -tag -width Dssmacro=value
+.It Fl D Ar macro Ns = Ns Ar value
+Set a
+.Ar macro
+to a
+.Ar value .
+Macros can be referenced in the configuration files.
 .It Fl d
 Do not daemonize.
 If this option is specified,
@@ -83,7 +89,8 @@ socket used for communication with
 .El
 .Sh SEE ALSO
 .Xr smtpfd.conf 5 ,
-.Xr newctl 8
+.Xr smtpfctl 8 ,
+.Xr smtpd 8
 .Sh HISTORY
 The
 .Nm

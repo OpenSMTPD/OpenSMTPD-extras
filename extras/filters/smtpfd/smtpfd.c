@@ -118,8 +118,13 @@ main(int argc, char *argv[])
 	if (saved_argv0 == NULL)
 		saved_argv0 = "smtpfd";
 
-	while ((ch = getopt(argc, argv, "dEFf:ns:v")) != -1) {
+	while ((ch = getopt(argc, argv, "D:dEFf:ns:v")) != -1) {
 		switch (ch) {
+		case 'D':
+			if (cmdline_symset(optarg) < 0)
+				log_warnx("could not parse macro definition %s",
+				    optarg);
+			break;
 		case 'd':
 			debug = 1;
 			break;
