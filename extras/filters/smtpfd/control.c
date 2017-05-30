@@ -36,14 +36,8 @@
 
 #define	CONTROL_BACKLOG	5
 
-struct ctl_conn {
-	TAILQ_ENTRY(ctl_conn)	 entry;
-	struct imsgproc		*proc;
-};
-
-static struct ctl_conn	*control_connbypid(pid_t);
 static void control_accept(int, short, void *);
-static void control_close(struct ctl_conn *);
+static void control_close(struct imsgproc *);
 static void control_dispatch_imsg(struct imsgproc *, struct imsg *, void *);
 
 static struct {
@@ -52,8 +46,6 @@ static struct {
 	int		fd;
 } control_state;
 
-static TAILQ_HEAD(ctl_conns, ctl_conn)	ctl_conns;
-
 
 int
 control_init(char *path)
@@ -61,8 +53,6 @@ control_init(char *path)
 	struct sockaddr_un	 sun;
 	int			 fd;
 	mode_t			 old_umask;
-
-	TAILQ_INIT(&ctl_conns);
 
 	if ((fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK,
 	    0)) == -1) {
@@ -129,13 +119,13 @@ control_cleanup(char *path)
 	unlink(path);
 }
 
-void
+static void
 control_accept(int listenfd, short event, void *bula)
 {
 	int			 connfd;
 	socklen_t		 len;
 	struct sockaddr_un	 sun;
-	struct ctl_conn		*c;
+	struct imsgproc		*p;
 
 	event_add(&control_state.ev, NULL);
 	if ((event & EV_TIMEOUT))
@@ -159,56 +149,30 @@ control_accept(int listenfd, short event, void *bula)
 		return;
 	}
 
-	if ((c = calloc(1, sizeof(struct ctl_conn))) == NULL) {
-		log_warn("%s: calloc", __func__);
-		close(connfd);
-		return;
-	}
-
-	c->proc = proc_attach(PROC_CLIENT, connfd);
-	proc_setcallback(c->proc, control_dispatch_imsg, c);
-	proc_enable(c->proc);
-
-	TAILQ_INSERT_TAIL(&ctl_conns, c, entry);
+	p = proc_attach(PROC_CLIENT, connfd);
+	proc_setcallback(p, control_dispatch_imsg, NULL);
+	proc_enable(p);
 }
 
-struct ctl_conn *
-control_connbypid(pid_t pid)
+static void
+control_close(struct imsgproc *p)
 {
-	struct ctl_conn	*c;
-
-	TAILQ_FOREACH(c, &ctl_conns, entry) {
-		if (proc_getpid(c->proc) == pid)
-			break;
-	}
-
-	return (c);
-}
-
-void
-control_close(struct ctl_conn *c)
-{
-	TAILQ_REMOVE(&ctl_conns, c, entry);
-
-	proc_free(c->proc);
+	proc_free(p);
 
 	/* Some file descriptors are available again. */
 	if (evtimer_pending(&control_state.evt, NULL)) {
 		evtimer_del(&control_state.evt);
 		event_add(&control_state.ev, NULL);
 	}
-
-	free(c);
 }
 
-void
+static void
 control_dispatch_imsg(struct imsgproc *p, struct imsg *imsg, void *arg)
 {
-	struct ctl_conn	*c = arg;
 	int verbose;
 
 	if (imsg == NULL) {
-		control_close(c);
+		control_close(p);
 		return;
 	}
 
@@ -231,16 +195,16 @@ control_dispatch_imsg(struct imsgproc *p, struct imsg *imsg, void *arg)
 		log_setverbose(verbose);
 		break;
 	case IMSG_CTL_SHOW_MAIN_INFO:
-		proc_setpid(c->proc, imsg->hdr.pid);
+		proc_setpid(p, imsg->hdr.pid);
 		proc_compose(p_main, imsg->hdr.type, 0, imsg->hdr.pid, -1,
 		    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE);
 		break;
 	case IMSG_CTL_SHOW_FRONTEND_INFO:
-		frontend_showinfo_ctl(c->proc);
-		proc_compose(c->proc, IMSG_CTL_END, 0, 0, -1, NULL, 0);
+		frontend_showinfo_ctl(p);
+		proc_compose(p, IMSG_CTL_END, 0, 0, -1, NULL, 0);
 		break;
 	case IMSG_CTL_SHOW_ENGINE_INFO:
-		proc_setpid(c->proc, imsg->hdr.pid);
+		proc_setpid(p, imsg->hdr.pid);
 		proc_compose(p_engine, imsg->hdr.type, 0, imsg->hdr.pid, -1,
 		    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE);
 		break;
@@ -254,11 +218,12 @@ control_dispatch_imsg(struct imsgproc *p, struct imsg *imsg, void *arg)
 int
 control_imsg_relay(struct imsg *imsg)
 {
-	struct ctl_conn	*c;
+	struct imsgproc *p;
 
-	if ((c = control_connbypid(imsg->hdr.pid)) == NULL)
+	if ((p = proc_bypid(imsg->hdr.pid)) == NULL ||
+	    proc_gettype(p) != PROC_CLIENT)
 		return (0);
 
-	return (proc_compose(c->proc, imsg->hdr.type, 0, imsg->hdr.pid, -1,
+	return (proc_compose(p, imsg->hdr.type, 0, imsg->hdr.pid, -1,
 	    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE));
 }
