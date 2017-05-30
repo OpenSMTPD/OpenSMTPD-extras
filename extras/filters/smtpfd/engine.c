@@ -82,7 +82,7 @@ engine(int debug, int verbose)
 	exit(0);
 }
 
-void
+static void
 engine_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *bula)
 {
 	int verbose;
@@ -108,7 +108,7 @@ engine_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *bula)
 	}
 }
 
-void
+static void
 engine_dispatch_main(struct imsgproc *p, struct imsg *imsg, void *bula)
 {
 	if (imsg == NULL) {
@@ -141,7 +141,7 @@ engine_dispatch_main(struct imsgproc *p, struct imsg *imsg, void *bula)
 	}
 }
 
-void
+static void
 engine_showinfo_ctl(struct imsg *imsg)
 {
 	switch (imsg->hdr.type) {
