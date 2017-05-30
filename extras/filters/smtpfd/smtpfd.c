@@ -44,10 +44,10 @@ __dead static void	main_shutdown(void);
 static void	main_sig_handler(int, short, void *);
 static void	main_dispatch_frontend(struct imsgproc *, struct imsg*, void *);
 static void	main_dispatch_engine(struct imsgproc *, struct imsg*, void *);
-static int	main_imsg_send_config(struct smtpfd_conf *);
 static int	main_reload(void);
-static int	main_sendboth(enum imsg_type, void *, uint16_t);
-static void	main_runfilter(struct filter_conf *f);
+static int	main_send_config(struct smtpfd_conf *);
+static void     main_send_filter_proc(struct filter_conf *);
+static void     main_send_filter_conf(struct smtpfd_conf *, struct filter_conf *);
 static void	main_showinfo_ctl(struct imsg *);
 static void	config_print(struct smtpfd_conf *);
 
@@ -257,7 +257,7 @@ main(int argc, char *argv[])
 	    == -1)
 		fatal("proc_compose");
 
-	main_imsg_send_config(main_conf);
+	main_send_config(main_conf);
 
 	if (pledge("rpath stdio sendfd cpath", NULL) == -1)
 		fatal("pledge");
@@ -359,7 +359,7 @@ main_reload(void)
 	if ((xconf = parse_config(conffile)) == NULL)
 		return (-1);
 
-	if (main_imsg_send_config(xconf) == -1)
+	if (main_send_config(xconf) == -1)
 		return (-1);
 
 	config_clear(main_conf);
@@ -369,39 +369,35 @@ main_reload(void)
 }
 
 static int
-main_imsg_send_config(struct smtpfd_conf *xconf)
+main_send_config(struct smtpfd_conf *xconf)
 {
 	struct filter_conf *f;
 
-	/* Send fixed part of config to children. */
-	if (main_sendboth(IMSG_RECONF_CONF, xconf, sizeof(*xconf)) == -1)
+	/* Send fixed part of config to engine. */
+	if (proc_compose(p_engine, IMSG_RECONF_CONF, 0, 0, -1, NULL, 0) == -1)
 		return (-1);
 
 	TAILQ_FOREACH(f, &xconf->filters, entry) {
 		if (f->chain)
 			continue;
-		main_runfilter(f);
+		main_send_filter_proc(f);
+	}
+
+	TAILQ_FOREACH(f, &xconf->filters, entry) {
+		proc_compose(p_engine, IMSG_RECONF_FILTER, 0, 0, -1, f->name,
+		    strlen(f->name) + 1);
+		main_send_filter_conf(xconf, f);
 	}
 
 	/* Tell children the revised config is now complete. */
-	if (main_sendboth(IMSG_RECONF_END, NULL, 0) == -1)
+	if (proc_compose(p_engine, IMSG_RECONF_END, 0, 0, -1, NULL, 0) == -1)
 		return (-1);
 
-	return (0);
-}
-
-static int
-main_sendboth(enum imsg_type type, void *buf, uint16_t len)
-{
-	if (proc_compose(p_frontend, type, 0, 0, -1, buf, len) == -1)
-		return (-1);
-	if (proc_compose(p_engine, type, 0, 0, -1, buf, len) == -1)
-		return (-1);
 	return (0);
 }
 
 static void
-main_runfilter(struct filter_conf *f)
+main_send_filter_proc(struct filter_conf *f)
 {
 	int sp[2];
 	pid_t pid;
@@ -417,7 +413,7 @@ main_runfilter(struct filter_conf *f)
 	default:
 		close(sp[0]);
 		log_debug("forked filter %s as pid %d", f->name, (int)pid);
-		proc_compose(p_engine, IMSG_RECONF_FILTER, 0, pid, sp[1],
+		proc_compose(p_engine, IMSG_RECONF_FILTER_PROC, 0, pid, sp[1],
 		    f->name, strlen(f->name) + 1);
 		return;
 	}
@@ -430,6 +426,27 @@ main_runfilter(struct filter_conf *f)
 
 	execvp(f->argv[0], f->argv+1);
 	fatal("proc_exec: execvp: %s", f->argv[0]);
+}
+
+static void
+main_send_filter_conf(struct smtpfd_conf *conf, struct filter_conf *f)
+{
+	struct filter_conf *tmp;
+	int i;
+
+	if (f->chain) {
+		for (i = 0; i < f->argc; i++) {
+			TAILQ_FOREACH(tmp, &conf->filters, entry)
+				if (!strcmp(f->argv[i], tmp->name)) {
+					main_send_filter_conf(conf, tmp);
+					break;
+				}
+		}
+	}
+	else {
+		proc_compose(p_engine, IMSG_RECONF_FILTER_NODE, 0, 0, -1,
+		    f->name, strlen(f->name) + 1);
+	}
 }
 
 static void
