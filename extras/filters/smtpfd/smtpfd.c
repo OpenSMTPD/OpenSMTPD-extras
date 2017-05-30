@@ -24,7 +24,6 @@
 #include <sys/syslog.h>
 #include <sys/wait.h>
 
-#include <err.h>
 #include <errno.h>
 #include <event.h>
 #include <imsg.h>
@@ -176,11 +175,11 @@ main(int argc, char *argv[])
 
 	/* Check for root privileges. */
 	if (geteuid())
-		errx(1, "need root privileges");
+		fatalx("need root privileges");
 
 	/* Check for assigned daemon user */
 	if (getpwnam(SMTPFD_USER) == NULL)
-		errx(1, "unknown user %s", SMTPFD_USER);
+		fatalx("unknown user %s", SMTPFD_USER);
 
 	log_init(debug, LOG_DAEMON);
 	log_setverbose(cmd_opts & OPT_VERBOSE);
