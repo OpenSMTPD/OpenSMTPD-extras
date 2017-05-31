@@ -209,6 +209,7 @@ chain		: CHAIN STRING {
 			filter->name = $2;
 			TAILQ_INSERT_TAIL(&conf->filters, filter, entry);
 		} filter_args
+		;
 
 optnl		: '\n' optnl		/* zero or more newlines */
 		| /*empty*/
