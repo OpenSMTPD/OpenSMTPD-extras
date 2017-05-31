@@ -48,7 +48,6 @@ static int	main_reload(void);
 static int	main_send_config(struct smtpfd_conf *);
 static void     main_send_filter_proc(struct filter_conf *);
 static void     main_send_filter_conf(struct smtpfd_conf *, struct filter_conf *);
-static void	main_showinfo_ctl(struct imsg *);
 static void	config_print(struct smtpfd_conf *);
 
 static char *conffile;
@@ -326,7 +325,7 @@ main_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *arg)
 		log_setverbose(verbose);
 		break;
 	case IMSG_CTL_SHOW_MAIN_INFO:
-		main_showinfo_ctl(imsg);
+		proc_compose(p, IMSG_CTL_END, 0, imsg->hdr.pid, -1, NULL, 0);
 		break;
 	default:
 		log_debug("%s: error handling imsg %d", __func__,
@@ -446,20 +445,6 @@ main_send_filter_conf(struct smtpfd_conf *conf, struct filter_conf *f)
 	else {
 		proc_compose(p_engine, IMSG_RECONF_FILTER_NODE, 0, 0, -1,
 		    f->name, strlen(f->name) + 1);
-	}
-}
-
-static void
-main_showinfo_ctl(struct imsg *imsg)
-{
-	switch (imsg->hdr.type) {
-	case IMSG_CTL_SHOW_MAIN_INFO:
-		proc_compose(p_frontend, IMSG_CTL_END, 0, imsg->hdr.pid, -1,
-		    NULL, 0);
-		break;
-	default:
-		log_debug("%s: error handling imsg", __func__);
-		break;
 	}
 }
 

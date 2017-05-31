@@ -64,15 +64,6 @@ struct smtpfd_conf {
 	TAILQ_HEAD(, filter_conf) filters;
 };
 
-struct ctl_frontend_info {
-};
-
-struct ctl_engine_info {
-};
-
-struct ctl_main_info {
-};
-
 extern uint32_t cmd_opts;
 extern struct imsgproc *p_frontend;
 extern struct imsgproc *p_engine;
@@ -84,7 +75,6 @@ void engine(int, int);
 
 /* frontend.c */
 void frontend(int, int, char *);
-void frontend_showinfo_ctl(struct imsgproc *);
 
 /* smtpfd.c */
 struct smtpfd_conf *config_new_empty(void);

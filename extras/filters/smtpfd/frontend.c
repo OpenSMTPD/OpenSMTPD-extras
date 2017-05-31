@@ -93,6 +93,9 @@ frontend_dispatch_main(struct imsgproc *p, struct imsg *imsg, void *arg)
 	}
 
 	switch (imsg->hdr.type) {
+	case IMSG_CTL_END:
+		control_imsg_relay(imsg);
+		break;
 	case IMSG_SOCKET_IPC:
 		/*
 		 * Setup pipe and event handler to the engine
@@ -126,19 +129,10 @@ frontend_dispatch_engine(struct imsgproc *p, struct imsg *imsg, void *arg)
 	}
 
 	switch (imsg->hdr.type) {
-	case IMSG_CTL_SHOW_ENGINE_INFO:
+	case IMSG_CTL_END:
 		control_imsg_relay(imsg);
 		break;
 	default:
 		log_debug("%s: unexpected imsg %d", __func__, imsg->hdr.type);
 	}
-}
-
-void
-frontend_showinfo_ctl(struct imsgproc *proc)
-{
-	struct ctl_frontend_info cfi;
-
-	proc_compose(proc, IMSG_CTL_SHOW_FRONTEND_INFO, 0, 0, -1,
-	    &cfi, sizeof(struct ctl_frontend_info));
 }

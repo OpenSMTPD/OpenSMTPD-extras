@@ -200,7 +200,6 @@ control_dispatch_imsg(struct imsgproc *p, struct imsg *imsg, void *arg)
 		    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE);
 		break;
 	case IMSG_CTL_SHOW_FRONTEND_INFO:
-		frontend_showinfo_ctl(p);
 		proc_compose(p, IMSG_CTL_END, 0, 0, -1, NULL, 0);
 		break;
 	case IMSG_CTL_SHOW_ENGINE_INFO:
