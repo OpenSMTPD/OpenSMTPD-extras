@@ -101,14 +101,14 @@ proc_exec(int type, char **argv)
 
 	p = proc_new(type);
 	if (p == NULL)
-		fatal("proc_exec: calloc");
+		fatal("%s: proc_new", __func__);
 
 	if (socketpair(AF_UNIX, SOCK_STREAM|SOCK_NONBLOCK, PF_UNSPEC, sp) == -1)
-		fatal("proc_exec: socketpair");
+		fatal("%s: socketpair", __func__);
 
 	switch (pid = fork()) {
 	case -1:
-		fatal("proc_exec: fork");
+		fatal("%s: fork", __func__);
 	case 0:
 		break;
 	default:
@@ -119,13 +119,13 @@ proc_exec(int type, char **argv)
 	}
 
 	if (dup2(sp[0], 3) == -1)
-		fatal("proc_exec: dup2");
+		fatal("%s: dup2", __func__);
 
 	if (closefrom(4) == -1)
-		fatal("proc_exec: closefrom");
+		fatal("%s: closefrom", __func__);
 
 	execvp(argv[0], argv);
-	fatal("proc_exec: execvp: %s", argv[0]);
+	fatal("%s: execvp: %s", __func__, argv[0]);
 }
 
 struct imsgproc *
@@ -135,7 +135,7 @@ proc_attach(int type, int fd)
 
 	p = proc_new(type);
 	if (p == NULL)
-		fatal("proc_exec: calloc");
+		fatal("%s: proc_new", __func__);
 
 	proc_setsock(p, fd);
 	return p;
@@ -148,7 +148,7 @@ proc_settitle(struct imsgproc *p, const char *title)
 	if (title) {
 		p->title = strdup(title);
 		if (p->title == NULL)
-			fatal("proc_title: strdup");
+			fatal("%s: strdup", __func__);
 	}
 	else
 		p->title = NULL;
@@ -258,7 +258,7 @@ proc_dispatch(int fd, short event, void *arg)
 		case -1:
 			if (errno == EAGAIN)
 				return;
-			fatal("proc_dispatch: imsg_read");
+			fatal("%s: imsg_read", __func__);
 			/* NOTREACHED */
 		case 0:
 			/* this pipe is dead, so remove the event handler */
@@ -272,7 +272,7 @@ proc_dispatch(int fd, short event, void *arg)
 	if (event & EV_WRITE) {
 		n = msgbuf_write(&p->imsgbuf.w);
 		if (n == 0 || (n == -1 && errno != EAGAIN)) {
-			/* this pipe is dead, so remove the event handler */
+			/* This pipe is dead. */
 			proc_callback(p, NULL);
 			return;
 		}
@@ -280,7 +280,7 @@ proc_dispatch(int fd, short event, void *arg)
 
 	for (;;) {
 		if ((n = imsg_get(&p->imsgbuf, &imsg)) == -1) {
-			log_warn("proc_dispatch: imsg_get");
+			log_warn("%s: imsg_get", __func__);
 			proc_callback(p, NULL);
 			return;
 		}
