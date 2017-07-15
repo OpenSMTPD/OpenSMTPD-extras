@@ -40,28 +40,28 @@
 #include "control.h"
 
 __dead static void	usage(void);
-__dead static void	main_shutdown(void);
-static void	main_sig_handler(int, short, void *);
-static void	main_dispatch_frontend(struct imsgproc *, struct imsg*, void *);
-static void	main_dispatch_engine(struct imsgproc *, struct imsg*, void *);
-static int	main_reload(void);
-static int	main_send_config(struct smtpfd_conf *);
-static void     main_send_filter_proc(struct filter_conf *);
-static void     main_send_filter_conf(struct smtpfd_conf *, struct filter_conf *);
+__dead static void	priv_shutdown(void);
+static void	priv_sig_handler(int, short, void *);
+static void	priv_dispatch_frontend(struct imsgproc *, struct imsg*, void *);
+static void	priv_dispatch_engine(struct imsgproc *, struct imsg*, void *);
+static int	priv_reload(void);
+static int	priv_send_config(struct smtpfd_conf *);
+static void     priv_send_filter_proc(struct filter_conf *);
+static void     priv_send_filter_conf(struct smtpfd_conf *, struct filter_conf *);
 static void	config_print(struct smtpfd_conf *);
 
 static char *conffile;
 static char *csock;
-static struct smtpfd_conf *main_conf;
+static struct smtpfd_conf *env;
 
 /* globals */
 uint32_t cmd_opts;
-struct imsgproc *p_frontend;
 struct imsgproc *p_engine;
-struct imsgproc *p_main;
+struct imsgproc *p_frontend;
+struct imsgproc *p_priv;
 
 static void
-main_sig_handler(int sig, short event, void *arg)
+priv_sig_handler(int sig, short event, void *arg)
 {
 	pid_t pid;
 	int status;
@@ -93,9 +93,9 @@ main_sig_handler(int sig, short event, void *arg)
 		break;
 	case SIGTERM:
 	case SIGINT:
-		main_shutdown();
+		priv_shutdown();
 	case SIGHUP:
-		if (main_reload() == -1)
+		if (priv_reload() == -1)
 			log_warnx("configuration reload failed");
 		else
 			log_debug("configuration reloaded");
@@ -180,13 +180,13 @@ main(int argc, char *argv[])
 		frontend(debug, cmd_opts & OPT_VERBOSE, csock);
 
 	/* parse config file */
-	if ((main_conf = parse_config(conffile)) == NULL) {
+	if ((env = parse_config(conffile)) == NULL) {
 		exit(1);
 	}
 
 	if (cmd_opts & OPT_NOACTION) {
 		if (cmd_opts & OPT_VERBOSE)
-			config_print(main_conf);
+			config_print(env);
 		else
 			fprintf(stderr, "configuration OK\n");
 		exit(0);
@@ -222,19 +222,19 @@ main(int argc, char *argv[])
 	rargv[rargc++] = NULL;
 
 	p_frontend = proc_exec(PROC_FRONTEND, rargv);
-	proc_setcallback(p_frontend, main_dispatch_frontend, NULL);
+	proc_setcallback(p_frontend, priv_dispatch_frontend, NULL);
 	rargv[1] = "-E";
 	rargv[argc - 3] = NULL;
 	p_engine = proc_exec(PROC_ENGINE, rargv);
-	proc_setcallback(p_engine, main_dispatch_engine, NULL);
+	proc_setcallback(p_engine, priv_dispatch_engine, NULL);
 
 	event_init();
 
 	/* Setup signal handler. */
-	signal_set(&ev_sigint, SIGINT, main_sig_handler, NULL);
-	signal_set(&ev_sigterm, SIGTERM, main_sig_handler, NULL);
-	signal_set(&ev_sighup, SIGHUP, main_sig_handler, NULL);
-	signal_set(&ev_sigchld, SIGCHLD, main_sig_handler, NULL);
+	signal_set(&ev_sigint, SIGINT, priv_sig_handler, NULL);
+	signal_set(&ev_sigterm, SIGTERM, priv_sig_handler, NULL);
+	signal_set(&ev_sighup, SIGHUP, priv_sig_handler, NULL);
+	signal_set(&ev_sigchld, SIGCHLD, priv_sig_handler, NULL);
 	signal_add(&ev_sigint, NULL);
 	signal_add(&ev_sigterm, NULL);
 	signal_add(&ev_sighup, NULL);
@@ -256,19 +256,19 @@ main(int argc, char *argv[])
 	    == -1)
 		fatal("proc_compose");
 
-	main_send_config(main_conf);
+	priv_send_config(env);
 
 	if (pledge("rpath stdio sendfd cpath", NULL) == -1)
 		fatal("pledge");
 
 	event_dispatch();
 
-	main_shutdown();
+	priv_shutdown();
 	return (0);
 }
 
 __dead static void
-main_shutdown(void)
+priv_shutdown(void)
 {
 	pid_t	 pid;
 	pid_t	 frontend_pid;
@@ -282,7 +282,7 @@ main_shutdown(void)
 	proc_free(p_frontend);
 	proc_free(p_engine);
 
-	config_clear(main_conf);
+	config_clear(env);
 
 	log_debug("waiting for children to terminate");
 	do {
@@ -303,7 +303,7 @@ main_shutdown(void)
 }
 
 static void
-main_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *arg)
+priv_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *arg)
 {
 	int verbose;
 
@@ -314,7 +314,7 @@ main_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *arg)
 
 	switch (imsg->hdr.type) {
 	case IMSG_CTL_RELOAD:
-		if (main_reload() == -1)
+		if (priv_reload() == -1)
 			log_warnx("configuration reload failed");
 		else
 			log_warnx("configuration reloaded");
@@ -335,7 +335,7 @@ main_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *arg)
 }
 
 static void
-main_dispatch_engine(struct imsgproc *p, struct imsg *imsg, void *arg)
+priv_dispatch_engine(struct imsgproc *p, struct imsg *imsg, void *arg)
 {
 	if (imsg == NULL) {
 		event_loopexit(NULL);
@@ -351,24 +351,24 @@ main_dispatch_engine(struct imsgproc *p, struct imsg *imsg, void *arg)
 }
 
 static int
-main_reload(void)
+priv_reload(void)
 {
 	struct smtpfd_conf *xconf;
 
 	if ((xconf = parse_config(conffile)) == NULL)
 		return (-1);
 
-	if (main_send_config(xconf) == -1)
+	if (priv_send_config(xconf) == -1)
 		return (-1);
 
-	config_clear(main_conf);
-	main_conf = xconf;
+	config_clear(env);
+	env = xconf;
 
 	return (0);
 }
 
 static int
-main_send_config(struct smtpfd_conf *xconf)
+priv_send_config(struct smtpfd_conf *xconf)
 {
 	struct filter_conf *f;
 
@@ -379,13 +379,13 @@ main_send_config(struct smtpfd_conf *xconf)
 	TAILQ_FOREACH(f, &xconf->filters, entry) {
 		if (f->chain)
 			continue;
-		main_send_filter_proc(f);
+		priv_send_filter_proc(f);
 	}
 
 	TAILQ_FOREACH(f, &xconf->filters, entry) {
 		proc_compose(p_engine, IMSG_RECONF_FILTER, 0, 0, -1, f->name,
 		    strlen(f->name) + 1);
-		main_send_filter_conf(xconf, f);
+		priv_send_filter_conf(xconf, f);
 	}
 
 	/* Tell children the revised config is now complete. */
@@ -396,7 +396,7 @@ main_send_config(struct smtpfd_conf *xconf)
 }
 
 static void
-main_send_filter_proc(struct filter_conf *f)
+priv_send_filter_proc(struct filter_conf *f)
 {
 	int sp[2];
 	pid_t pid;
@@ -428,7 +428,7 @@ main_send_filter_proc(struct filter_conf *f)
 }
 
 static void
-main_send_filter_conf(struct smtpfd_conf *conf, struct filter_conf *f)
+priv_send_filter_conf(struct smtpfd_conf *conf, struct filter_conf *f)
 {
 	struct filter_conf *tmp;
 	int i;
@@ -437,7 +437,7 @@ main_send_filter_conf(struct smtpfd_conf *conf, struct filter_conf *f)
 		for (i = 0; i < f->argc; i++) {
 			TAILQ_FOREACH(tmp, &conf->filters, entry)
 				if (!strcmp(f->argv[i], tmp->name)) {
-					main_send_filter_conf(conf, tmp);
+					priv_send_filter_conf(conf, tmp);
 					break;
 				}
 		}

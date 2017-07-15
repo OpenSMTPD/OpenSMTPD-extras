@@ -55,7 +55,7 @@ struct engine_config {
 };
 
 static void engine_dispatch_frontend(struct imsgproc *, struct imsg *, void *);
-static void engine_dispatch_main(struct imsgproc *, struct imsg *, void *);
+static void engine_dispatch_priv(struct imsgproc *, struct imsg *, void *);
 static void engine_dispatch_filter(struct imsgproc *, struct imsg *, void *);
 
 static struct engine_config *conf;
@@ -89,10 +89,10 @@ engine(int debug, int verbose)
 
 	event_init();
 
-	/* Setup pipe and event handler to the main process. */
-	p_main = proc_attach(PROC_MAIN, 3);
-	proc_setcallback(p_main, engine_dispatch_main, NULL);
-	proc_enable(p_main);
+	/* Setup imsg socket with parent. */
+	p_priv = proc_attach(PROC_PRIV, 3);
+	proc_setcallback(p_priv, engine_dispatch_priv, NULL);
+	proc_enable(p_priv);
 
 	event_dispatch();
 
@@ -100,7 +100,7 @@ engine(int debug, int verbose)
 }
 
 static void
-engine_dispatch_main(struct imsgproc *p, struct imsg *imsg, void *bula)
+engine_dispatch_priv(struct imsgproc *p, struct imsg *imsg, void *bula)
 {
 	struct filter_process *fproc;
 	struct filter_node *fnode;

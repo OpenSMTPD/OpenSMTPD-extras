@@ -34,7 +34,7 @@
 #include "control.h"
 
 
-static void frontend_dispatch_main(struct imsgproc *, struct imsg *, void *);
+static void frontend_dispatch_priv(struct imsgproc *, struct imsg *, void *);
 static void frontend_dispatch_engine(struct imsgproc *, struct imsg *, void *);
 
 
@@ -70,10 +70,10 @@ frontend(int debug, int verbose, char *sockname)
 
 	event_init();
 
-	/* Setup pipe and event handler to the parent process. */
-	p_main = proc_attach(PROC_MAIN, 3);
-	proc_setcallback(p_main, frontend_dispatch_main, NULL);
-	proc_enable(p_main);
+	/* Setup imsg socket with parent. */
+	p_priv = proc_attach(PROC_PRIV, 3);
+	proc_setcallback(p_priv, frontend_dispatch_priv, NULL);
+	proc_enable(p_priv);
 
 	/* Listen on control socket. */
 	control_listen();
@@ -84,7 +84,7 @@ frontend(int debug, int verbose, char *sockname)
 }
 
 static void
-frontend_dispatch_main(struct imsgproc *p, struct imsg *imsg, void *arg)
+frontend_dispatch_priv(struct imsgproc *p, struct imsg *imsg, void *arg)
 {
 	if (imsg == NULL) {
 		log_debug("%s: imsg connection lost", __func__);

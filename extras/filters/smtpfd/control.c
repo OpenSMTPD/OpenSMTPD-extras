@@ -178,7 +178,7 @@ control_dispatch_imsg(struct imsgproc *p, struct imsg *imsg, void *arg)
 
 	switch (imsg->hdr.type) {
 	case IMSG_CTL_RELOAD:
-		proc_compose(p_main, imsg->hdr.type, 0, 0, -1, NULL, 0);
+		proc_compose(p_priv, imsg->hdr.type, 0, 0, -1, NULL, 0);
 		break;
 	case IMSG_CTL_LOG_VERBOSE:
 		if (imsg->hdr.len != IMSG_HEADER_SIZE +
@@ -186,7 +186,7 @@ control_dispatch_imsg(struct imsgproc *p, struct imsg *imsg, void *arg)
 			break;
 
 		/* Forward to all other processes. */
-		proc_compose(p_main, imsg->hdr.type, 0, imsg->hdr.pid, -1,
+		proc_compose(p_priv, imsg->hdr.type, 0, imsg->hdr.pid, -1,
 		    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE);
 		proc_compose(p_engine, imsg->hdr.type, 0, imsg->hdr.pid, -1,
 		    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE);
@@ -196,7 +196,7 @@ control_dispatch_imsg(struct imsgproc *p, struct imsg *imsg, void *arg)
 		break;
 	case IMSG_CTL_SHOW_MAIN_INFO:
 		proc_setpid(p, imsg->hdr.pid);
-		proc_compose(p_main, imsg->hdr.type, 0, imsg->hdr.pid, -1,
+		proc_compose(p_priv, imsg->hdr.type, 0, imsg->hdr.pid, -1,
 		    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE);
 		break;
 	case IMSG_CTL_SHOW_FRONTEND_INFO:

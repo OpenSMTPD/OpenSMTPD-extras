@@ -44,13 +44,13 @@ enum imsg_type {
 };
 
 enum smtpfd_process {
-	PROC_MAIN,
-	PROC_ENGINE,
-	PROC_FRONTEND,
-	PROC_FILTER,
 	PROC_CLIENT,
+	PROC_CONTROL,
+	PROC_ENGINE,
+	PROC_FILTER,
+	PROC_FRONTEND,
+	PROC_PRIV
 };
-
 
 struct filter_conf {
 	TAILQ_ENTRY(filter_conf)	 entry;
@@ -65,9 +65,9 @@ struct smtpfd_conf {
 };
 
 extern uint32_t cmd_opts;
-extern struct imsgproc *p_frontend;
 extern struct imsgproc *p_engine;
-extern struct imsgproc *p_main;
+extern struct imsgproc *p_frontend;
+extern struct imsgproc *p_priv;
 
 
 /* engine.c */
