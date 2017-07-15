@@ -1,7 +1,7 @@
 /*	$OpenBSD$	*/
 
 /*
- * Copyright (c) 2016-2017 Eric Faurot <eric@openbsd.org>
+ * Copyright (c) 2017 Eric Faurot <eric@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -49,12 +49,6 @@ static void proc_dispatch(int, short, void *);
 static void proc_event_add(struct imsgproc *);
 
 static TAILQ_HEAD(, imsgproc) procs = TAILQ_HEAD_INITIALIZER(procs);
-
-int
-proc_getfd(struct imsgproc *p)
-{
-	return p->imsgbuf.fd;
-}
 
 pid_t
 proc_getpid(struct imsgproc *p)
@@ -177,7 +171,6 @@ proc_enable(struct imsgproc *p)
 void
 proc_free(struct imsgproc *p)
 {
-
 	if (p == NULL)
 		return;
 
@@ -251,17 +244,16 @@ proc_dispatch(int fd, short event, void *arg)
 	p->events = 0;
 
 	if (event & EV_READ) {
-
 		n = imsg_read(&p->imsgbuf);
-
 		switch (n) {
 		case -1:
 			if (errno == EAGAIN)
-				return;
-			fatal("%s: imsg_read", __func__);
-			/* NOTREACHED */
+				break;
+			log_warn("%s: imsg_read", __func__);
+			proc_callback(p, NULL);
+			return;
 		case 0:
-			/* this pipe is dead, so remove the event handler */
+			/* This pipe is dead. */
 			proc_callback(p, NULL);
 			return;
 		default:
@@ -271,10 +263,19 @@ proc_dispatch(int fd, short event, void *arg)
 
 	if (event & EV_WRITE) {
 		n = msgbuf_write(&p->imsgbuf.w);
-		if (n == 0 || (n == -1 && errno != EAGAIN)) {
+		switch (n) {
+		case -1:
+			if (errno == EAGAIN)
+				break;
+			log_warn("%s: msgbuf_write", __func__);
+			proc_callback(p, NULL);
+			return;
+		case 0:
 			/* This pipe is dead. */
 			proc_callback(p, NULL);
 			return;
+		default:
+			break;
 		}
 	}
 

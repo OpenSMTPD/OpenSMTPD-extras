@@ -18,14 +18,12 @@
 
 struct imsgproc;
 
-/* proc.c */
 struct imsgproc *proc_bypid(pid_t);
 struct imsgproc *proc_exec(int, char **);
 struct imsgproc *proc_attach(int, int);
 void	         proc_enable(struct imsgproc *);
 void	         proc_free(struct imsgproc *);
 pid_t		 proc_getpid(struct imsgproc *);
-int		 proc_getfd(struct imsgproc *);
 int		 proc_gettype(struct imsgproc *);
 int		 proc_getinstance(struct imsgproc *);
 const char 	*proc_gettitle(struct imsgproc *);
