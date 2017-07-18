@@ -40,6 +40,21 @@ struct imsgproc {
 	struct imsgbuf	 imsgbuf;
 	short		 events;
 	struct event	 ev;
+
+	struct {
+		const uint8_t	*pos;
+		const uint8_t	*end;
+	} m_in;
+
+	struct m_out {
+		char		*buf;
+		size_t		 alloc;
+		size_t		 pos;
+		uint32_t	 type;
+		uint32_t	 peerid;
+		pid_t		 pid;
+		int		 fd;
+	} m_out;
 };
 
 static struct imsgproc *proc_new(int);
@@ -231,6 +246,15 @@ proc_event_add(struct imsgproc *p)
 static void
 proc_callback(struct imsgproc *p, struct imsg *imsg)
 {
+	if (imsg != NULL) {
+		p->m_in.pos = imsg->data;
+		p->m_in.end = p->m_in.pos + (imsg->hdr.len - sizeof(imsg->hdr));
+	}
+	else {
+		p->m_in.pos = NULL;
+		p->m_in.end = NULL;
+	}
+
 	p->cb(p, imsg, p->arg);
 }
 
@@ -295,15 +319,180 @@ proc_dispatch(int fd, short event, void *arg)
 	proc_event_add(p);
 }
 
-int
-proc_compose(struct imsgproc *p, int type, uint32_t peerid, pid_t pid, int fd,
-    void *data, uint16_t datalen)
+void
+m_compose(struct imsgproc *p, uint32_t type, uint32_t peerid, pid_t pid, int fd,
+    const void *data, size_t len)
 {
-	int r;
+	if (imsg_compose(&p->imsgbuf, type, peerid, pid, fd, data, len) == -1)
+		fatal("%s: imsg_compose", __func__);
 
-	r = imsg_compose(&p->imsgbuf, type, peerid, pid, fd, data, datalen);
-	if (r != -1)
-		proc_event_add(p);
+	proc_event_add(p);
+}
 
-	return r;
+void
+m_create(struct imsgproc *p, uint32_t type, uint32_t peerid, pid_t pid, int fd)
+{
+	p->m_out.pos = 0;
+	p->m_out.type = type;
+	p->m_out.peerid = peerid;
+	p->m_out.pid = pid;
+	p->m_out.fd = fd;
+}
+
+void
+m_close(struct imsgproc *p)
+{
+	if (imsg_compose(&p->imsgbuf, p->m_out.type, p->m_out.peerid,
+	    p->m_out.pid, p->m_out.fd, p->m_out.buf, p->m_out.pos) == -1)
+		fatal("%s: imsg_compose", __func__);
+
+	proc_event_add(p);
+}
+
+void
+m_add(struct imsgproc *p, const void *data, size_t len)
+{
+	size_t	 alloc;
+	void	*tmp;
+
+	if (p->m_out.pos + len + IMSG_HEADER_SIZE > MAX_IMSGSIZE)
+		fatalx("%s: message too large", __func__);
+
+	alloc = p->m_out.alloc ? p->m_out.alloc : 128;
+	while (p->m_out.pos + len > alloc)
+		alloc *= 2;
+	if (alloc != p->m_out.alloc) {
+		tmp = recallocarray(p->m_out.buf, p->m_out.alloc, alloc, 1);
+		if (tmp == NULL)
+			fatal("%s: reallocarray", __func__);
+		p->m_out.alloc = alloc;
+		p->m_out.buf = tmp;
+	}
+
+	memmove(p->m_out.buf + p->m_out.pos, data, len);
+	p->m_out.pos += len;
+}
+
+void
+m_add_int(struct imsgproc *p, int v)
+{
+	m_add(p, &v, sizeof(v));
+};
+
+void
+m_add_u32(struct imsgproc *p, uint32_t v)
+{
+	m_add(p, &v, sizeof(v));
+};
+
+void
+m_add_u64(struct imsgproc *p, uint64_t v)
+{
+	m_add(p, &v, sizeof(v));
+}
+
+void
+m_add_size(struct imsgproc *p, size_t v)
+{
+	m_add(p, &v, sizeof(v));
+}
+
+void
+m_add_time(struct imsgproc *p, time_t v)
+{
+	m_add(p, &v, sizeof(v));
+}
+
+void
+m_add_string(struct imsgproc *p, const char *str)
+{
+	m_add(p, str, strlen(str) + 1);
+}
+
+void
+m_add_sockaddr(struct imsgproc *p, const struct sockaddr *sa)
+{
+	m_add_size(p, sa->sa_len);
+	m_add(p, sa, sa->sa_len);
+}
+
+void
+m_end(struct imsgproc *p)
+{
+	if (p->m_in.pos != p->m_in.end)
+		fatal("%s: %zi bytes left", __func__,
+		    p->m_in.end - p->m_in.pos);
+}
+
+int
+m_is_eom(struct imsgproc *p)
+{
+	return (p->m_in.pos == p->m_in.end);
+}
+
+void
+m_get(struct imsgproc *p, void *dst, size_t sz)
+{
+	if (sz > MAX_IMSGSIZE ||
+	    p->m_in.end - p->m_in.pos < (ssize_t)sz )
+		fatalx("%s: %zu bytes requested, %zi left", __func__, sz,
+		    p->m_in.end - p->m_in.pos);
+
+	memmove(dst, p->m_in.pos, sz);
+	p->m_in.pos += sz;
+}
+
+void
+m_get_int(struct imsgproc *p, int *dst)
+{
+	m_get(p, dst, sizeof(*dst));
+}
+
+void
+m_get_u32(struct imsgproc *p, uint32_t *dst)
+{
+	m_get(p, dst, sizeof(*dst));
+}
+
+void
+m_get_u64(struct imsgproc *p, uint64_t *dst)
+{
+	m_get(p, dst, sizeof(*dst));
+}
+
+void
+m_get_size(struct imsgproc *p, size_t *dst)
+{
+	m_get(p, dst, sizeof(*dst));
+}
+
+void
+m_get_time(struct imsgproc *p, time_t *dst)
+{
+	m_get(p, dst, sizeof(*dst));
+}
+
+void
+m_get_string(struct imsgproc *p, const char **dst)
+{
+	char *end;
+
+	if (p->m_in.pos >= p->m_in.end)
+		fatalx("%s: no data left", __func__);
+
+	end = memchr(p->m_in.pos, 0, p->m_in.end - p->m_in.pos);
+	if (end == NULL)
+		fatalx("%s: unterminated string", __func__);
+
+	*dst = p->m_in.pos;
+	p->m_in.pos = end + 1;
+}
+
+void
+m_get_sockaddr(struct imsgproc *p, struct sockaddr *dst)
+{
+	size_t len;
+
+	m_get_size(p, &len);
+	m_get(p, dst, len);
 }

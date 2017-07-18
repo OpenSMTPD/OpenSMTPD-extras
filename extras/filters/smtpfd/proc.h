@@ -32,5 +32,26 @@ void		 proc_settitle(struct imsgproc *, const char *);
 void		 proc_setinstance(struct imsgproc *, int);
 void		 proc_setcallback(struct imsgproc *,
     void(*)(struct imsgproc *, struct imsg *, void *), void *);
-int		 proc_compose(struct imsgproc *, int, uint32_t, pid_t, int, void *,
-    uint16_t);
+
+void m_compose(struct imsgproc *, uint32_t, uint32_t, pid_t, int, const void *,
+    size_t);
+void m_create(struct imsgproc *, uint32_t, uint32_t, pid_t, int);
+void m_close(struct imsgproc *);
+void m_add(struct imsgproc *, const void *, size_t);
+void m_add_int(struct imsgproc *, int);
+void m_add_u32(struct imsgproc *, uint32_t);
+void m_add_u64(struct imsgproc *, uint64_t);
+void m_add_size(struct imsgproc *, size_t);
+void m_add_time(struct imsgproc *, time_t);
+void m_add_string(struct imsgproc *, const char *);
+void m_add_sockaddr(struct imsgproc *, const struct sockaddr *);
+void m_end(struct imsgproc *);
+int  m_is_eom(struct imsgproc *);
+void m_get(struct imsgproc *, void *, size_t);
+void m_get_int(struct imsgproc *, int *);
+void m_get_u32(struct imsgproc *, uint32_t *);
+void m_get_u64(struct imsgproc *, uint64_t *);
+void m_get_size(struct imsgproc *, size_t *);
+void m_get_time(struct imsgproc *, time_t *);
+void m_get_string(struct imsgproc *, const char **);
+void m_get_sockaddr(struct imsgproc *, struct sockaddr *);

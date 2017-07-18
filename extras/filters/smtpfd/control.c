@@ -1,7 +1,7 @@
 /*	$OpenBSD$	*/
 
 /*
- * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
+ * Copyright (c) 2017 Eric Faurot <eric@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -25,20 +25,25 @@
 #include <errno.h>
 #include <event.h>
 #include <imsg.h>
+#include <pwd.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
+#include "smtpfd.h"
+
 #include "log.h"
 #include "proc.h"
-#include "smtpfd.h"
-#include "control.h"
 
 #define	CONTROL_BACKLOG	5
 
+static int  control_init(const char *);
+static int  control_listen(void);
 static void control_accept(int, short, void *);
 static void control_close(struct imsgproc *);
-static void control_dispatch_imsg(struct imsgproc *, struct imsg *, void *);
+static void control_dispatch_priv(struct imsgproc *, struct imsg *, void *);
+static void control_dispatch_client(struct imsgproc *, struct imsg *, void *);
 
 static struct {
 	struct event	ev;
@@ -46,9 +51,50 @@ static struct {
 	int		fd;
 } control_state;
 
+void
+control(int debug, int verbose)
+{
+	struct passwd *pw;
 
-int
-control_init(char *path)
+	/* Early initialisation */
+	log_init(debug, LOG_DAEMON);
+	log_setverbose(verbose);
+	log_procinit("control");
+	setproctitle("control");
+
+	control_init(SMTPFD_SOCKET);
+
+	/* Drop priviledges */
+	if ((pw = getpwnam(SMTPFD_USER)) == NULL)
+		fatalx("unknown user " SMTPFD_USER);
+
+	if (setgroups(1, &pw->pw_gid) ||
+	    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||
+	    setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid))
+		fatal("cannot drop privileges");
+
+	if (chroot(pw->pw_dir) == 1)
+		fatal("chroot");
+
+	if (pledge("stdio unix recvfd sendfd", NULL) == -1)
+		fatal("pledge");
+
+	event_init();
+
+	signal(SIGPIPE, SIG_IGN);
+
+	/* Setup imsg socket with parent */
+	p_priv = proc_attach(PROC_PRIV, 3);
+	proc_setcallback(p_priv, control_dispatch_priv, NULL);
+	proc_enable(p_priv);
+
+	event_dispatch();
+
+	exit(0);
+}
+
+static int
+control_init(const char *path)
 {
 	struct sockaddr_un	 sun;
 	int			 fd;
@@ -62,7 +108,7 @@ control_init(char *path)
 
 	memset(&sun, 0, sizeof(sun));
 	sun.sun_family = AF_UNIX;
-	strlcpy(sun.sun_path, path, sizeof(sun.sun_path));
+	strlcpy(sun.sun_path, SMTPFD_SOCKET, sizeof(sun.sun_path));
 
 	if (unlink(path) == -1)
 		if (errno != ENOENT) {
@@ -92,7 +138,7 @@ control_init(char *path)
 	return (0);
 }
 
-int
+static int
 control_listen(void)
 {
 
@@ -107,16 +153,6 @@ control_listen(void)
 	evtimer_set(&control_state.evt, control_accept, NULL);
 
 	return (0);
-}
-
-void
-control_cleanup(char *path)
-{
-	if (path == NULL)
-		return;
-	event_del(&control_state.ev);
-	event_del(&control_state.evt);
-	unlink(path);
 }
 
 static void
@@ -150,7 +186,7 @@ control_accept(int listenfd, short event, void *bula)
 	}
 
 	p = proc_attach(PROC_CLIENT, connfd);
-	proc_setcallback(p, control_dispatch_imsg, NULL);
+	proc_setcallback(p, control_dispatch_client, NULL);
 	proc_enable(p);
 }
 
@@ -167,62 +203,42 @@ control_close(struct imsgproc *p)
 }
 
 static void
-control_dispatch_imsg(struct imsgproc *p, struct imsg *imsg, void *arg)
+control_dispatch_priv(struct imsgproc *proc, struct imsg *imsg, void *arg)
 {
-	int verbose;
+	if (imsg == NULL) {
+		log_debug("%s: imsg connection lost", __func__);
+		event_loopexit(NULL);
+		return;
+	}
 
+	switch (imsg->hdr.type) {
+	case IMSG_CONF_START:
+		m_end(proc);
+		break;
+
+	case IMSG_CONF_END:
+		m_end(proc);
+		control_listen();
+		break;
+
+	default:
+		fatalx("%s: unexpected imsg %s", __func__,
+		    log_fmt_imsgtype(imsg->hdr.type));
+	}
+}
+
+static void
+control_dispatch_client(struct imsgproc *p, struct imsg *imsg, void *arg)
+{
 	if (imsg == NULL) {
 		control_close(p);
 		return;
 	}
 
 	switch (imsg->hdr.type) {
-	case IMSG_CTL_RELOAD:
-		proc_compose(p_priv, imsg->hdr.type, 0, 0, -1, NULL, 0);
-		break;
-	case IMSG_CTL_LOG_VERBOSE:
-		if (imsg->hdr.len != IMSG_HEADER_SIZE +
-		    sizeof(verbose))
-			break;
-
-		/* Forward to all other processes. */
-		proc_compose(p_priv, imsg->hdr.type, 0, imsg->hdr.pid, -1,
-		    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE);
-		proc_compose(p_engine, imsg->hdr.type, 0, imsg->hdr.pid, -1,
-		    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE);
-
-		memcpy(&verbose, imsg->data, sizeof(verbose));
-		log_setverbose(verbose);
-		break;
-	case IMSG_CTL_SHOW_MAIN_INFO:
-		proc_setpid(p, imsg->hdr.pid);
-		proc_compose(p_priv, imsg->hdr.type, 0, imsg->hdr.pid, -1,
-		    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE);
-		break;
-	case IMSG_CTL_SHOW_FRONTEND_INFO:
-		proc_compose(p, IMSG_CTL_END, 0, 0, -1, NULL, 0);
-		break;
-	case IMSG_CTL_SHOW_ENGINE_INFO:
-		proc_setpid(p, imsg->hdr.pid);
-		proc_compose(p_engine, imsg->hdr.type, 0, imsg->hdr.pid, -1,
-		    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE);
-		break;
 	default:
 		log_debug("%s: error handling imsg %d", __func__,
 		    imsg->hdr.type);
 		break;
 	}
-}
-
-int
-control_imsg_relay(struct imsg *imsg)
-{
-	struct imsgproc *p;
-
-	if ((p = proc_bypid(imsg->hdr.pid)) == NULL ||
-	    proc_gettype(p) != PROC_CLIENT)
-		return (0);
-
-	return (proc_compose(p, imsg->hdr.type, 0, imsg->hdr.pid, -1,
-	    imsg->data, imsg->hdr.len - IMSG_HEADER_SIZE));
 }

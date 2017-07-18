@@ -1,8 +1,8 @@
-/*	$OpenBSD$	*/
+/*	$OpenBSD: parse.y,v 1.183 2016/02/22 16:19:05 gilles Exp $	*/
 
 /*
- * Copyright (c) 2004, 2005 Esben Norby <norby@openbsd.org>
- * Copyright (c) 2004 Ryan McBride <mcbride@openbsd.org>
+ * Copyright (c) 2008 Gilles Chehade <gilles@poolp.org>
+ * Copyright (c) 2008 Pierre-Yves Ritschard <pyr@openbsd.org>
  * Copyright (c) 2002, 2003, 2004 Henning Brauer <henning@openbsd.org>
  * Copyright (c) 2001 Markus Friedl.  All rights reserved.
  * Copyright (c) 2001 Daniel Hartmeier.  All rights reserved.
@@ -23,19 +23,28 @@
 
 %{
 #include <sys/types.h>
-#include <sys/queue.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <sys/un.h>
+
+#include <net/if.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <ctype.h>
 #include <err.h>
+#include <errno.h>
+#include <ifaddrs.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <stdio.h>
-#include <syslog.h>
+#include <stdlib.h>
 #include <unistd.h>
 
-#include "log.h"
 #include "smtpfd.h"
+
+#include "log.h"
 
 TAILQ_HEAD(files, file)		 files = TAILQ_HEAD_INITIALIZER(files);
 static struct file {
@@ -50,14 +59,14 @@ int		 popfile(void);
 int		 check_file_secrecy(int, const char *);
 int		 yyparse(void);
 int		 yylex(void);
-int		 yyerror(const char *, ...)
-    __attribute__((__format__ (printf, 1, 2)))
-    __attribute__((__nonnull__ (1)));
 int		 kw_cmp(const void *, const void *);
 int		 lookup(char *);
 int		 lgetc(int);
 int		 lungetc(int);
 int		 findeol(void);
+int		 yyerror(const char *, ...)
+    __attribute__((__format__ (printf, 1, 2)))
+    __attribute__((__nonnull__ (1)));
 
 TAILQ_HEAD(symhead, sym)	 symhead = TAILQ_HEAD_INITIALIZER(symhead);
 struct sym {
@@ -67,45 +76,69 @@ struct sym {
 	char			*nam;
 	char			*val;
 };
+int		 symset(const char *, const char *, int);
+char		*symget(const char *);
 
-int	 symset(const char *, const char *, int);
-char	*symget(const char *);
+static int		 errors = 0;
 
-static struct smtpfd_conf *conf;
-static struct filter_conf *filter;
-static int errors;
+struct smtpfd_conf		*conf = NULL;
+static struct filter_conf	*filter;
+
+enum listen_options {
+	LO_FAMILY	= 0x000001,
+	LO_PORT		= 0x000002,
+};
+
+static struct listen_opts {
+	char	       *ifx;
+	int		family;
+	int		proto;
+	in_port_t	port;
+	uint32_t       	options;
+} listen_opts;
+
+static void	config_free(struct smtpfd_conf *);
+static void	create_listeners(struct listen_opts *);
+static void	config_listener(struct listener *, struct listen_opts *);
+static int	local(struct listen_opts *);
+static int	host_v4(struct listen_opts *);
+static int	host_v6(struct listen_opts *);
+static int	host_dns(struct listen_opts *);
+static int	interface(struct listen_opts *);
+static int	is_if_in_group(const char *, const char *);
 
 typedef struct {
 	union {
 		int64_t		 number;
 		char		*string;
+		struct host	*host;
 	} v;
 	int lineno;
 } YYSTYPE;
 
 %}
 
-%token	CHAIN ERROR FILTER INCLUDE
-
+%token	ERROR ARROW INCLUDE
+%token	LISTEN ON PORT INET4 INET6 LOCAL SOCKET
+%token	CHAIN FILTER
 %token	<v.string>	STRING
-%token	<v.number>	NUMBER
-%type	<v.string>	string
+%token  <v.number>	NUMBER
+%type	<v.number>	family_inet portno
 
 %%
 
 grammar		: /* empty */
-		| grammar include '\n'
 		| grammar '\n'
-		| grammar filter '\n'
-		| grammar chain '\n'
+		| grammar include '\n'
 		| grammar varset '\n'
+		| grammar main '\n'
 		| grammar error '\n'		{ file->errors++; }
 		;
 
 include		: INCLUDE STRING		{
 			struct file	*nfile;
 
-			if ((nfile = pushfile($2, 1)) == NULL) {
+			if ((nfile = pushfile($2, 0)) == NULL) {
 				yyerror("failed to include file %s", $2);
 				free($2);
 				YYERROR;
@@ -117,34 +150,59 @@ include		: INCLUDE STRING		{
 		}
 		;
 
-string		: string STRING	{
-			if (asprintf(&$$, "%s %s", $1, $2) == -1) {
-				free($1);
-				free($2);
-				yyerror("string: asprintf");
-				YYERROR;
-			}
-			free($1);
-			free($2);
-		}
-		| STRING
-		;
-
-varset		: STRING '=' string		{
-			char *s = $1;
-			if (cmd_opts & OPT_VERBOSE)
-				printf("%s = \"%s\"\n", $1, $3);
-			while (*s++) {
-				if (isspace((unsigned char)*s)) {
-					yyerror("macro name cannot contain "
-					    "whitespace");
-					YYERROR;
-				}
-			}
+varset		: STRING '=' STRING		{
 			if (symset($1, $3, 0) == -1)
 				fatal("cannot store variable");
 			free($1);
 			free($3);
+		}
+		;
+
+portno		: STRING {
+			struct servent	*servent;
+			servent = getservbyname($1, "tcp");
+			if (servent == NULL) {
+				yyerror("invalid port: %s", $1);
+				free($1);
+				YYERROR;
+			}
+			free($1);
+			$$ = ntohs(servent->s_port);
+		}
+		| NUMBER {
+			if ($1 <= 0 || $1 >= (int)USHRT_MAX) {
+				yyerror("invalid port: %" PRId64, $1);
+				YYERROR;
+			}
+			$$ = $1;
+		}
+		;
+
+family_inet	: INET4 { $$ = AF_INET; }
+		| INET6 { $$ = AF_INET6; }
+		;
+
+opt_listen	: family_inet {
+			if (listen_opts.options & LO_FAMILY) {
+				yyerror("address family already specified");
+				YYERROR;
+			}
+			listen_opts.options |= LO_FAMILY;
+			listen_opts.family = $1;
+		}
+		| PORT portno {
+			if (listen_opts.options & LO_PORT) {
+				yyerror("port already specified");
+				YYERROR;
+			}
+			listen_opts.options |= LO_PORT;
+			listen_opts.port = htons($2);
+		}
+		;
+
+listener	: opt_listen listener
+		| /* empty */ {
+			create_listeners(&listen_opts);
 		}
 		;
 
@@ -211,11 +269,15 @@ chain		: CHAIN STRING {
 		} filter_args
 		;
 
-optnl		: '\n' optnl		/* zero or more newlines */
-		| /*empty*/
-		;
-
-nl		: '\n' optnl		/* one or more newlines */
+main		: LISTEN ON STRING {
+			memset(&listen_opts, 0, sizeof listen_opts);
+			listen_opts.ifx = $3;
+			listen_opts.family = AF_UNSPEC;
+			listen_opts.proto = PROTO_SMTPF;
+			listen_opts.port = htons(PORT_SMTPF);
+		} listener
+		| filter
+		| chain
 		;
 %%
 
@@ -235,7 +297,7 @@ yyerror(const char *fmt, ...)
 	if (vasprintf(&msg, fmt, ap) == -1)
 		fatalx("yyerror vasprintf");
 	va_end(ap);
-	logit(LOG_CRIT, "%s:%d: %s", file->name, yylval.lineno, msg);
+	log_warnx("%s:%d: %s", file->name, yylval.lineno, msg);
 	free(msg);
 	return (0);
 }
@@ -249,11 +311,17 @@ kw_cmp(const void *k, const void *e)
 int
 lookup(char *s)
 {
-	/* This has to be sorted always. */
+	/* this has to be sorted always */
 	static const struct keywords keywords[] = {
-		{"chain",		CHAIN},
-		{"filter",		FILTER},
-		{"include",		INCLUDE},
+		{ "chain",		CHAIN },
+		{ "filter",		FILTER },
+		{ "include",		INCLUDE },
+		{ "inet4",		INET4 },
+		{ "inet6",		INET6 },
+		{ "listen",		LISTEN },
+		{ "on",			ON },
+		{ "port",		PORT },
+		{ "socket",		SOCKET },
 	};
 	const struct keywords	*p;
 
@@ -343,13 +411,11 @@ findeol(void)
 	int	c;
 
 	parsebuf = NULL;
+	pushback_index = 0;
 
-	/* Skip to either EOF or the first real EOL. */
+	/* skip to either EOF or the first real EOL */
 	while (1) {
-		if (pushback_index)
-			c = pushback_buffer[--pushback_index];
-		else
-			c = lgetc(0);
+		c = lgetc(0);
 		if (c == '\n') {
 			file->lineno++;
 			break;
@@ -479,9 +545,16 @@ nodigits:
 		}
 	}
 
+	if (c == '=') {
+		if ((c = lgetc(0)) != EOF && c == '>')
+			return (ARROW);
+		lungetc(c);
+		c = '=';
+	}
+
 #define allowed_in_string(x) \
 	(isalnum(x) || (ispunct(x) && x != '(' && x != ')' && \
-	x != '{' && x != '}' && \
+	x != '{' && x != '}' && x != '<' && x != '>' && \
 	x != '!' && x != '=' && x != '#' && \
 	x != ','))
 
@@ -515,15 +588,15 @@ check_file_secrecy(int fd, const char *fname)
 	struct stat	st;
 
 	if (fstat(fd, &st)) {
-		log_warn("cannot stat %s", fname);
+		log_warn("warn: cannot stat %s", fname);
 		return (-1);
 	}
 	if (st.st_uid != 0 && st.st_uid != getuid()) {
-		log_warnx("%s: owner not root or current user", fname);
+		log_warnx("warn: %s: owner not root or current user", fname);
 		return (-1);
 	}
 	if (st.st_mode & (S_IWGRP | S_IXGRP | S_IRWXO)) {
-		log_warnx("%s: group writable or world read/writable", fname);
+		log_warnx("warn: %s: group/world readable/writeable", fname);
 		return (-1);
 	}
 	return (0);
@@ -535,16 +608,16 @@ pushfile(const char *name, int secret)
 	struct file	*nfile;
 
 	if ((nfile = calloc(1, sizeof(struct file))) == NULL) {
-		log_warn("calloc");
+		log_warn("warn: malloc");
 		return (NULL);
 	}
 	if ((nfile->name = strdup(name)) == NULL) {
-		log_warn("strdup");
+		log_warn("warn: malloc");
 		free(nfile);
 		return (NULL);
 	}
 	if ((nfile->stream = fopen(nfile->name, "r")) == NULL) {
-		log_warn("%s", nfile->name);
+		log_warn("warn: %s", nfile->name);
 		free(nfile->name);
 		free(nfile);
 		return (NULL);
@@ -577,28 +650,38 @@ popfile(void)
 }
 
 struct smtpfd_conf *
-parse_config(char *filename)
+parse_config(const char *filename, int verbose)
 {
-	struct sym	*sym, *next;
+	struct sym     *sym, *next;
 
-	conf = config_new_empty();
+	conf = calloc(1, sizeof(*conf));
+	if (conf == NULL)
+		return NULL;
+	TAILQ_INIT(&conf->listeners);
+	TAILQ_INIT(&conf->filters);
 
-	file = pushfile(filename, !(cmd_opts & OPT_NOACTION));
-	if (file == NULL) {
-		free(conf);
-		return (NULL);
+	errors = 0;
+
+	if ((file = pushfile(filename, 0)) == NULL) {
+		config_free(conf);
+		return NULL;
 	}
 	topfile = file;
 
+	/*
+	 * parse configuration
+	 */
+	setservent(1);
 	yyparse();
 	errors = file->errors;
 	popfile();
+	endservent();
 
 	/* Free macros and check which have not been used. */
-	TAILQ_FOREACH_SAFE(sym, &symhead, entry, next) {
-		if ((cmd_opts & OPT_VERBOSE2) && !sym->used)
-			fprintf(stderr, "warning: macro '%s' not used\n",
-			    sym->nam);
+	for (sym = TAILQ_FIRST(&symhead); sym != NULL; sym = next) {
+		next = TAILQ_NEXT(sym, entry);
+		if ((verbose) && !sym->used)
+			log_warnx("warning: macro '%s' not used\n", sym->nam);
 		if (!sym->persist) {
 			free(sym->nam);
 			free(sym->val);
@@ -608,11 +691,11 @@ parse_config(char *filename)
 	}
 
 	if (errors) {
-		config_clear(conf);
-		return (NULL);
+		config_free(conf);
+		return NULL;
 	}
 
-	return (conf);
+	return conf;
 }
 
 int
@@ -620,10 +703,9 @@ symset(const char *nam, const char *val, int persist)
 {
 	struct sym	*sym;
 
-	TAILQ_FOREACH(sym, &symhead, entry) {
-		if (strcmp(nam, sym->nam) == 0)
-			break;
-	}
+	for (sym = TAILQ_FIRST(&symhead); sym && strcmp(nam, sym->nam);
+	    sym = TAILQ_NEXT(sym, entry))
+		;	/* nothing */
 
 	if (sym != NULL) {
 		if (sym->persist == 1)
@@ -669,7 +751,7 @@ cmdline_symset(char *s)
 	if ((sym = malloc(len)) == NULL)
 		errx(1, "cmdline_symset: malloc");
 
-	strlcpy(sym, s, len);
+	(void)strlcpy(sym, s, len);
 
 	ret = symset(sym, val + 1, 1);
 	free(sym);
@@ -682,11 +764,277 @@ symget(const char *nam)
 {
 	struct sym	*sym;
 
-	TAILQ_FOREACH(sym, &symhead, entry) {
+	TAILQ_FOREACH(sym, &symhead, entry)
 		if (strcmp(nam, sym->nam) == 0) {
 			sym->used = 1;
 			return (sym->val);
 		}
-	}
 	return (NULL);
+}
+
+static void
+config_free(struct smtpfd_conf *c)
+{
+	struct listener *l;
+	struct filter_conf *f;
+
+	while ((l = TAILQ_FIRST(&c->listeners))) {
+		TAILQ_REMOVE(&c->listeners, l, entry);
+		free(l);
+	}
+	while ((f = TAILQ_FIRST(&c->filters))) {
+		TAILQ_REMOVE(&c->filters, f, entry);
+		free(f->name);
+		free(f);
+	}
+
+	free(c);
+}
+
+static void
+create_listeners(struct listen_opts *lo)
+{
+	if (local(lo))
+		return;
+	if (interface(lo))
+		return;
+	if (host_v4(lo))
+		return;
+	if (host_v6(lo))
+		return;
+	if (host_dns(lo))
+		return;
+
+	errx(1, "invalid virtual ip or interface: %s", lo->ifx);
+}
+
+static void
+config_listener(struct listener *l,  struct listen_opts *lo)
+{
+	l->sock = -1;
+	l->proto = lo->proto;
+
+	TAILQ_INSERT_TAIL(&conf->listeners, l, entry);
+}
+
+static int
+local(struct listen_opts *lo)
+{
+	struct sockaddr_un	*sun;
+	struct listener		*h;
+
+	if (lo->family != AF_UNSPEC && lo->family != AF_LOCAL)
+		return 0;
+
+	if (lo->ifx[0] != '/')
+		return 0;
+
+	h = calloc(1, sizeof(*h));
+	sun = (struct sockaddr_un *)&h->ss;
+	sun->sun_len = sizeof(*sun);
+	sun->sun_family = AF_LOCAL;
+	if (strlcpy(sun->sun_path, lo->ifx, sizeof(sun->sun_path))
+	    >= sizeof(sun->sun_path))
+		fatalx("path too long");
+
+	config_listener(h,  lo);
+
+	return (1);
+}
+
+static int
+host_v4(struct listen_opts *lo)
+{
+	struct in_addr		 ina;
+	struct sockaddr_in	*sain;
+	struct listener		*h;
+
+	if (lo->family != AF_UNSPEC && lo->family != AF_INET)
+		return (0);
+
+	memset(&ina, 0, sizeof(ina));
+	if (inet_pton(AF_INET, lo->ifx, &ina) != 1)
+		return (0);
+
+	h = calloc(1, sizeof(*h));
+	sain = (struct sockaddr_in *)&h->ss;
+	sain->sin_len = sizeof(struct sockaddr_in);
+	sain->sin_family = AF_INET;
+	sain->sin_addr.s_addr = ina.s_addr;
+	sain->sin_port = lo->port;
+
+	config_listener(h,  lo);
+
+	return (1);
+}
+
+static int
+host_v6(struct listen_opts *lo)
+{
+	struct in6_addr		 ina6;
+	struct sockaddr_in6	*sin6;
+	struct listener		*h;
+
+	if (lo->family != AF_UNSPEC && lo->family != AF_INET6)
+		return (0);
+
+	memset(&ina6, 0, sizeof(ina6));
+	if (inet_pton(AF_INET6, lo->ifx, &ina6) != 1)
+		return (0);
+
+	h = calloc(1, sizeof(*h));
+	sin6 = (struct sockaddr_in6 *)&h->ss;
+	sin6->sin6_len = sizeof(struct sockaddr_in6);
+	sin6->sin6_family = AF_INET6;
+	sin6->sin6_port = lo->port;
+	memcpy(&sin6->sin6_addr, &ina6, sizeof(ina6));
+
+	config_listener(h,  lo);
+
+	return (1);
+}
+
+static int
+host_dns(struct listen_opts *lo)
+{
+	struct addrinfo		 hints, *res0, *res;
+	int			 error, cnt = 0;
+	struct sockaddr_in	*sain;
+	struct sockaddr_in6	*sin6;
+	struct listener		*h;
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = lo->family;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_ADDRCONFIG;
+	error = getaddrinfo(lo->ifx, NULL, &hints, &res0);
+	if (error == EAI_AGAIN || error == EAI_NODATA || error == EAI_NONAME)
+		return (0);
+	if (error) {
+		log_warnx("warn: host_dns: could not parse \"%s\": %s", lo->ifx,
+		    gai_strerror(error));
+		return (-1);
+	}
+
+	for (res = res0; res; res = res->ai_next) {
+		if (res->ai_family != AF_INET &&
+		    res->ai_family != AF_INET6)
+			continue;
+		h = calloc(1, sizeof(*h));
+		h->ss.ss_family = res->ai_family;
+		if (res->ai_family == AF_INET) {
+			sain = (struct sockaddr_in *)&h->ss;
+			sain->sin_len = sizeof(struct sockaddr_in);
+			sain->sin_addr.s_addr = ((struct sockaddr_in *)
+			    res->ai_addr)->sin_addr.s_addr;
+			sain->sin_port = lo->port;
+		} else {
+			sin6 = (struct sockaddr_in6 *)&h->ss;
+			sin6->sin6_len = sizeof(struct sockaddr_in6);
+			memcpy(&sin6->sin6_addr, &((struct sockaddr_in6 *)
+			    res->ai_addr)->sin6_addr, sizeof(struct in6_addr));
+			sin6->sin6_port = lo->port;
+		}
+
+		config_listener(h, lo);
+
+		cnt++;
+	}
+
+	freeaddrinfo(res0);
+	return (cnt);
+}
+
+static int
+interface(struct listen_opts *lo)
+{
+	struct ifaddrs *ifap, *p;
+	struct sockaddr_in	*sain;
+	struct sockaddr_in6	*sin6;
+	struct listener		*h;
+	int			ret = 0;
+
+	if (getifaddrs(&ifap) == -1)
+		fatal("getifaddrs");
+
+	for (p = ifap; p != NULL; p = p->ifa_next) {
+		if (p->ifa_addr == NULL)
+			continue;
+		if (strcmp(p->ifa_name, lo->ifx) != 0 &&
+		    !is_if_in_group(p->ifa_name, lo->ifx))
+			continue;
+		if (lo->family != AF_UNSPEC && lo->family != p->ifa_addr->sa_family)
+			continue;
+
+		h = calloc(1, sizeof(*h));
+
+		switch (p->ifa_addr->sa_family) {
+		case AF_INET:
+			sain = (struct sockaddr_in *)&h->ss;
+			*sain = *(struct sockaddr_in *)p->ifa_addr;
+			sain->sin_len = sizeof(struct sockaddr_in);
+			sain->sin_port = lo->port;
+			break;
+
+		case AF_INET6:
+			sin6 = (struct sockaddr_in6 *)&h->ss;
+			*sin6 = *(struct sockaddr_in6 *)p->ifa_addr;
+			sin6->sin6_len = sizeof(struct sockaddr_in6);
+			sin6->sin6_port = lo->port;
+			break;
+
+		default:
+			free(h);
+			continue;
+		}
+
+		config_listener(h, lo);
+		ret = 1;
+	}
+
+	freeifaddrs(ifap);
+	return ret;
+}
+
+static int
+is_if_in_group(const char *ifname, const char *groupname)
+{
+        unsigned int		 len;
+        struct ifgroupreq        ifgr;
+        struct ifg_req          *ifg;
+	int			 s;
+	int			 ret = 0;
+
+	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+		err(1, "socket");
+
+        memset(&ifgr, 0, sizeof(ifgr));
+        if (strlcpy(ifgr.ifgr_name, ifname, IFNAMSIZ) >= IFNAMSIZ)
+		errx(1, "interface name too large");
+
+        if (ioctl(s, SIOCGIFGROUP, (caddr_t)&ifgr) == -1) {
+                if (errno == EINVAL || errno == ENOTTY)
+			goto end;
+		err(1, "SIOCGIFGROUP");
+        }
+
+        len = ifgr.ifgr_len;
+        ifgr.ifgr_groups = calloc(len/sizeof(struct ifg_req),
+		sizeof(struct ifg_req));
+        if (ioctl(s, SIOCGIFGROUP, (caddr_t)&ifgr) == -1)
+                err(1, "SIOCGIFGROUP");
+
+        ifg = ifgr.ifgr_groups;
+        for (; ifg && len >= sizeof(struct ifg_req); ifg++) {
+                len -= sizeof(struct ifg_req);
+		if (strcmp(ifg->ifgrq_group, groupname) == 0) {
+			ret = 1;
+			break;
+		}
+        }
+        free(ifgr.ifgr_groups);
+
+end:
+	close(s);
+	return ret;
 }

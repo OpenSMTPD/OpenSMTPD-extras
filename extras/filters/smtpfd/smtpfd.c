@@ -1,9 +1,7 @@
 /*	$OpenBSD$	*/
 
 /*
- * Copyright (c) 2005 Claudio Jeker <claudio@openbsd.org>
- * Copyright (c) 2004 Esben Norby <norby@openbsd.org>
- * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
+ * Copyright (c) 2017 Eric Faurot <eric@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -19,59 +17,210 @@
  */
 
 #include <sys/types.h>
-#include <sys/queue.h>
-#include <sys/socket.h>
-#include <sys/syslog.h>
+#include <sys/stat.h>
+#include <sys/un.h>
 #include <sys/wait.h>
 
 #include <errno.h>
-#include <event.h>
-#include <imsg.h>
+#include <getopt.h>
 #include <pwd.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <stdio.h>
 #include <signal.h>
+#include <string.h>
 #include <unistd.h>
+
+#include "smtpfd.h"
 
 #include "log.h"
 #include "proc.h"
-#include "smtpfd.h"
-#include "control.h"
 
-__dead static void	usage(void);
-__dead static void	priv_shutdown(void);
-static void	priv_sig_handler(int, short, void *);
-static void	priv_dispatch_frontend(struct imsgproc *, struct imsg*, void *);
-static void	priv_dispatch_engine(struct imsgproc *, struct imsg*, void *);
-static int	priv_reload(void);
-static int	priv_send_config(struct smtpfd_conf *);
-static void     priv_send_filter_proc(struct filter_conf *);
-static void     priv_send_filter_conf(struct smtpfd_conf *, struct filter_conf *);
-static void	config_print(struct smtpfd_conf *);
-
-static char *conffile;
-static char *csock;
-static struct smtpfd_conf *env;
-
-/* globals */
-uint32_t cmd_opts;
+struct smtpfd_conf *env;
+struct imsgproc *p_control;
 struct imsgproc *p_engine;
 struct imsgproc *p_frontend;
 struct imsgproc *p_priv;
 
+static void priv_dispatch_control(struct imsgproc *, struct imsg *, void *);
+static void priv_dispatch_engine(struct imsgproc *, struct imsg *, void *);
+static void priv_dispatch_frontend(struct imsgproc *, struct imsg *, void *);
+static void priv_open_listener(struct listener *);
+static void priv_open_filter(struct filter_conf *);
+static void priv_send_config(void);
+static void priv_sighandler(int, short, void *);
+static void priv_shutdown(void);
+
+static char **saved_argv;
+static int saved_argc;
+
 static void
-priv_sig_handler(int sig, short event, void *arg)
+usage(void)
+{
+	extern char *__progname;
+
+	fprintf(stderr, "usage: %s [-dnv] [-D macro=value]  [-f file]\n",
+	    __progname);
+	exit(1);
+}
+
+int
+main(int argc, char **argv)
+{
+	struct listener *l;
+	struct filter_conf *f;
+	struct event evt_sigchld, evt_sigint, evt_sigterm, evt_sighup;
+	const char *conffile = SMTPFD_CONFIG, *reexec = NULL;
+	int sp[2], ch, debug = 0, nflag = 0, verbose = 0;
+
+	saved_argv = argv;
+	saved_argc = argc;
+
+	log_init(1, LOG_LPR);
+	log_setverbose(1);
+
+	while ((ch = getopt(argc, argv, "D:df:nvX:")) != -1) {
+		switch (ch) {
+		case 'D':
+			if (cmdline_symset(optarg) < 0)
+				log_warnx("could not parse macro definition %s",
+				    optarg);
+			break;
+		case 'd':
+			debug = 1;
+			break;
+		case 'f':
+			conffile = optarg;
+			break;
+		case 'n':
+			nflag = 1;
+			break;
+		case 'v':
+			verbose++;
+			break;
+		case 'X':
+			reexec = optarg;
+			break;
+		default:
+			usage();
+		}
+	}
+
+	argv += optind;
+	argc -= optind;
+
+	if (argc || *argv)
+		usage();
+
+	if (reexec) {
+		if (!strcmp(reexec, "control"))
+			control(debug, verbose);
+		if (!strcmp(reexec, "engine"))
+			engine(debug, verbose);
+		if (!strcmp(reexec, "frontend"))
+			frontend(debug, verbose);
+		fatalx("unknown process %s", reexec);
+	}
+
+	/* Parse config file. */
+	env = parse_config(conffile, verbose);
+	if (env == NULL)
+		exit(1);
+
+	if (nflag) {
+		fprintf(stderr, "configuration OK\n");
+		exit(0);
+	}
+
+	/* Check for root privileges. */
+	if (geteuid())
+		fatalx("need root privileges");
+
+	/* Check for assigned daemon user. */
+	if (getpwnam(SMTPFD_USER) == NULL)
+		fatalx("unknown user %s", SMTPFD_USER);
+
+	log_init(debug, LOG_DAEMON);
+	log_setverbose(verbose);
+	log_procinit("priv");
+	setproctitle("priv");
+
+	if (!debug)
+		if (daemon(1, 0) == -1)
+			fatal("daemon");
+
+        log_info("startup");
+
+	TAILQ_FOREACH(l, &env->listeners, entry)
+		priv_open_listener(l);
+	TAILQ_FOREACH(f, &env->filters, entry)
+		priv_open_filter(f);
+
+	event_init();
+
+	signal_set(&evt_sigint, SIGINT, priv_sighandler, NULL);
+	signal_add(&evt_sigint, NULL);
+	signal_set(&evt_sigterm, SIGTERM, priv_sighandler, NULL);
+	signal_add(&evt_sigterm, NULL);
+	signal_set(&evt_sigchld, SIGCHLD, priv_sighandler, NULL);
+	signal_add(&evt_sigchld, NULL);
+	signal_set(&evt_sighup, SIGHUP, priv_sighandler, NULL);
+	signal_add(&evt_sighup, NULL);
+	signal(SIGPIPE, SIG_IGN);
+
+	/* Fork and exec unpriviledged processes. */
+	argv = calloc(saved_argc + 3, sizeof(*argv));
+	if (argv == NULL)
+		fatal("calloc");
+	for (argc = 0; argc < saved_argc; argc++)
+		argv[argc] = saved_argv[argc];
+	argv[argc++] = "-X";
+	argv[argc++] = "";
+	argv[argc++] = NULL;
+
+	argv[argc - 2] = "control";
+	p_control = proc_exec(PROC_CONTROL, argv);
+	proc_setcallback(p_control, priv_dispatch_control, NULL);
+	proc_enable(p_control);
+
+	argv[argc - 2] = "engine";
+	p_engine = proc_exec(PROC_ENGINE, argv);
+	proc_setcallback(p_engine, priv_dispatch_engine, NULL);
+	proc_enable(p_engine);
+
+	argv[argc - 2] = "frontend";
+	p_frontend = proc_exec(PROC_FRONTEND, argv);
+	proc_setcallback(p_frontend, priv_dispatch_frontend, NULL);
+	proc_enable(p_frontend);
+
+	/* Connect processes. */
+	if (socketpair(AF_UNIX, SOCK_STREAM|SOCK_NONBLOCK, PF_UNSPEC, sp) == -1)
+		fatal("socketpair");
+	m_compose(p_engine, IMSG_SOCK_FRONTEND, 0, 0, sp[1], NULL, 0);
+	m_compose(p_frontend, IMSG_SOCK_ENGINE, 0, 0, sp[0], NULL, 0);
+
+	priv_send_config();
+
+	if (pledge("stdio sendfd proc", NULL) == -1)
+		fatal("pledge");
+
+	event_dispatch();
+
+	priv_shutdown();
+
+	return (0);
+}
+
+static void
+priv_sighandler(int sig, short ev, void *arg)
 {
 	pid_t pid;
 	int status;
 
-	/*
-	 * Normal signal handler rules don't apply because libevent
-	 * decouples for us.
-	 */
-
 	switch (sig) {
+	case SIGTERM:
+	case SIGINT:
+		event_loopbreak();
+		break;
 	case SIGCHLD:
 		do {
 			pid = waitpid(-1, &status, WNOHANG);
@@ -84,411 +233,197 @@ priv_sig_handler(int sig, short event, void *arg)
 				log_warnx("process %d exited with status %d",
 				    (int)pid, WEXITSTATUS(status));
 			else if (WIFEXITED(status))
-				log_debug("debug: process %d exited normally",
+				log_debug("process %d exited normally",
 				    (int)pid);
 			else
 				/* WIFSTOPPED or WIFCONTINUED */
 				continue;
 		} while (pid > 0 || (pid == -1 && errno == EINTR));
 		break;
-	case SIGTERM:
-	case SIGINT:
-		priv_shutdown();
-	case SIGHUP:
-		if (priv_reload() == -1)
-			log_warnx("configuration reload failed");
-		else
-			log_debug("configuration reloaded");
-		break;
 	default:
-		fatalx("unexpected signal");
+		fatalx("signal %d", sig);
 	}
 }
 
-__dead static void
-usage(void)
-{
-	extern char *__progname;
-
-	fprintf(stderr, "usage: %s [-dnv] [-f file] [-s socket]\n",
-	    __progname);
-	exit(1);
-}
-
-int
-main(int argc, char *argv[])
-{
-	struct event	 ev_sigint, ev_sigterm, ev_sighup, ev_sigchld;
-	int		 ch, sp[2], rargc = 0;
-	int		 debug = 0, engine_flag = 0, frontend_flag = 0;
-	char		*saved_argv0;
-	char		*rargv[7];
-
-	conffile = CONF_FILE;
-	csock = SMTPFD_SOCKET;
-
-	log_init(1, LOG_DAEMON);	/* Log to stderr until daemonized. */
-	log_setverbose(1);
-
-	saved_argv0 = argv[0];
-	if (saved_argv0 == NULL)
-		saved_argv0 = "smtpfd";
-
-	while ((ch = getopt(argc, argv, "D:dEFf:ns:v")) != -1) {
-		switch (ch) {
-		case 'D':
-			if (cmdline_symset(optarg) < 0)
-				log_warnx("could not parse macro definition %s",
-				    optarg);
-			break;
-		case 'd':
-			debug = 1;
-			break;
-		case 'E':
-			engine_flag = 1;
-			break;
-		case 'F':
-			frontend_flag = 1;
-			break;
-		case 'f':
-			conffile = optarg;
-			break;
-		case 'n':
-			cmd_opts |= OPT_NOACTION;
-			break;
-		case 's':
-			csock = optarg;
-			break;
-		case 'v':
-			if (cmd_opts & OPT_VERBOSE)
-				cmd_opts |= OPT_VERBOSE2;
-			cmd_opts |= OPT_VERBOSE;
-			break;
-		default:
-			usage();
-		}
-	}
-
-	argc -= optind;
-	argv += optind;
-	if (argc > 0 || (engine_flag && frontend_flag))
-		usage();
-
-	if (engine_flag)
-		engine(debug, cmd_opts & OPT_VERBOSE);
-	else if (frontend_flag)
-		frontend(debug, cmd_opts & OPT_VERBOSE, csock);
-
-	/* parse config file */
-	if ((env = parse_config(conffile)) == NULL) {
-		exit(1);
-	}
-
-	if (cmd_opts & OPT_NOACTION) {
-		if (cmd_opts & OPT_VERBOSE)
-			config_print(env);
-		else
-			fprintf(stderr, "configuration OK\n");
-		exit(0);
-	}
-
-	/* Check for root privileges. */
-	if (geteuid())
-		fatalx("need root privileges");
-
-	/* Check for assigned daemon user */
-	if (getpwnam(SMTPFD_USER) == NULL)
-		fatalx("unknown user %s", SMTPFD_USER);
-
-	log_init(debug, LOG_DAEMON);
-	log_setverbose(cmd_opts & OPT_VERBOSE);
-	log_procinit("main");
-	setproctitle("main");
-
-	if (!debug)
-		daemon(1, 0);
-
-	log_info("startup");
-
-	rargc = 0;
-	rargv[rargc++] = saved_argv0;
-	rargv[rargc++] = "-F";
-	if (debug)
-		rargv[rargc++] = "-d";
-	if (cmd_opts & OPT_VERBOSE)
-		rargv[rargc++] = "-v";
-	rargv[rargc++] = "-s";
-	rargv[rargc++] = csock;
-	rargv[rargc++] = NULL;
-
-	p_frontend = proc_exec(PROC_FRONTEND, rargv);
-	proc_setcallback(p_frontend, priv_dispatch_frontend, NULL);
-	rargv[1] = "-E";
-	rargv[argc - 3] = NULL;
-	p_engine = proc_exec(PROC_ENGINE, rargv);
-	proc_setcallback(p_engine, priv_dispatch_engine, NULL);
-
-	event_init();
-
-	/* Setup signal handler. */
-	signal_set(&ev_sigint, SIGINT, priv_sig_handler, NULL);
-	signal_set(&ev_sigterm, SIGTERM, priv_sig_handler, NULL);
-	signal_set(&ev_sighup, SIGHUP, priv_sig_handler, NULL);
-	signal_set(&ev_sigchld, SIGCHLD, priv_sig_handler, NULL);
-	signal_add(&ev_sigint, NULL);
-	signal_add(&ev_sigterm, NULL);
-	signal_add(&ev_sighup, NULL);
-	signal_add(&ev_sigchld, NULL);
-	signal(SIGPIPE, SIG_IGN);
-
-	/* Start children */
-	proc_enable(p_frontend);
-	proc_enable(p_engine);
-
-	/* Connect the two children */
-	if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK,
-	    PF_UNSPEC, sp) == -1)
-		fatal("socketpair");
-	if (proc_compose(p_frontend, IMSG_SOCKET_IPC, 0, 0, sp[0], NULL, 0)
-	    == -1)
-		fatal("proc_compose");
-	if (proc_compose(p_engine, IMSG_SOCKET_IPC, 0, 0, sp[1], NULL, 0)
-	    == -1)
-		fatal("proc_compose");
-
-	priv_send_config(env);
-
-	if (pledge("rpath stdio sendfd cpath", NULL) == -1)
-		fatal("pledge");
-
-	event_dispatch();
-
-	priv_shutdown();
-	return (0);
-}
-
-__dead static void
+static void
 priv_shutdown(void)
 {
-	pid_t	 pid;
-	pid_t	 frontend_pid;
-	pid_t	 engine_pid;
-	int	 status;
+	pid_t pid;
 
-	frontend_pid = proc_getpid(p_frontend);
-	engine_pid = proc_getpid(p_frontend);
-
-	/* Close pipes. */
-	proc_free(p_frontend);
+	proc_free(p_control);
 	proc_free(p_engine);
+	proc_free(p_frontend);
 
-	config_clear(env);
-
-	log_debug("waiting for children to terminate");
 	do {
-		pid = wait(&status);
-		if (pid == -1) {
-			if (errno != EINTR && errno != ECHILD)
-				fatal("wait");
-		} else if (WIFSIGNALED(status))
-			log_warnx("%s terminated; signal %d",
-			    (pid == engine_pid) ? "engine" :
-			    "frontend", WTERMSIG(status));
+		pid = waitpid(WAIT_MYPGRP, NULL, 0);
 	} while (pid != -1 || (pid == -1 && errno == EINTR));
 
-	control_cleanup(csock);
+	log_info("exiting");
 
-	log_info("terminating");
 	exit(0);
 }
 
 static void
-priv_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *arg)
+priv_open_listener(struct listener *l)
 {
-	int verbose;
+	struct sockaddr_un *su;
+	struct sockaddr *sa;
+	const char *path;
+	mode_t old_umask;
+	int opt, sock, r;
 
-	if (imsg == NULL) {
-		event_loopexit(NULL);
-		return;
+	sa = (struct sockaddr *)&l->ss;
+
+	sock = socket(sa->sa_family, SOCK_STREAM | SOCK_NONBLOCK, 0);
+	if (sock == -1) {
+		if (errno == EAFNOSUPPORT) {
+			log_warn("%s: socket", __func__);
+			return;
+		}
+		fatal("%s: socket", __func__);
 	}
 
-	switch (imsg->hdr.type) {
-	case IMSG_CTL_RELOAD:
-		if (priv_reload() == -1)
-			log_warnx("configuration reload failed");
-		else
-			log_warnx("configuration reloaded");
+	switch (sa->sa_family) {
+	case AF_LOCAL:
+		su = (struct sockaddr_un *)sa;
+		path = su->sun_path;
+		if (connect(sock, sa, sa->sa_len) == 0)
+			fatalx("%s already in use", path);
+
+		if (unlink(path) == -1)
+			if (errno != ENOENT)
+				fatal("unlink: %s", path);
+
+		old_umask = umask(S_IXUSR|S_IXGRP|S_IWOTH|S_IROTH|S_IXOTH);
+		r = bind(sock, sa, sizeof(*su));
+		(void)umask(old_umask);
+
+		if (r == -1)
+			fatal("bind: %s", path);
 		break;
-	case IMSG_CTL_LOG_VERBOSE:
-		/* Already checked by frontend. */
-		memcpy(&verbose, imsg->data, sizeof(verbose));
-		log_setverbose(verbose);
+
+	case AF_INET:
+	case AF_INET6:
+		opt = 1;
+		if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt,
+			sizeof(opt)) < 0)
+			fatal("setsockopt: %s", log_fmt_sockaddr(sa));
+
+		if (bind(sock, sa, sa->sa_len) == -1)
+			fatal("bind: %s", log_fmt_sockaddr(sa));
 		break;
-	case IMSG_CTL_SHOW_MAIN_INFO:
-		proc_compose(p, IMSG_CTL_END, 0, imsg->hdr.pid, -1, NULL, 0);
-		break;
+
 	default:
-		log_debug("%s: error handling imsg %d", __func__,
-		    imsg->hdr.type);
-		break;
+		fatalx("bad address family %d", sa->sa_family);
 	}
+
+	l->sock = sock;
 }
 
 static void
-priv_dispatch_engine(struct imsgproc *p, struct imsg *imsg, void *arg)
-{
-	if (imsg == NULL) {
-		event_loopexit(NULL);
-		return;
-	}
-
-	switch (imsg->hdr.type) {
-	default:
-		log_debug("%s: error handling imsg %d", __func__,
-		    imsg->hdr.type);
-		break;
-	}
-}
-
-static int
-priv_reload(void)
-{
-	struct smtpfd_conf *xconf;
-
-	if ((xconf = parse_config(conffile)) == NULL)
-		return (-1);
-
-	if (priv_send_config(xconf) == -1)
-		return (-1);
-
-	config_clear(env);
-	env = xconf;
-
-	return (0);
-}
-
-static int
-priv_send_config(struct smtpfd_conf *xconf)
-{
-	struct filter_conf *f;
-
-	/* Send fixed part of config to engine. */
-	if (proc_compose(p_engine, IMSG_RECONF_CONF, 0, 0, -1, NULL, 0) == -1)
-		return (-1);
-
-	TAILQ_FOREACH(f, &xconf->filters, entry) {
-		if (f->chain)
-			continue;
-		priv_send_filter_proc(f);
-	}
-
-	TAILQ_FOREACH(f, &xconf->filters, entry) {
-		proc_compose(p_engine, IMSG_RECONF_FILTER, 0, 0, -1, f->name,
-		    strlen(f->name) + 1);
-		priv_send_filter_conf(xconf, f);
-	}
-
-	/* Tell children the revised config is now complete. */
-	if (proc_compose(p_engine, IMSG_RECONF_END, 0, 0, -1, NULL, 0) == -1)
-		return (-1);
-
-	return (0);
-}
-
-static void
-priv_send_filter_proc(struct filter_conf *f)
+priv_open_filter(struct filter_conf *f)
 {
 	int sp[2];
 	pid_t pid;
 
+	if (f->chain)
+		return;
+
 	if (socketpair(AF_UNIX, SOCK_STREAM|SOCK_NONBLOCK, PF_UNSPEC, sp) == -1)
-		fatal("socketpair");
+		fatal("%s: socketpair", __func__);
 
 	switch (pid = fork()) {
 	case -1:
-		fatal("fork");
+		fatal("%s: fork", __func__);
 	case 0:
 		break;
 	default:
 		close(sp[0]);
 		log_debug("forked filter %s as pid %d", f->name, (int)pid);
-		proc_compose(p_engine, IMSG_RECONF_FILTER_PROC, 0, pid, sp[1],
-		    f->name, strlen(f->name) + 1);
+		f->pid = pid;
+		f->sock = sp[1];
 		return;
 	}
 
 	if (dup2(sp[0], 3) == -1)
-		fatal("dup2");
+		fatal("%s: dup2", __func__);
 
 	if (closefrom(4) == -1)
-		fatal("closefrom");
+		fatal("%s: closefrom", __func__);
 
 	execvp(f->argv[0], f->argv+1);
-	fatal("proc_exec: execvp: %s", f->argv[0]);
+	fatal("%s: execvp: %s", __func__, f->argv[0]);
 }
 
 static void
-priv_send_filter_conf(struct smtpfd_conf *conf, struct filter_conf *f)
+priv_send_config(void)
 {
-	struct filter_conf *tmp;
-	int i;
+	struct listener *l;
+	struct filter_conf *f;
 
-	if (f->chain) {
-		for (i = 0; i < f->argc; i++) {
-			TAILQ_FOREACH(tmp, &conf->filters, entry)
-				if (!strcmp(f->argv[i], tmp->name)) {
-					priv_send_filter_conf(conf, tmp);
-					break;
-				}
-		}
-	}
-	else {
-		proc_compose(p_engine, IMSG_RECONF_FILTER_NODE, 0, 0, -1,
+	m_compose(p_control, IMSG_CONF_START, 0, 0, -1, NULL, 0);
+	m_compose(p_control, IMSG_CONF_END, 0, 0, -1, NULL, 0);
+
+	m_compose(p_engine, IMSG_CONF_START, 0, 0, -1, NULL, 0);
+	TAILQ_FOREACH(f, &env->filters, entry) {
+		if (f->chain)
+			continue;
+		m_compose(p_engine, IMSG_CONF_FILTER_PROC, 0, f->pid, f->sock,
 		    f->name, strlen(f->name) + 1);
 	}
-}
+	m_compose(p_engine, IMSG_CONF_END, 0, 0, -1, NULL, 0);
 
-struct smtpfd_conf *
-config_new_empty(void)
-{
-	struct smtpfd_conf	*conf;
-
-	conf = calloc(1, sizeof(*conf));
-	if (conf == NULL)
-		fatal(NULL);
-
-	TAILQ_INIT(&conf->filters);
-
-	return (conf);
-}
-
-void
-config_clear(struct smtpfd_conf *conf)
-{
-	struct filter_conf *f;
-	int i;
-
-	while ((f = TAILQ_FIRST(&conf->filters))) {
-		TAILQ_REMOVE(&conf->filters, f, entry);
-		free(f->name);
-		for (i = 0; i < f->argc; i++)
-			free(f->argv[i]);
-		free(f);
+	m_compose(p_frontend, IMSG_CONF_START, 0, 0, -1, NULL, 0);
+	TAILQ_FOREACH(l, &env->listeners, entry) {
+		m_create(p_frontend, IMSG_CONF_LISTENER, 0, 0, l->sock);
+		m_add_int(p_frontend, l->proto);
+		m_add_sockaddr(p_frontend, (struct sockaddr *)(&l->ss));
+		m_close(p_frontend);
 	}
-
-	free(conf);
+	m_compose(p_frontend, IMSG_CONF_END, 0, 0, -1, NULL, 0);
 }
 
-void
-config_print(struct smtpfd_conf *conf)
+static void
+priv_dispatch_control(struct imsgproc *proc, struct imsg *imsg, void *arg)
 {
-	struct filter_conf *f;
-	int i;
+	if (imsg == NULL)
+		fatalx("%s: imsg connection lost", __func__);
 
-	TAILQ_FOREACH(f, &conf->filters, entry) {
-		printf("%s %s", f->chain ? "chain":"filter", f->name);
-		for (i = 0; i < f->argc; i++)
-			printf(" %s", f->argv[i]);
-		printf("\n");
+	log_imsg(proc, imsg);
+
+	switch (imsg->hdr.type) {
+	default:
+		fatalx("%s: unexpected imsg %s", __func__,
+		    log_fmt_imsgtype(imsg->hdr.type));
+	}
+}
+
+static void
+priv_dispatch_engine(struct imsgproc *proc, struct imsg *imsg, void *arg)
+{
+	if (imsg == NULL)
+		fatalx("%s: imsg connection lost", __func__);
+
+	log_imsg(proc, imsg);
+
+	switch (imsg->hdr.type) {
+	default:
+		fatalx("%s: unexpected imsg %s", __func__,
+		    log_fmt_imsgtype(imsg->hdr.type));
+	}
+}
+
+static void
+priv_dispatch_frontend(struct imsgproc *proc, struct imsg *imsg, void *arg)
+{
+	if (imsg == NULL)
+		fatalx("%s: imsg connection lost", __func__);
+
+	log_imsg(proc, imsg);
+
+	switch (imsg->hdr.type) {
+	default:
+		fatalx("%s: unexpected imsg %s", __func__,
+		    log_fmt_imsgtype(imsg->hdr.type));
 	}
 }

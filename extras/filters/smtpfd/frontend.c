@@ -1,9 +1,7 @@
 /*	$OpenBSD$	*/
 
 /*
- * Copyright (c) 2005 Claudio Jeker <claudio@openbsd.org>
- * Copyright (c) 2004 Esben Norby <norby@openbsd.org>
- * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
+ * Copyright (c) 2017 Eric Faurot <eric@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -18,109 +16,259 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/syslog.h>
+#include <sys/tree.h>
 
-#include <event.h>
-#include <imsg.h>
+#include <errno.h>
+#include <paths.h>
 #include <pwd.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "smtpfd.h"
+
 #include "log.h"
 #include "proc.h"
-#include "smtpfd.h"
-#include "control.h"
 
-
+static void frontend_shutdown(void);
+static void frontend_listen(struct listener *);
+static void frontend_accept(int, short, void *);
+static void frontend_resume(int, short, void *);
 static void frontend_dispatch_priv(struct imsgproc *, struct imsg *, void *);
 static void frontend_dispatch_engine(struct imsgproc *, struct imsg *, void *);
 
+struct conn {
+	SPLAY_ENTRY(conn)	 entry;
+	struct listener		*listener;
+	uint32_t		 id;
+	struct sockaddr_storage	 ss;
+};
+
+static int conn_cmp(struct conn *, struct conn *);
+
+SPLAY_HEAD(conntree, conn);
+SPLAY_PROTOTYPE(conntree, conn, entry, conn_cmp);
+
+static struct conntree conns;
+static struct smtpfd_conf *tmpconf;
+
+static int
+conn_cmp(struct conn *a, struct conn *b)
+{
+	if (a->id < b->id)
+		return (-1);
+	if (a->id > b->id)
+		return (1);
+	return (0);
+}
+
+SPLAY_GENERATE(conntree, conn, entry, conn_cmp);
 
 void
-frontend(int debug, int verbose, char *sockname)
+frontend(int debug, int verbose)
 {
-	struct passwd	*pw;
+	struct passwd *pw;
 
+	/* Early initialisation. */
 	log_init(debug, LOG_DAEMON);
 	log_setverbose(verbose);
 	log_procinit("frontend");
 	setproctitle("frontend");
 
-	/* Create smtpfd control socket outside chroot. */
-	if (control_init(sockname) == -1)
-		fatalx("control socket setup failed");
+	SPLAY_INIT(&conns);
+	frontend_smtpf_init();
 
+	/* Drop priviledges. */
 	if ((pw = getpwnam(SMTPFD_USER)) == NULL)
-		fatal("getpwnam");
+		fatal("%s: getpwnam: %s", __func__, SMTPFD_USER);
 
-	if (chroot(pw->pw_dir) == -1)
-		fatal("chroot");
+	if (chroot(_PATH_VAREMPTY) == -1)
+		fatal("%s: chroot", __func__);
 	if (chdir("/") == -1)
-		fatal("chdir(\"/\")");
+		fatal("%s: chdir", __func__);
 
 	if (setgroups(1, &pw->pw_gid) ||
 	    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||
 	    setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid))
-		fatal("can't drop privileges");
+		fatal("%s: cannot drop privileges", __func__);
 
-	if (pledge("stdio inet recvfd", NULL) == -1)
-		fatal("pledge");
+	if (pledge("stdio unix inet recvfd sendfd", NULL) == -1)
+		fatal("%s: pledge", __func__);
 
 	event_init();
+
+	signal(SIGPIPE, SIG_IGN);
 
 	/* Setup imsg socket with parent. */
 	p_priv = proc_attach(PROC_PRIV, 3);
 	proc_setcallback(p_priv, frontend_dispatch_priv, NULL);
 	proc_enable(p_priv);
 
-	/* Listen on control socket. */
-	control_listen();
-
 	event_dispatch();
+
+	frontend_shutdown();
+}
+
+void
+frontend_conn_closed(uint32_t connid)
+{
+	struct conn key, *conn;
+
+	key.id = connid;
+	conn = SPLAY_FIND(conntree, &conns, &key);
+	if (conn) {
+		SPLAY_REMOVE(conntree, &conns, conn);
+		free(conn);
+	}
+}
+
+static void
+frontend_shutdown()
+{
+	struct listener *l;
+
+	TAILQ_FOREACH(l, &env->listeners, entry)
+		close(l->sock);
+
+	log_debug("exiting");
 
 	exit(0);
 }
 
 static void
-frontend_dispatch_priv(struct imsgproc *p, struct imsg *imsg, void *arg)
+frontend_listen(struct listener *l)
 {
-	if (imsg == NULL) {
-		log_debug("%s: imsg connection lost", __func__);
-		event_loopexit(NULL);
+	log_debug("conn listen proto=%s sockaddr=%s", log_fmt_proto(l->proto),
+	    log_fmt_sockaddr((struct sockaddr*)&l->ss));
+
+	if (listen(l->sock, 5) == -1)
+		fatal("%s: listen", __func__);
+
+	event_set(&l->ev, l->sock, EV_READ|EV_PERSIST, frontend_accept, l);
+	event_add(&l->ev, NULL);
+}
+
+static void
+frontend_accept(int sock, short ev, void *arg)
+{
+	struct listener *l = arg;
+	struct sockaddr_storage ss;
+	struct sockaddr *sa;
+	struct timeval tv;
+	struct conn *conn;
+	socklen_t len;
+
+	conn = calloc(1, sizeof(*conn));
+	if (conn == NULL) {
+		log_warn("%s: calloc", __func__);
+		sa = NULL;
+		len = 0;
+	}
+	else {
+		sa = (struct sockaddr *)&ss;
+		len = sizeof(conn->ss);
+	}
+
+	sock = accept4(sock, sa, &len, SOCK_NONBLOCK);
+	if (sock == -1) {
+		log_warn("%s: accept4", __func__);
+		if (errno == ENFILE || errno == EMFILE) {
+			/* Stop listening for a while. */
+			tv.tv_sec = 2;
+			tv.tv_usec = 0;
+			event_del(&l->ev);
+			evtimer_set(&l->ev, frontend_resume, l);
+			evtimer_add(&l->ev, &tv);
+		}
+		free(conn);
 		return;
 	}
 
-	switch (imsg->hdr.type) {
-	case IMSG_CTL_END:
-		control_imsg_relay(imsg);
-		break;
-	case IMSG_SOCKET_IPC:
-		/*
-		 * Setup pipe and event handler to the engine
-		 * process.
-		 */
-		if (p_engine)
-			fatalx("engine process already set");
+	if (conn == NULL) {
+		close(sock);
+		return;
+	}
 
-		if (imsg->fd == -1)
-			fatalx("failed to receive engine process fd");
+	while (conn->id == 0 || SPLAY_FIND(conntree, &conns, conn))
+		conn->id = arc4random();
+	SPLAY_INSERT(conntree, &conns, conn);
+	conn->listener = l;
 
-		p_engine = proc_attach(PROC_ENGINE, imsg->fd);
-		if (p_engine == NULL)
-			fatal("proc_attach");
-		proc_setcallback(p_engine, frontend_dispatch_engine, NULL);
-		proc_enable(p_engine);
+	switch (l->proto) {
+	case PROTO_SMTPF:
+		frontend_smtpf_conn(conn->id, l, sock, sa);
 		break;
 	default:
-		log_debug("%s: unexpected imsg %d", __func__, imsg->hdr.type);
-		break;
+		fatalx("%s: unexpected protocol %d", __func__, l->proto);
 	}
 }
 
 static void
-frontend_dispatch_engine(struct imsgproc *p, struct imsg *imsg, void *arg)
+frontend_resume(int sock, short ev, void *arg)
+{
+	struct listener *l = arg;
+
+	event_set(&l->ev, l->sock, EV_READ|EV_PERSIST, frontend_accept, l);
+	event_add(&l->ev, NULL);
+}
+
+static void
+frontend_dispatch_priv(struct imsgproc *proc, struct imsg *imsg, void *arg)
+{
+	struct listener *l;
+
+	if (imsg == NULL) {
+		log_debug("%s: imsg connection lost", __func__);
+		event_loopexit(NULL);
+		return;
+	}
+
+	log_imsg(proc, imsg);
+
+	switch (imsg->hdr.type) {
+	case IMSG_SOCK_ENGINE:
+		if (imsg->fd == -1)
+			fatalx("%s: engine socket not received", __func__);
+		m_end(proc);
+		p_engine = proc_attach(PROC_ENGINE, imsg->fd);
+		proc_setcallback(p_engine, frontend_dispatch_engine, NULL);
+		proc_enable(p_engine);
+		break;
+
+	case IMSG_CONF_START:
+		m_end(proc);
+		if ((tmpconf = calloc(1, sizeof(*tmpconf))) == NULL)
+			fatal("%s: calloc", __func__);
+		TAILQ_INIT(&tmpconf->listeners);
+		break;
+
+	case IMSG_CONF_LISTENER:
+		if (imsg->fd == -1)
+			fatalx("%s: listener socket not received", __func__);
+		if ((l = calloc(1, sizeof(*l))) == NULL)
+			fatal("%s: calloc", __func__);
+		m_get_int(proc, &l->proto);
+		m_get_sockaddr(proc, (struct sockaddr *)(&l->ss));
+		m_end(proc);
+		l->sock = imsg->fd;
+		TAILQ_INSERT_TAIL(&tmpconf->listeners, l, entry);
+		break;
+
+	case IMSG_CONF_END:
+		m_end(proc);
+		TAILQ_FOREACH(l, &tmpconf->listeners, entry)
+			frontend_listen(l);
+		env = tmpconf;
+		break;
+
+	default:
+		fatalx("%s: unexpected imsg %s", __func__,
+		    log_fmt_imsgtype(imsg->hdr.type));
+	}
+}
+
+static void
+frontend_dispatch_engine(struct imsgproc *proc, struct imsg *imsg, void *arg)
 {
 	if (imsg == NULL) {
 		log_debug("%s: imsg connection lost", __func__);
@@ -128,11 +276,17 @@ frontend_dispatch_engine(struct imsgproc *p, struct imsg *imsg, void *arg)
 		return;
 	}
 
+	log_imsg(proc, imsg);
+
 	switch (imsg->hdr.type) {
-	case IMSG_CTL_END:
-		control_imsg_relay(imsg);
+	case IMSG_RES_GETADDRINFO:
+	case IMSG_RES_GETADDRINFO_END:
+	case IMSG_RES_GETNAMEINFO:
+		resolver_dispatch_result(proc, imsg);
 		break;
+
 	default:
-		log_debug("%s: unexpected imsg %d", __func__, imsg->hdr.type);
+		fatalx("%s: unexpected imsg %s", __func__,
+		    log_fmt_imsgtype(imsg->hdr.type));
 	}
 }

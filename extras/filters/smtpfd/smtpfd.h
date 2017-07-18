@@ -1,8 +1,7 @@
 /*	$OpenBSD$	*/
 
 /*
- * Copyright (c) 2004 Esben Norby <norby@openbsd.org>
- * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
+ * Copyright (c) 2017 Eric Faurot <eric@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -17,33 +16,43 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#define CONF_FILE		"/etc/mail/smtpfd.conf"
+#include <sys/types.h>
+#include <sys/queue.h>
+#include <sys/tree.h>
+#include <sys/uio.h>
+#include <sys/socket.h>
+
+#include <event.h>
+#include <imsg.h>
+#include <limits.h>
+#include <netdb.h>
+
+#define PORT_SMTPF		2626
+
+#define	SMTPFD_CONFIG		"/etc/mail/smtpfd.conf"
 #define	SMTPFD_SOCKET		"/var/run/smtpfd.sock"
-#define SMTPFD_USER		"_smtpfd"
+#define	SMTPFD_CHROOT		"/var/empty"
+#define	SMTPFD_USER		"_smtpfd"
 
-#define SMTPFD_MAXFILTERARG	32
+#define	SMTPFD_MAXFILTERARG	32
 
-#define OPT_VERBOSE	0x00000001
-#define OPT_VERBOSE2	0x00000002
-#define OPT_NOACTION	0x00000004
-
-enum imsg_type {
+enum {
 	IMSG_NONE,
-	IMSG_CTL_LOG_VERBOSE,
-	IMSG_CTL_RELOAD,
-	IMSG_CTL_SHOW_ENGINE_INFO,
-	IMSG_CTL_SHOW_FRONTEND_INFO,
-	IMSG_CTL_SHOW_MAIN_INFO,
-	IMSG_CTL_END,
-	IMSG_RECONF_CONF,
-	IMSG_RECONF_FILTER_PROC,
-	IMSG_RECONF_FILTER,
-	IMSG_RECONF_FILTER_NODE,
-	IMSG_RECONF_END,
-	IMSG_SOCKET_IPC
+
+	IMSG_SOCK_ENGINE,
+	IMSG_SOCK_FRONTEND,
+
+	IMSG_CONF_START,
+	IMSG_CONF_FILTER_PROC,
+	IMSG_CONF_LISTENER,
+	IMSG_CONF_END,
+
+	IMSG_RES_GETADDRINFO,
+	IMSG_RES_GETADDRINFO_END,
+	IMSG_RES_GETNAMEINFO
 };
 
-enum smtpfd_process {
+enum {
 	PROC_CLIENT,
 	PROC_CONTROL,
 	PROC_ENGINE,
@@ -52,34 +61,79 @@ enum smtpfd_process {
 	PROC_PRIV
 };
 
+enum {
+	PROTO_NONE = 0,
+	PROTO_SMTPF
+};
+
+struct listener {
+	int			 sock;
+	int			 proto;
+	struct sockaddr_storage	 ss;
+	struct timeval		 timeout;
+	struct event		 ev;
+	TAILQ_ENTRY(listener)	 entry;
+};
+
 struct filter_conf {
 	TAILQ_ENTRY(filter_conf)	 entry;
 	char				*name;
 	int				 chain;
 	int				 argc;
 	char				*argv[SMTPFD_MAXFILTERARG + 1];
+	pid_t				 pid;
+	int				 sock;
 };
 
 struct smtpfd_conf {
-	TAILQ_HEAD(, filter_conf) filters;
+	TAILQ_HEAD(, listener)		 listeners;
+	TAILQ_HEAD(, filter_conf)	 filters;
 };
 
-extern uint32_t cmd_opts;
+struct io;
+struct imsgproc;
+
+extern struct smtpfd_conf *env;
+extern struct imsgproc *p_control;
 extern struct imsgproc *p_engine;
 extern struct imsgproc *p_frontend;
 extern struct imsgproc *p_priv;
 
+/* control.c */
+void control(int, int);
 
 /* engine.c */
 void engine(int, int);
 
 /* frontend.c */
-void frontend(int, int, char *);
+void frontend(int, int);
+void frontend_conn_closed(uint32_t);
+
+/* frontend_smtpf.c */
+void frontend_smtpf_init(void);
+void frontend_smtpf_conn(uint32_t, struct listener *, int,
+    const struct sockaddr *);
+
+/* logmsg.c */
+const char *log_fmt_proto(int);
+const char *log_fmt_imsgtype(int);
+const char *log_fmt_proctype(int);
+const char *log_fmt_sockaddr(const struct sockaddr *);
+void log_imsg(struct imsgproc *, struct imsg *);
+void log_io(const char *, struct io *, int);
+
+/* parse.y */
+struct smtpfd_conf *parse_config(const char *, int);
+int cmdline_symset(char *);
+
+/* resolver.c */
+void resolver_getaddrinfo(const char *, const char *, const struct addrinfo *,
+    void(*)(void *, int, struct addrinfo*), void *);
+void resolver_getnameinfo(const struct sockaddr *, int,
+    void(*)(void *, int, const char *, const char *), void *);
+void resolver_dispatch_request(struct imsgproc *, struct imsg *);
+void resolver_dispatch_result(struct imsgproc *, struct imsg *);
 
 /* smtpfd.c */
 struct smtpfd_conf *config_new_empty(void);
 void config_clear(struct smtpfd_conf *);
-
-/* parse.y */
-struct smtpfd_conf	*parse_config(char *);
-int			 cmdline_symset(char *);

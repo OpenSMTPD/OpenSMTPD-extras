@@ -1,9 +1,7 @@
 /*	$OpenBSD$	*/
 
 /*
- * Copyright (c) 2004, 2005 Claudio Jeker <claudio@openbsd.org>
- * Copyright (c) 2004 Esben Norby <norby@openbsd.org>
- * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
+ * Copyright (c) 2017 Eric Faurot <eric@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -18,29 +16,27 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/syslog.h>
+#include <sys/stat.h>
 
-#include <event.h>
-#include <imsg.h>
+#include <errno.h>
 #include <pwd.h>
 #include <stdlib.h>
-#include <string.h>
+#include <signal.h>
 #include <unistd.h>
+
+#include "smtpfd.h"
 
 #include "log.h"
 #include "proc.h"
-#include "smtpfd.h"
 
-struct filter_process {
-	TAILQ_ENTRY(filter_process) entry;
+struct filter_proc {
+	TAILQ_ENTRY(filter_proc) entry;
 	struct imsgproc *proc;
 };
 
 struct filter_node {
 	TAILQ_ENTRY(filter_node) entry;
-	struct filter_process *fproc;
+	struct filter_proc *proc;
 };
 
 struct filter {
@@ -50,44 +46,43 @@ struct filter {
 };
 
 struct engine_config {
-	TAILQ_HEAD(, filter_process) procs;
+	TAILQ_HEAD(, filter_proc) procs;
 	TAILQ_HEAD(, filter) filters;
 };
 
-static void engine_dispatch_frontend(struct imsgproc *, struct imsg *, void *);
+static void engine_shutdown(void);
 static void engine_dispatch_priv(struct imsgproc *, struct imsg *, void *);
 static void engine_dispatch_filter(struct imsgproc *, struct imsg *, void *);
+static void engine_dispatch_frontend(struct imsgproc *, struct imsg *, void *);
 
-static struct engine_config *conf;
-static struct engine_config *tmpconf;
+static struct engine_config *tmpconf, *conf;
 
 void
 engine(int debug, int verbose)
 {
 	struct passwd *pw;
 
+	/* Early initialisation. */
 	log_init(debug, LOG_DAEMON);
 	log_setverbose(verbose);
 	log_procinit("engine");
 	setproctitle("engine");
 
+	/* Drop priviledges. */
 	if ((pw = getpwnam(SMTPFD_USER)) == NULL)
-		fatal("getpwnam");
-
-	if (chroot(pw->pw_dir) == -1)
-		fatal("chroot");
-	if (chdir("/") == -1)
-		fatal("chdir(\"/\")");
+		fatal("%s: getpwnam: %s", __func__, SMTPFD_USER);
 
 	if (setgroups(1, &pw->pw_gid) ||
 	    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||
 	    setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid))
-		fatal("can't drop privileges");
+		fatal("%s: cannot drop privileges", __func__);
 
-	if (pledge("stdio recvfd", NULL) == -1)
-		fatal("pledge");
+	if (pledge("stdio rpath wpath cpath dns sendfd recvfd", NULL) == -1)
+		fatal("%s: pledge", __func__);
 
 	event_init();
+
+	signal(SIGPIPE, SIG_IGN);
 
 	/* Setup imsg socket with parent. */
 	p_priv = proc_attach(PROC_PRIV, 3);
@@ -96,15 +91,21 @@ engine(int debug, int verbose)
 
 	event_dispatch();
 
+	engine_shutdown();
+}
+
+static void
+engine_shutdown()
+{
+	log_debug("exiting");
+
 	exit(0);
 }
 
 static void
-engine_dispatch_priv(struct imsgproc *p, struct imsg *imsg, void *bula)
+engine_dispatch_priv(struct imsgproc *proc, struct imsg *imsg, void *arg)
 {
-	struct filter_process *fproc;
-	struct filter_node *fnode;
-	struct filter *f;
+	struct filter_proc *fproc;
 
 	if (imsg == NULL) {
 		log_debug("%s: imsg connection lost", __func__);
@@ -112,45 +113,37 @@ engine_dispatch_priv(struct imsgproc *p, struct imsg *imsg, void *bula)
 		return;
 	}
 
+	log_imsg(proc, imsg);
+
 	switch (imsg->hdr.type) {
-	case IMSG_SOCKET_IPC:
-		/*
-		 * Setup pipe and event handler to the frontend
-		 * process.
-		 */
-		if (p_frontend)
-			fatalx("frontend process already set");
+	case IMSG_SOCK_FRONTEND:
+		m_end(proc);
 
 		if (imsg->fd == -1)
-			fatalx("failed to receive frontend process fd");
-
+			fatalx("failed to receive frontend socket");
 		p_frontend = proc_attach(PROC_FRONTEND, imsg->fd);
-		if (p_frontend == NULL)
-			fatal("proc_attach");
 		proc_setcallback(p_frontend, engine_dispatch_frontend, NULL);
 		proc_enable(p_frontend);
 		break;
 
-	case IMSG_RECONF_CONF:
-		if (tmpconf)
-			fatalx("already configuring");
+	case IMSG_CONF_START:
+		m_end(proc);
 		tmpconf = calloc(1, sizeof(*tmpconf));
 		if (tmpconf == NULL)
-			fatal("calloc");
+			fatal("%s: calloc", __func__);
 		TAILQ_INIT(&tmpconf->procs);
 		TAILQ_INIT(&tmpconf->filters);
 		break;
 
-	case IMSG_RECONF_FILTER_PROC:
+	case IMSG_CONF_FILTER_PROC:
 		if (imsg->fd == -1)
-			fatalx("failed to receive filter process fd");
-
+			fatalx("%s: filter process fd not received", __func__);
 		fproc = calloc(1, sizeof(*fproc));
 		if (fproc == NULL)
-			fatal("calloc");
+			fatal("%s: calloc", __func__);
 		fproc->proc = proc_attach(PROC_FILTER, imsg->fd);
 		if (fproc->proc == NULL)
-			fatal("proc_attach");
+			fatal("%s: proc_attach", __func__);
 		proc_settitle(fproc->proc, imsg->data);
 		proc_setcallback(fproc->proc, engine_dispatch_filter, fproc);
 		proc_enable(fproc->proc);
@@ -158,89 +151,56 @@ engine_dispatch_priv(struct imsgproc *p, struct imsg *imsg, void *bula)
 		log_info("new filter process: %s", (char *)imsg->data);
 		break;
 
-	case IMSG_RECONF_FILTER:
-		f = calloc(1, sizeof(*f));
-		if (f == NULL)
-			fatal("calloc");
-		f->name = strdup(imsg->data);
-		if (f->name == NULL)
-			fatal("strdup");
-		TAILQ_INIT(&f->nodes);
-		TAILQ_INSERT_HEAD(&tmpconf->filters, f, entry);
-		log_info("new filter: %s", (char *)imsg->data);
-		break;
-
-	case IMSG_RECONF_FILTER_NODE:
-		fnode = calloc(1, sizeof(*fnode));
-		if (fnode == NULL)
-			fatal("calloc");
-		TAILQ_FOREACH(fproc, &tmpconf->procs, entry) {
-			if (!strcmp(proc_gettitle(fproc->proc), imsg->data)) {
-				fnode->fproc = fproc;
-				break;
-			}
-		}
-		if (fnode->fproc == NULL)
-			fatalx("unknown filter process %s", (char *)imsg->data);
-		f = TAILQ_FIRST(&tmpconf->filters);
-		TAILQ_INSERT_TAIL(&f->nodes, fnode, entry);
-		log_info("new node filter on filter %s: %s", f->name, (char *)imsg->data);
-		break;
-
-	case IMSG_RECONF_END:
-		/* XXX purge old config */
+	case IMSG_CONF_END:
+		m_end(proc);
 		conf = tmpconf;
-		tmpconf = NULL;
 		break;
 
 	default:
-		log_debug("%s: unexpected imsg %d", __func__, imsg->hdr.type);
-		break;
+		fatalx("%s: unexpected imsg %s", __func__,
+		    log_fmt_imsgtype(imsg->hdr.type));
 	}
 }
 
 static void
-engine_dispatch_frontend(struct imsgproc *p, struct imsg *imsg, void *bula)
+engine_dispatch_frontend(struct imsgproc *proc, struct imsg *imsg, void *arg)
 {
-	int verbose;
-
 	if (imsg == NULL) {
 		log_debug("%s: imsg connection lost", __func__);
 		event_loopexit(NULL);
 		return;
 	}
 
+	log_imsg(proc, imsg);
+
 	switch (imsg->hdr.type) {
-	case IMSG_CTL_LOG_VERBOSE:
-		/* Already checked by frontend. */
-		memcpy(&verbose, imsg->data, sizeof(verbose));
-		log_setverbose(verbose);
+	case IMSG_RES_GETADDRINFO:
+	case IMSG_RES_GETNAMEINFO:
+		resolver_dispatch_request(proc, imsg);
 		break;
-	case IMSG_CTL_SHOW_ENGINE_INFO:
-		proc_compose(p_frontend, IMSG_CTL_END, 0, imsg->hdr.pid, -1,
-		    NULL, 0);
-		break;
+
 	default:
-		log_debug("%s: unexpected imsg %d", __func__, imsg->hdr.type);
-		break;
+		fatalx("%s: unexpected imsg %s", __func__,
+		    log_fmt_imsgtype(imsg->hdr.type));
 	}
 }
 
 static void
-engine_dispatch_filter(struct imsgproc *p, struct imsg *imsg, void *bula)
+engine_dispatch_filter(struct imsgproc *proc, struct imsg *imsg, void *arg)
 {
 	if (imsg == NULL) {
-		log_debug("%s: imsg connection lost to filter %s", __func__,
-		    proc_gettitle(p));
+		log_debug("%s: imsg connection lost", __func__);
 		event_loopexit(NULL);
 		return;
 	}
 
+	log_imsg(proc, imsg);
+
+	return;
+
 	switch (imsg->hdr.type) {
 	default:
-		log_debug("%s: unexpected imsg %d from filter %s", __func__,
-		    imsg->hdr.type, proc_gettitle(p));
-		proc_compose(p, 1, 0, 0, -1, NULL, 0);
-		break;
+		fatalx("%s: unexpected imsg %s", __func__,
+		    log_fmt_imsgtype(imsg->hdr.type));
 	}
 }
