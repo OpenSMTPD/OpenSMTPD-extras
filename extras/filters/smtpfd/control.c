@@ -161,7 +161,7 @@ control_accept(int listenfd, short event, void *bula)
 	int			 connfd;
 	socklen_t		 len;
 	struct sockaddr_un	 sun;
-	struct imsgproc		*p;
+	struct imsgproc		*proc;
 
 	event_add(&control_state.ev, NULL);
 	if ((event & EV_TIMEOUT))
@@ -185,15 +185,15 @@ control_accept(int listenfd, short event, void *bula)
 		return;
 	}
 
-	p = proc_attach(PROC_CLIENT, connfd);
-	proc_setcallback(p, control_dispatch_client, NULL);
-	proc_enable(p);
+	proc = proc_attach(PROC_CLIENT, connfd);
+	proc_setcallback(proc, control_dispatch_client, NULL);
+	proc_enable(proc);
 }
 
 static void
-control_close(struct imsgproc *p)
+control_close(struct imsgproc *proc)
 {
-	proc_free(p);
+	proc_free(proc);
 
 	/* Some file descriptors are available again. */
 	if (evtimer_pending(&control_state.evt, NULL)) {
@@ -210,6 +210,9 @@ control_dispatch_priv(struct imsgproc *proc, struct imsg *imsg, void *arg)
 		event_loopexit(NULL);
 		return;
 	}
+
+	if (log_getverbose() > LOGLEVEL_IMSG)
+		log_imsg(proc, imsg);
 
 	switch (imsg->hdr.type) {
 	case IMSG_CONF_START:
@@ -228,12 +231,15 @@ control_dispatch_priv(struct imsgproc *proc, struct imsg *imsg, void *arg)
 }
 
 static void
-control_dispatch_client(struct imsgproc *p, struct imsg *imsg, void *arg)
+control_dispatch_client(struct imsgproc *proc, struct imsg *imsg, void *arg)
 {
 	if (imsg == NULL) {
-		control_close(p);
+		control_close(proc);
 		return;
 	}
+
+	if (log_getverbose() > LOGLEVEL_IMSG)
+		log_imsg(proc, imsg);
 
 	switch (imsg->hdr.type) {
 	default:

@@ -58,9 +58,7 @@ int	io_fileno(struct io *);
 int	io_attach(struct io *io, int);
 int	io_detach(struct io *io);
 int	io_close(struct io *io);
-int	io_connect(struct io *, const char *, const char *,
-    const struct addrinfo *);
-int	io_connect_addrinfo(struct io *, struct addrinfo *);
+int	io_connect(struct io *, struct addrinfo *);
 int	io_disconnect(struct io *io);
 int	io_starttls(struct io *, void *);
 

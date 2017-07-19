@@ -27,7 +27,7 @@
 #include <limits.h>
 #include <netdb.h>
 
-#define PORT_SMTPF		2626
+#define	PORT_SMTPF		2626
 
 #define	SMTPFD_CONFIG		"/etc/mail/smtpfd.conf"
 #define	SMTPFD_SOCKET		"/var/run/smtpfd.sock"
@@ -35,6 +35,10 @@
 #define	SMTPFD_USER		"_smtpfd"
 
 #define	SMTPFD_MAXFILTERARG	32
+
+#define	LOGLEVEL_CONN	2
+#define	LOGLEVEL_IMSG	3
+#define	LOGLEVEL_IO	4
 
 enum {
 	IMSG_NONE,

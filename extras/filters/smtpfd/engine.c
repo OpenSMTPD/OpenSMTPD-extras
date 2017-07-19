@@ -113,7 +113,8 @@ engine_dispatch_priv(struct imsgproc *proc, struct imsg *imsg, void *arg)
 		return;
 	}
 
-	log_imsg(proc, imsg);
+	if (log_getverbose() > LOGLEVEL_IMSG)
+		log_imsg(proc, imsg);
 
 	switch (imsg->hdr.type) {
 	case IMSG_SOCK_FRONTEND:
@@ -171,7 +172,8 @@ engine_dispatch_frontend(struct imsgproc *proc, struct imsg *imsg, void *arg)
 		return;
 	}
 
-	log_imsg(proc, imsg);
+	if (log_getverbose() > LOGLEVEL_IMSG)
+		log_imsg(proc, imsg);
 
 	switch (imsg->hdr.type) {
 	case IMSG_RES_GETADDRINFO:
@@ -194,7 +196,8 @@ engine_dispatch_filter(struct imsgproc *proc, struct imsg *imsg, void *arg)
 		return;
 	}
 
-	log_imsg(proc, imsg);
+	if (log_getverbose() > LOGLEVEL_IMSG)
+		log_imsg(proc, imsg);
 
 	return;
 

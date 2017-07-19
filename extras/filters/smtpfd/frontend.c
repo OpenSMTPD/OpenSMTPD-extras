@@ -116,10 +116,16 @@ frontend_conn_closed(uint32_t connid)
 
 	key.id = connid;
 	conn = SPLAY_FIND(conntree, &conns, &key);
-	if (conn) {
-		SPLAY_REMOVE(conntree, &conns, conn);
-		free(conn);
-	}
+	if (conn == NULL)
+		fatalx("%s: %08x unknown connid", __func__, connid);
+
+	if (log_getverbose() > LOGLEVEL_CONN)
+		log_debug("%08x close %s %s", conn->id,
+		    log_fmt_proto(conn->listener->proto),
+		    log_fmt_sockaddr((struct sockaddr*)&conn->ss));
+
+	SPLAY_REMOVE(conntree, &conns, conn);
+	free(conn);
 }
 
 static void
@@ -138,8 +144,9 @@ frontend_shutdown()
 static void
 frontend_listen(struct listener *l)
 {
-	log_debug("conn listen proto=%s sockaddr=%s", log_fmt_proto(l->proto),
-	    log_fmt_sockaddr((struct sockaddr*)&l->ss));
+	if (log_getverbose() > LOGLEVEL_CONN)
+		log_debug("listen %s %s", log_fmt_proto(l->proto),
+		    log_fmt_sockaddr((struct sockaddr*)&l->ss));
 
 	if (listen(l->sock, 5) == -1)
 		fatal("%s: listen", __func__);
@@ -152,7 +159,6 @@ static void
 frontend_accept(int sock, short ev, void *arg)
 {
 	struct listener *l = arg;
-	struct sockaddr_storage ss;
 	struct sockaddr *sa;
 	struct timeval tv;
 	struct conn *conn;
@@ -165,7 +171,7 @@ frontend_accept(int sock, short ev, void *arg)
 		len = 0;
 	}
 	else {
-		sa = (struct sockaddr *)&ss;
+		sa = (struct sockaddr *)&conn->ss;
 		len = sizeof(conn->ss);
 	}
 
@@ -193,6 +199,11 @@ frontend_accept(int sock, short ev, void *arg)
 		conn->id = arc4random();
 	SPLAY_INSERT(conntree, &conns, conn);
 	conn->listener = l;
+
+	if (log_getverbose() > LOGLEVEL_CONN)
+		log_debug("%08x accept %s %s", conn->id,
+		    log_fmt_proto(conn->listener->proto),
+		    log_fmt_sockaddr((struct sockaddr*)&conn->ss));
 
 	switch (l->proto) {
 	case PROTO_SMTPF:
@@ -223,7 +234,8 @@ frontend_dispatch_priv(struct imsgproc *proc, struct imsg *imsg, void *arg)
 		return;
 	}
 
-	log_imsg(proc, imsg);
+	if (log_getverbose() > LOGLEVEL_IMSG)
+		log_imsg(proc, imsg);
 
 	switch (imsg->hdr.type) {
 	case IMSG_SOCK_ENGINE:
@@ -248,7 +260,7 @@ frontend_dispatch_priv(struct imsgproc *proc, struct imsg *imsg, void *arg)
 		if ((l = calloc(1, sizeof(*l))) == NULL)
 			fatal("%s: calloc", __func__);
 		m_get_int(proc, &l->proto);
-		m_get_sockaddr(proc, (struct sockaddr *)(&l->ss));
+		m_get_sockaddr(proc, (struct sockaddr *)&l->ss);
 		m_end(proc);
 		l->sock = imsg->fd;
 		TAILQ_INSERT_TAIL(&tmpconf->listeners, l, entry);
@@ -276,7 +288,8 @@ frontend_dispatch_engine(struct imsgproc *proc, struct imsg *imsg, void *arg)
 		return;
 	}
 
-	log_imsg(proc, imsg);
+	if (log_getverbose() > LOGLEVEL_IMSG)
+		log_imsg(proc, imsg);
 
 	switch (imsg->hdr.type) {
 	case IMSG_RES_GETADDRINFO:

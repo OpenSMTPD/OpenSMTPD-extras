@@ -70,13 +70,13 @@ main(int argc, char **argv)
 	struct filter_conf *f;
 	struct event evt_sigchld, evt_sigint, evt_sigterm, evt_sighup;
 	const char *conffile = SMTPFD_CONFIG, *reexec = NULL;
-	int sp[2], ch, debug = 0, nflag = 0, verbose = 0;
+	int sp[2], ch, debug = 0, nflag = 0, verbose = 1;
 
 	saved_argv = argv;
 	saved_argc = argc;
 
 	log_init(1, LOG_LPR);
-	log_setverbose(1);
+	log_setverbose(0);
 
 	while ((ch = getopt(argc, argv, "D:df:nvX:")) != -1) {
 		switch (ch) {
@@ -389,7 +389,8 @@ priv_dispatch_control(struct imsgproc *proc, struct imsg *imsg, void *arg)
 	if (imsg == NULL)
 		fatalx("%s: imsg connection lost", __func__);
 
-	log_imsg(proc, imsg);
+	if (log_getverbose() > LOGLEVEL_IMSG)
+		log_imsg(proc, imsg);
 
 	switch (imsg->hdr.type) {
 	default:
@@ -404,7 +405,8 @@ priv_dispatch_engine(struct imsgproc *proc, struct imsg *imsg, void *arg)
 	if (imsg == NULL)
 		fatalx("%s: imsg connection lost", __func__);
 
-	log_imsg(proc, imsg);
+	if (log_getverbose() > LOGLEVEL_IMSG)
+		log_imsg(proc, imsg);
 
 	switch (imsg->hdr.type) {
 	default:
@@ -419,7 +421,8 @@ priv_dispatch_frontend(struct imsgproc *proc, struct imsg *imsg, void *arg)
 	if (imsg == NULL)
 		fatalx("%s: imsg connection lost", __func__);
 
-	log_imsg(proc, imsg);
+	if (log_getverbose() > LOGLEVEL_IMSG)
+		log_imsg(proc, imsg);
 
 	switch (imsg->hdr.type) {
 	default:

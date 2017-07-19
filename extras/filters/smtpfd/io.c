@@ -20,11 +20,10 @@
 #include <sys/queue.h>
 #include <sys/socket.h>
 
-#include <netdb.h>
-#include <asr.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <netdb.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -42,7 +41,6 @@
 enum {
 	IO_STATE_DOWN,
 	IO_STATE_UP,
-	IO_STATE_RESOLVE,
 	IO_STATE_CONNECT,
 	IO_STATE_CONNECT_TLS,
 	IO_STATE_ACCEPT_TLS
@@ -71,11 +69,7 @@ struct io {
 	const char	*error; /* only valid immediately on callback */
 	struct sockaddr *bind;
 	struct addrinfo	*ai;	/* for connecting */
-	struct event_asr *eva;
 };
-
-static void fd_set_nonblocking(int);
-static void fd_set_nolinger(int);
 
 static const char* io_strflags(int);
 static const char* io_strevents(short);
@@ -88,7 +82,6 @@ static void io_hold(struct io *);
 static void io_release(struct io *);
 static void io_callback(struct io*, int);
 static void io_dispatch(int, short, void *);
-static void io_dispatch_getaddrinfo(struct asr_result *, void *);
 static void io_dispatch_connect(int, short, void *);
 static int io_connect_next(struct io *);
 
@@ -109,7 +102,6 @@ static int _io_trace = 0;
 static const char *states[] = {
     "DOWN",
     "UP",
-    "RESOLVE",
     "CONNECT",
     "CONNECT_TLS",
     "ACCEPT_TLS"
@@ -197,7 +189,7 @@ io_new(void)
 void
 io_free(struct io *io)
 {
-	io_debug("io_free(%p)", io);
+	io_debug("%s(%p)", __func__, io);
 
 	/* the current io is virtually dead */
 	if (io == current)
@@ -210,8 +202,6 @@ io_free(struct io *io)
 	}
 #endif
 
-	if (io->eva)
-		event_asr_abort(io->eva);
 	if (io->ai)
 		freeaddrinfo(io->ai);
 	if (event_initialized(&io->ev))
@@ -266,7 +256,7 @@ io_set_bufsize(struct io *io, size_t sz)
 void
 io_set_timeout(struct io *io, int msec)
 {
-	io_debug("io_set_timeout(%p, %d)", io, msec);
+	io_debug("%s(%p, %d)", __func__, io, msec);
 
 	io->timeout = msec;
 }
@@ -274,7 +264,7 @@ io_set_timeout(struct io *io, int msec)
 void
 io_set_lowat(struct io *io, size_t lowat)
 {
-	io_debug("io_set_lowat(%p, %zu)", io, lowat);
+	io_debug("%s(%p, %zu)", __func__, io, lowat);
 
 	io->lowat = lowat;
 }
@@ -324,57 +314,18 @@ io_close(struct io *io)
 }
 
 int
-io_connect(struct io *io, const char *host, const char *port,
-    const struct addrinfo *hints)
-{
-	struct addrinfo hints2;
-	struct asr_query *as;
-
-	if (io->state != IO_STATE_DOWN) {
-		errno = EISCONN;
-		return -1;
-	}
-
-	if (hints) {
-		hints2 = *hints;
-	}
-	else {
-		memset(&hints2, 0, sizeof(hints2));
-		hints2.ai_flags = AI_ADDRCONFIG;
-	}
-
-	if (hints2.ai_socktype == 0)
-		hints2.ai_socktype = SOCK_STREAM;
-	if (hints2.ai_socktype != SOCK_STREAM) {
-		errno = ESOCKTNOSUPPORT;
-		return -1;
-	}
-
-	as = getaddrinfo_async(host, port, &hints2, NULL);
-	if (as == NULL)
-		return -1;
-
-	io->eva = event_asr_run(as, io_dispatch_getaddrinfo, io);
-	if (io->eva == NULL) {
-		asr_abort(as);
-		return -1;
-	}
-
-	io->state = IO_STATE_RESOLVE;
-	return 0;
-}
-
-int
-io_connect_addrinfo(struct io *io, struct addrinfo *ai)
+io_connect(struct io *io, struct addrinfo *ai)
 {
 	if (ai == NULL) {
 		errno = EINVAL;
+		fatal("%s", __func__);
 		return -1;
 	}
 
 	if (io->state != IO_STATE_DOWN) {
 		freeaddrinfo(ai);
 		errno = EISCONN;
+		fatal("%s", __func__);
 		return -1;
 	}
 
@@ -386,6 +337,7 @@ int
 io_disconnect(struct io *io)
 {
 	errno = ENOSYS;
+	fatal("%s", __func__);
 	return -1;
 }
 
@@ -397,10 +349,10 @@ io_starttls(struct io *io, void *ssl)
 
 	mode = io->flags & IO_RW;
 	if (mode == 0 || mode == IO_RW)
-		fatalx("io_starttls: full-duplex or unset");
+		fatalx("%s: full-duplex or unset", __func__);
 
 	if (io->tls)
-		fatalx("io_starttls: SSL already started");
+		fatalx("%s: SSL already started", __func__);
 	io->tls = ssl;
 
 	if (SSL_set_fd(io->tls, io->sock) == 0) {
@@ -428,7 +380,7 @@ io_starttls(struct io *io, void *ssl)
 void
 io_pause(struct io *io, int dir)
 {
-	io_debug("io_pause(%p, %x)", io, dir);
+	io_debug("%s(%p, %x)", __func__, io, dir);
 
 	io->flags |= dir & (IO_IN | IO_OUT);
 	io_reload(io);
@@ -437,7 +389,7 @@ io_pause(struct io *io, int dir)
 void
 io_resume(struct io *io, int dir)
 {
-	io_debug("io_resume(%p, %x)", io, dir);
+	io_debug("%s(%p, %x)", __func__, io, dir);
 
 	io->flags &= ~(dir & (IO_IN | IO_OUT));
 	io_reload(io);
@@ -448,11 +400,11 @@ io_set_read(struct io *io)
 {
 	int mode;
 
-	io_debug("io_set_read(%p)", io);
+	io_debug("%s(%p)", __func__, io);
 
 	mode = io->flags & IO_RW;
 	if (!(mode == 0 || mode == IO_WRITE))
-		fatalx("io_set_read: full-duplex or reading");
+		fatalx("%s: full-duplex or reading", __func__);
 
 	io->flags &= ~IO_RW;
 	io->flags |= IO_READ;
@@ -464,11 +416,11 @@ io_set_write(struct io *io)
 {
 	int mode;
 
-	io_debug("io_set_write(%p)", io);
+	io_debug("%s(%p)", __func__, io);
 
 	mode = io->flags & IO_RW;
 	if (!(mode == 0 || mode == IO_READ))
-		fatalx("io_set_write: full-duplex or writing");
+		fatalx("%s: full-duplex or writing", __func__);
 
 	io->flags &= ~IO_RW;
 	io->flags |= IO_WRITE;
@@ -563,30 +515,6 @@ void
 io_drop(struct io *io, size_t sz)
 {
 	return iobuf_drop(&io->iobuf, sz);
-}
-
-static void
-fd_set_nonblocking(int sock)
-{
-	int flags;
-
-	if ((flags = fcntl(sock, F_GETFL)) == -1)
-		fatal("fd_set_blocking: fcntl(F_GETFL)");
-
-	flags |= O_NONBLOCK;
-
-	if (fcntl(sock, F_SETFL, flags) == -1)
-		fatal("fd_set_blocking: fcntl(F_SETFL)");
-}
-
-static void
-fd_set_nolinger(int sock)
-{
-	struct linger l;
-
-	memset(&l, 0, sizeof(l));
-	if (setsockopt(sock, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) == -1)
-		fatal("fd_set_linger: setsockopt");
 }
 
 const char*
@@ -699,7 +627,7 @@ io_reload(struct io *io)
 	}
 #endif
 
-	io_debug("io_reload(%p)", io);
+	io_debug("%s(%p)", __func__, io);
 
 	events = 0;
 	if (IO_READING(io) && !(io->flags & IO_PAUSE_IN))
@@ -715,8 +643,8 @@ io_reset(struct io *io, short events, void (*dispatch)(int, short, void*))
 {
 	struct timeval tv, *ptv;
 
-	io_debug("io_reset(%p, %s, %p) -> %s",
-	    io, io_strevents(events), dispatch, io_strio(io));
+	io_debug("%s(%p, %s, %p) -> %s", __func__, io,
+	    io_strevents(events), dispatch, io_strio(io));
 
 	/*
 	 * Indicate that the event has already been reset so that reload
@@ -749,11 +677,11 @@ static void
 io_frame_enter(const char *where, struct io *io, int ev)
 {
 	io_debug("io: BEGIN %llu", frame);
-	io_debug("io_frame_enter(%s, %s, %s)",
-	    where, io_strevents(ev), io_strio(io));
+	io_debug("%s(%s, %s, %s)", __func__, where, io_strevents(ev),
+	    io_strio(io));
 
 	if (current)
-		fatalx("io_frame_enter: interleaved frames");
+		fatalx("%s: interleaved frames", __func__);
 
 	current = io;
 
@@ -763,10 +691,10 @@ io_frame_enter(const char *where, struct io *io, int ev)
 static void
 io_frame_leave(struct io *io)
 {
-	io_debug("io_frame_leave(%llu)", frame);
+	io_debug("%s(%llu)", __func__, frame);
 
 	if (current && current != io)
-		fatalx("io_frame_leave: io mismatch");
+		fatalx("%s: io mismatch", __func__);
 
 	/* The io has been cleared. */
 	if (current == NULL)
@@ -796,10 +724,10 @@ io_frame_leave(struct io *io)
 static void
 io_hold(struct io *io)
 {
-	io_debug("io_hold(%p)", io);
+	io_debug("%s(%p)", __func__, io);
 
 	if (io->flags & IO_HELD)
-		fatalx("io_hold: already held");
+		fatalx("%s: already held", __func__);
 
 	io->flags &= ~IO_RESET;
 	io->flags |= IO_HELD;
@@ -808,10 +736,10 @@ io_hold(struct io *io)
 static void
 io_release(struct io *io)
 {
-	io_debug("io_release(%p)", io);
+	io_debug("%s(%p)", __func__, io);
 
 	if (!(io->flags & IO_HELD))
-		fatalx("io_release: not held");
+		fatalx("%s: not held", __func__);
 
 	io->flags &= ~IO_HELD;
 	if (!(io->flags & IO_RESET))
@@ -821,7 +749,7 @@ io_release(struct io *io)
 static void
 io_callback(struct io *io, int evt)
 {
-	io_debug("io_callback(%s, %s)", io_strio(io), io_strevent(evt));
+	io_debug("%s(%s, %s)", __func__, io_strio(io), io_strevent(evt));
 
 	io->cb(io, evt, io->arg);
 }
@@ -834,7 +762,7 @@ io_dispatch(int fd, short ev, void *arg)
 	ssize_t n;
 	int saved_errno;
 
-	io_frame_enter("io_dispatch", io, ev);
+	io_frame_enter(__func__, io, ev);
 
 	if (ev == EV_TIMEOUT) {
 		io_callback(io, IO_TIMEOUT);
@@ -848,6 +776,7 @@ io_dispatch(int fd, short ev, void *arg)
 			if (n == IOBUF_CLOSED)
 				io_callback(io, IO_DISCONNECTED);
 			else {
+				log_warn("%s: iobuf_write", __func__);
 				saved_errno = errno;
 				io->error = strerror(errno);
 				errno = saved_errno;
@@ -866,6 +795,7 @@ io_dispatch(int fd, short ev, void *arg)
 			if (n == IOBUF_CLOSED)
 				io_callback(io, IO_DISCONNECTED);
 			else {
+				log_warn("%s: iobuf_read", __func__);
 				saved_errno = errno;
 				io->error = strerror(errno);
 				errno = saved_errno;
@@ -888,7 +818,7 @@ io_dispatch_connect(int fd, short ev, void *arg)
 	socklen_t sl;
 	int r, e;
 
-	io_frame_enter("io_dispatch_connect", io, ev);
+	io_frame_enter(__func__, io, ev);
 
 	if (ev == EV_TIMEOUT)
 		e = ETIMEDOUT;
@@ -896,8 +826,12 @@ io_dispatch_connect(int fd, short ev, void *arg)
 		sl = sizeof(e);
 		r = getsockopt(fd, SOL_SOCKET, SO_ERROR, &e, &sl);
 		if (r == -1)  {
-			log_warn("io_dispatch_connect: getsockopt");
+			log_warn("%s: getsockopt", __func__);
 			e = errno;
+		}
+		else if (e) {
+			errno = e;
+			log_warn("%s: (connect)", __func__);
 		}
 	}
 
@@ -907,7 +841,7 @@ io_dispatch_connect(int fd, short ev, void *arg)
 		goto done;
 	}
 
-	if (io->ai) {
+	while (io->ai) {
 		r = io_connect_next(io);
 		if (r == 0)
 			goto done;
@@ -923,37 +857,12 @@ io_dispatch_connect(int fd, short ev, void *arg)
 	io_frame_leave(io);
 }
 
-static void
-io_dispatch_getaddrinfo(struct asr_result *ar, void *arg)
-{
-	struct io *io = arg;
-
-	io_frame_enter("io_dispatch_getaddrinfo", io, 0);
-
-	io->eva = NULL;
-
-	if (ar->ar_gai_errno) {
-		io->error = gai_strerror(ar->ar_gai_errno);
-		io->state = IO_STATE_DOWN;
-		io_callback(io, IO_ERROR);
-	}
-	else {
-		io->ai = ar->ar_addrinfo;
-		io->state = IO_STATE_CONNECT;
-		if (io_connect_next(io) == -1) {
-			io->state = IO_STATE_DOWN;
-			io_callback(io, IO_ERROR);
-		}
-	}
-
-	io_frame_leave(io);
-}
-
 static int
 io_connect_next(struct io *io)
 {
 	struct addrinfo *ai;
-	int errno_save;
+	struct linger l;
+	int saved_errno;
 
 	while ((ai = io->ai)) {
 		io->ai = ai->ai_next;
@@ -965,21 +874,32 @@ io_connect_next(struct io *io)
 
 	if (ai == NULL) {
 		errno = ESOCKTNOSUPPORT;
+		log_warn("%s", __func__);
 		return -1;
 	}
 
-	if ((io->sock = socket(ai->ai_family, ai->ai_socktype, 0)) == -1)
+	if ((io->sock = socket(ai->ai_family, ai->ai_socktype | SOCK_NONBLOCK,
+	    0)) == -1) {
+		log_warn("%s: socket", __func__);
 		goto fail;
+	}
 
-	fd_set_nonblocking(io->sock);
-	fd_set_nolinger(io->sock);
-
-	if (io->bind && bind(io->sock, io->bind, io->bind->sa_len) == -1)
+	memset(&l, 0, sizeof(l));
+	if (setsockopt(io->sock, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) == -1) {
+		log_warn("%s: setsockopt", __func__);
 		goto fail;
+	}
+
+	if (io->bind && bind(io->sock, io->bind, io->bind->sa_len) == -1) {
+		log_warn("%s: bind", __func__);
+		goto fail;
+	}
 
 	if (connect(io->sock, ai->ai_addr, ai->ai_addr->sa_len) == -1)
-		if (errno != EINPROGRESS)
+		if (errno != EINPROGRESS) {
+			log_warn("%s: connect", __func__);
 			goto fail;
+		}
 
 	freeaddrinfo(ai);
 	io->state = IO_STATE_CONNECT;
@@ -988,9 +908,9 @@ io_connect_next(struct io *io)
 
     fail:
 	if (io->sock != -1) {
-		errno_save = errno;
+		saved_errno = errno;
 		close(io->sock);
-		errno = errno_save;
+		errno = saved_errno;
 		io->error = strerror(errno);
 		io->sock = -1;
 	}
@@ -1025,7 +945,7 @@ io_dispatch_accept_tls(int fd, short event, void *arg)
 	struct io *io = arg;
 	int e, ret;
 
-	io_frame_enter("io_dispatch_accept_tls", io, event);
+	io_frame_enter(__func__, io, event);
 
 	if (event == EV_TIMEOUT) {
 		io_callback(io, IO_TIMEOUT);
@@ -1048,7 +968,7 @@ io_dispatch_accept_tls(int fd, short event, void *arg)
 	default:
 		io->error = io_ssl_error();
 		ssl_error("io_dispatch_accept_tls:SSL_accept");
-		io_callback(io, IO_ERROR);
+		io_callback(io, IO_TLSERROR);
 		break;
 	}
 
@@ -1062,7 +982,7 @@ io_dispatch_connect_tls(int fd, short event, void *arg)
 	struct io *io = arg;
 	int e, ret;
 
-	io_frame_enter("io_dispatch_connect_tls", io, event);
+	io_frame_enter(__func__, io, event);
 
 	if (event == EV_TIMEOUT) {
 		io_callback(io, IO_TIMEOUT);
@@ -1099,7 +1019,7 @@ io_dispatch_read_tls(int fd, short event, void *arg)
 	struct io *io = arg;
 	int n, saved_errno;
 
-	io_frame_enter("io_dispatch_read_tls", io, event);
+	io_frame_enter(__func__, io, event);
 
 	if (event == EV_TIMEOUT) {
 		io_callback(io, IO_TIMEOUT);
@@ -1122,15 +1042,16 @@ again:
 		saved_errno = errno;
 		io->error = strerror(errno);
 		errno = saved_errno;
+		log_warn("%s: iobuf_read_ssl", __func__);
 		io_callback(io, IO_ERROR);
 		break;
 	case IOBUF_SSLERROR:
 		io->error = io_ssl_error();
 		ssl_error("io_dispatch_read_tls:SSL_read");
-		io_callback(io, IO_ERROR);
+		io_callback(io, IO_TLSERROR);
 		break;
 	default:
-		io_debug("io_dispatch_read_tls(...) -> r=%d", n);
+		io_debug("%s(...) -> r=%d", __func__, n);
 		io_callback(io, IO_DATAIN);
 		if (current == io && IO_READING(io) && SSL_pending(io->tls))
 			goto again;
@@ -1147,7 +1068,7 @@ io_dispatch_write_tls(int fd, short event, void *arg)
 	size_t w2, w;
 	int n, saved_errno;
 
-	io_frame_enter("io_dispatch_write_tls", io, event);
+	io_frame_enter(__func__, io, event);
 
 	if (event == EV_TIMEOUT) {
 		io_callback(io, IO_TIMEOUT);
@@ -1169,15 +1090,16 @@ io_dispatch_write_tls(int fd, short event, void *arg)
 		saved_errno = errno;
 		io->error = strerror(errno);
 		errno = saved_errno;
+		log_warn("%s: iobuf_write_ssl", __func__);
 		io_callback(io, IO_ERROR);
 		break;
 	case IOBUF_SSLERROR:
 		io->error = io_ssl_error();
 		ssl_error("io_dispatch_write_tls:SSL_write");
-		io_callback(io, IO_ERROR);
+		io_callback(io, IO_TLSERROR);
 		break;
 	default:
-		io_debug("io_dispatch_write_tls(...) -> w=%d", n);
+		io_debug("%s(...) -> w=%d", __func__, n);
 		w2 = io_queued(io);
 		if (w > io->lowat && w2 <= io->lowat)
 			io_callback(io, IO_LOWAT);
@@ -1218,7 +1140,7 @@ io_reload_tls(struct io *io)
 			return; /* paused */
 		break;
 	default:
-		fatalx("io_reload_tls: state %d", io->state);
+		fatalx("%s: unexpected state %d", __func__, io->state);
 	}
 
 	io_reset(io, ev, dispatch);

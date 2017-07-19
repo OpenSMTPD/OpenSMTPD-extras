@@ -125,14 +125,11 @@ log_fmt_sockaddr(const struct sockaddr *sa)
 void
 log_imsg(struct imsgproc *proc, struct imsg *imsg)
 {
-	if (log_getverbose() < 3)
-		return;
-
 	if (imsg == NULL)
-		log_debug("imsg from=%s closed",
+		log_debug("imsg src=%s closed",
 		    log_fmt_proctype(proc_gettype(proc)));
 	else
-		log_debug("imsg from=%s imsg=%s len=%d fd=%d",
+		log_debug("imsg src=%s type=%s len=%d fd=%d",
 		    log_fmt_proctype(proc_gettype(proc)),
 		    log_fmt_imsgtype(imsg->hdr.type),
 		    imsg->hdr.len, imsg->fd);
@@ -141,9 +138,6 @@ log_imsg(struct imsgproc *proc, struct imsg *imsg)
 void
 log_io(const char *name, struct io *io, int ev)
 {
-	if (log_getverbose() < 4)
-		return;
-
-	log_debug("io %s event=%s io=%s", name, io_strevent(ev),
+	log_debug("io %s evt=%s io=%s", name, io_strevent(ev),
 	    io_strio(io));
 }
