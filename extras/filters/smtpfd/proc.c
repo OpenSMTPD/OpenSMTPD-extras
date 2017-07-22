@@ -109,15 +109,24 @@ proc_exec(int type, char **argv)
 	pid_t pid;
 
 	p = proc_new(type);
-	if (p == NULL)
-		fatal("%s: proc_new", __func__);
+	if (p == NULL) {
+		log_warn("%s: proc_new", __func__);
+		return NULL;
+	}
 
-	if (socketpair(AF_UNIX, SOCK_STREAM|SOCK_NONBLOCK, PF_UNSPEC, sp) == -1)
-		fatal("%s: socketpair", __func__);
+	if (socketpair(AF_UNIX, SOCK_STREAM|SOCK_NONBLOCK, PF_UNSPEC, sp) == -1) {
+		log_warn("%s: socketpair", __func__);
+		proc_free(p);
+		return NULL;
+	}
 
 	switch (pid = fork()) {
 	case -1:
-		fatal("%s: fork", __func__);
+		log_warn("%s: fork", __func__);
+		close(sp[0]);
+		close(sp[1]);
+		proc_free(p);
+		return NULL;
 	case 0:
 		break;
 	default:
@@ -144,7 +153,7 @@ proc_attach(int type, int fd)
 
 	p = proc_new(type);
 	if (p == NULL)
-		fatal("%s: proc_new", __func__);
+		return NULL;
 
 	proc_setsock(p, fd);
 	return p;
@@ -157,7 +166,7 @@ proc_settitle(struct imsgproc *p, const char *title)
 	if (title) {
 		p->title = strdup(title);
 		if (p->title == NULL)
-			fatal("%s: strdup", __func__);
+			log_warn("%s: strdup", __func__);
 	}
 	else
 		p->title = NULL;
@@ -191,7 +200,8 @@ proc_free(struct imsgproc *p)
 
 	TAILQ_REMOVE(&procs, p, tqe);
 
-	event_del(&p->ev);
+	if (event_initialized(&p->ev))
+		event_del(&p->ev);
 	close(p->imsgbuf.fd);
 	imsg_clear(&p->imsgbuf);
 	free(p->title);

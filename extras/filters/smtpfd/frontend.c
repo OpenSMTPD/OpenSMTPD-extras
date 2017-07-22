@@ -32,8 +32,9 @@
 
 static void frontend_shutdown(void);
 static void frontend_listen(struct listener *);
+static void frontend_pause(struct listener *);
+static void frontend_resume(struct listener *);
 static void frontend_accept(int, short, void *);
-static void frontend_resume(int, short, void *);
 static void frontend_dispatch_priv(struct imsgproc *, struct imsg *, void *);
 static void frontend_dispatch_engine(struct imsgproc *, struct imsg *, void *);
 
@@ -101,6 +102,8 @@ frontend(int debug, int verbose)
 
 	/* Setup imsg socket with parent. */
 	p_priv = proc_attach(PROC_PRIV, 3);
+	if (p_priv == NULL)
+		fatal("%s: proc_attach", __func__);
 	proc_setcallback(p_priv, frontend_dispatch_priv, NULL);
 	proc_enable(p_priv);
 
@@ -112,6 +115,7 @@ frontend(int debug, int verbose)
 void
 frontend_conn_closed(uint32_t connid)
 {
+	struct listener *l;
 	struct conn key, *conn;
 
 	key.id = connid;
@@ -119,13 +123,18 @@ frontend_conn_closed(uint32_t connid)
 	if (conn == NULL)
 		fatalx("%s: %08x unknown connid", __func__, connid);
 
+	l = conn->listener;
+
 	if (log_getverbose() > LOGLEVEL_CONN)
 		log_debug("%08x close %s %s", conn->id,
-		    log_fmt_proto(conn->listener->proto),
+		    log_fmt_proto(l->proto),
 		    log_fmt_sockaddr((struct sockaddr*)&conn->ss));
 
 	SPLAY_REMOVE(conntree, &conns, conn);
 	free(conn);
+
+	if (l->pause)
+		frontend_resume(l);
 }
 
 static void
@@ -151,7 +160,32 @@ frontend_listen(struct listener *l)
 	if (listen(l->sock, 5) == -1)
 		fatal("%s: listen", __func__);
 
-	event_set(&l->ev, l->sock, EV_READ|EV_PERSIST, frontend_accept, l);
+	frontend_resume(l);
+}
+
+static void
+frontend_pause(struct listener *l)
+{
+	struct timeval tv;
+
+	event_del(&l->ev);
+
+	tv.tv_sec = 2;
+	tv.tv_usec = 0;
+
+	evtimer_set(&l->ev, frontend_accept, l);
+	evtimer_add(&l->ev, &tv);
+	l->pause = 1;
+}
+
+static void
+frontend_resume(struct listener *l)
+{
+	if (l->pause) {
+		evtimer_del(&l->ev);
+		l->pause = 0;
+	}
+	event_set(&l->ev, l->sock, EV_READ | EV_PERSIST, frontend_accept, l);
 	event_add(&l->ev, NULL);
 }
 
@@ -160,9 +194,14 @@ frontend_accept(int sock, short ev, void *arg)
 {
 	struct listener *l = arg;
 	struct sockaddr *sa;
-	struct timeval tv;
 	struct conn *conn;
 	socklen_t len;
+
+	if (l->pause) {
+		l->pause = 0;
+		frontend_resume(l);
+		return;
+	}
 
 	conn = calloc(1, sizeof(*conn));
 	if (conn == NULL) {
@@ -177,15 +216,11 @@ frontend_accept(int sock, short ev, void *arg)
 
 	sock = accept4(sock, sa, &len, SOCK_NONBLOCK);
 	if (sock == -1) {
-		log_warn("%s: accept4", __func__);
-		if (errno == ENFILE || errno == EMFILE) {
-			/* Stop listening for a while. */
-			tv.tv_sec = 2;
-			tv.tv_usec = 0;
-			event_del(&l->ev);
-			evtimer_set(&l->ev, frontend_resume, l);
-			evtimer_add(&l->ev, &tv);
-		}
+		if (errno == ENFILE || errno == EMFILE)
+			frontend_pause(l);
+		else if (errno != EWOULDBLOCK && errno != EINTR &&
+		    errno != ECONNABORTED)
+			log_warn("%s: accept4", __func__);
 		free(conn);
 		return;
 	}
@@ -212,15 +247,6 @@ frontend_accept(int sock, short ev, void *arg)
 	default:
 		fatalx("%s: unexpected protocol %d", __func__, l->proto);
 	}
-}
-
-static void
-frontend_resume(int sock, short ev, void *arg)
-{
-	struct listener *l = arg;
-
-	event_set(&l->ev, l->sock, EV_READ|EV_PERSIST, frontend_accept, l);
-	event_add(&l->ev, NULL);
 }
 
 static void

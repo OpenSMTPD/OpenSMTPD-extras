@@ -81,6 +81,8 @@ resolver_getaddrinfo(const char *hostname, const char *servname,
 	req->cb_ai = cb;
 	req->arg = arg;
 
+	SPLAY_INSERT(reqtree, &reqs, req);
+
 	m_create(p_engine, IMSG_RES_GETADDRINFO, req->id, 0, -1);
 	m_add_int(p_engine, hints ? hints->ai_flags : 0);
 	m_add_int(p_engine, hints ? hints->ai_family : 0);
@@ -218,6 +220,8 @@ resolver_dispatch_result(struct imsgproc *proc, struct imsg *imsg)
 
 	key.id = imsg->hdr.peerid;
 	req = SPLAY_FIND(reqtree, &reqs, &key);
+	if (req == NULL)
+		fatalx("%s: unknown request %08x", __func__, imsg->hdr.peerid);
 
 	switch (imsg->hdr.type) {
 

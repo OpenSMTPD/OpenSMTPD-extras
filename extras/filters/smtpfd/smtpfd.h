@@ -71,12 +71,13 @@ enum {
 };
 
 struct listener {
+	TAILQ_ENTRY(listener)	 entry;
 	int			 sock;
 	int			 proto;
 	struct sockaddr_storage	 ss;
 	struct timeval		 timeout;
 	struct event		 ev;
-	TAILQ_ENTRY(listener)	 entry;
+	int			 pause;
 };
 
 struct filter_conf {

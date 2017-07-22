@@ -86,6 +86,8 @@ engine(int debug, int verbose)
 
 	/* Setup imsg socket with parent. */
 	p_priv = proc_attach(PROC_PRIV, 3);
+	if (p_priv == NULL)
+		fatal("%s: proc_attach", __func__);
 	proc_setcallback(p_priv, engine_dispatch_priv, NULL);
 	proc_enable(p_priv);
 

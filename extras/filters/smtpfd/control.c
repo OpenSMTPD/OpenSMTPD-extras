@@ -38,25 +38,27 @@
 
 #define	CONTROL_BACKLOG	5
 
-static int  control_init(const char *);
-static int  control_listen(void);
+static void control_init(const char *);
+static void control_listen(void);
+static void control_pause(void);
+static void control_resume(void);
 static void control_accept(int, short, void *);
 static void control_close(struct imsgproc *);
 static void control_dispatch_priv(struct imsgproc *, struct imsg *, void *);
 static void control_dispatch_client(struct imsgproc *, struct imsg *, void *);
 
 static struct {
-	struct event	ev;
 	struct event	evt;
 	int		fd;
-} control_state;
+	int		pause;
+} ctl;
 
 void
 control(int debug, int verbose)
 {
 	struct passwd *pw;
 
-	/* Early initialisation */
+	/* Early initialisation. */
 	log_init(debug, LOG_DAEMON);
 	log_setverbose(verbose);
 	log_procinit("control");
@@ -64,7 +66,7 @@ control(int debug, int verbose)
 
 	control_init(SMTPFD_SOCKET);
 
-	/* Drop priviledges */
+	/* Drop priviledges. */
 	if ((pw = getpwnam(SMTPFD_USER)) == NULL)
 		fatalx("unknown user " SMTPFD_USER);
 
@@ -74,17 +76,19 @@ control(int debug, int verbose)
 		fatal("cannot drop privileges");
 
 	if (chroot(pw->pw_dir) == 1)
-		fatal("chroot");
+		fatal("%s: chroot", __func__);
 
 	if (pledge("stdio unix recvfd sendfd", NULL) == -1)
-		fatal("pledge");
+		fatal("%s: pledge", __func__);
 
 	event_init();
 
 	signal(SIGPIPE, SIG_IGN);
 
-	/* Setup imsg socket with parent */
+	/* Setup imsg socket with parent. */
 	p_priv = proc_attach(PROC_PRIV, 3);
+	if (p_priv == NULL)
+		fatal("%s: proc_attach", __func__);
 	proc_setcallback(p_priv, control_dispatch_priv, NULL);
 	proc_enable(p_priv);
 
@@ -93,99 +97,99 @@ control(int debug, int verbose)
 	exit(0);
 }
 
-static int
+static void
 control_init(const char *path)
 {
-	struct sockaddr_un	 sun;
-	int			 fd;
-	mode_t			 old_umask;
+	struct sockaddr_un sun;
+	mode_t old_umask;
+	int fd;
 
-	if ((fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK,
-	    0)) == -1) {
-		log_warn("%s: socket", __func__);
-		return (-1);
-	}
+	fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
+	if (fd == -1)
+		fatal("%s: socket", __func__);
 
 	memset(&sun, 0, sizeof(sun));
 	sun.sun_family = AF_UNIX;
 	strlcpy(sun.sun_path, SMTPFD_SOCKET, sizeof(sun.sun_path));
 
-	if (unlink(path) == -1)
-		if (errno != ENOENT) {
-			log_warn("%s: unlink %s", __func__, path);
-			close(fd);
-			return (-1);
-		}
+	if ((unlink(path) == -1) && (errno != ENOENT))
+		fatal("%s: unlink: %s", __func__, path);
 
 	old_umask = umask(S_IXUSR|S_IXGRP|S_IWOTH|S_IROTH|S_IXOTH);
-	if (bind(fd, (struct sockaddr *)&sun, sizeof(sun)) == -1) {
-		log_warn("%s: bind: %s", __func__, path);
-		close(fd);
-		umask(old_umask);
-		return (-1);
-	}
+	if (bind(fd, (struct sockaddr *)&sun, sizeof(sun)) == -1)
+		fatal("%s: bind: %s", __func__, path);
 	umask(old_umask);
 
-	if (chmod(path, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP) == -1) {
-		log_warn("%s: chmod", __func__);
-		close(fd);
-		(void)unlink(path);
-		return (-1);
-	}
+	if (chmod(path, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP) == -1)
+		fatal("%s: chmod: %s", __func__, path);
 
-	control_state.fd = fd;
-
-	return (0);
-}
-
-static int
-control_listen(void)
-{
-
-	if (listen(control_state.fd, CONTROL_BACKLOG) == -1) {
-		log_warn("%s: listen", __func__);
-		return (-1);
-	}
-
-	event_set(&control_state.ev, control_state.fd, EV_READ,
-	    control_accept, NULL);
-	event_add(&control_state.ev, NULL);
-	evtimer_set(&control_state.evt, control_accept, NULL);
-
-	return (0);
+	ctl.fd = fd;
 }
 
 static void
-control_accept(int listenfd, short event, void *bula)
+control_listen(void)
 {
-	int			 connfd;
-	socklen_t		 len;
-	struct sockaddr_un	 sun;
-	struct imsgproc		*proc;
+	if (listen(ctl.fd, CONTROL_BACKLOG) == -1)
+		fatal("%s: listen", __func__);
 
-	event_add(&control_state.ev, NULL);
-	if ((event & EV_TIMEOUT))
+	ctl.pause = 0;
+	control_resume();
+}
+
+static void
+control_pause(void)
+{
+	struct timeval tv;
+
+	event_del(&ctl.evt);
+
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
+
+	evtimer_set(&ctl.evt, control_accept, NULL);
+	evtimer_add(&ctl.evt, &tv);
+	ctl.pause = 1;
+}
+
+static void
+control_resume(void)
+{
+	if (ctl.pause) {
+		evtimer_del(&ctl.evt);
+		ctl.pause = 0;
+	}
+	event_set(&ctl.evt, ctl.fd, EV_READ | EV_PERSIST, control_accept, NULL);
+	event_add(&ctl.evt, NULL);
+}
+
+static void
+control_accept(int fd, short event, void *arg)
+{
+	struct imsgproc *proc;
+	int sock;
+
+	if (ctl.pause) {
+		ctl.pause = 0;
+		control_resume();
 		return;
+	}
 
-	len = sizeof(sun);
-	if ((connfd = accept4(listenfd, (struct sockaddr *)&sun, &len,
-	    SOCK_CLOEXEC | SOCK_NONBLOCK)) == -1) {
-		/*
-		 * Pause accept if we are out of file descriptors, or
-		 * libevent will haunt us here too.
-		 */
-		if (errno == ENFILE || errno == EMFILE) {
-			struct timeval evtpause = { 1, 0 };
-
-			event_del(&control_state.ev);
-			evtimer_add(&control_state.evt, &evtpause);
-		} else if (errno != EWOULDBLOCK && errno != EINTR &&
+	sock = accept4(ctl.fd, NULL, NULL, SOCK_CLOEXEC | SOCK_NONBLOCK);
+	if (sock == -1) {
+		if (errno == ENFILE || errno == EMFILE)
+			control_pause();
+		else if (errno != EWOULDBLOCK && errno != EINTR &&
 		    errno != ECONNABORTED)
 			log_warn("%s: accept4", __func__);
 		return;
 	}
 
-	proc = proc_attach(PROC_CLIENT, connfd);
+	proc = proc_attach(PROC_CLIENT, sock);
+	if (proc == NULL) {
+		log_warn("%s: proc_attach", __func__);
+		close(sock);
+		return;
+	}
 	proc_setcallback(proc, control_dispatch_client, NULL);
 	proc_enable(proc);
 }
@@ -195,11 +199,8 @@ control_close(struct imsgproc *proc)
 {
 	proc_free(proc);
 
-	/* Some file descriptors are available again. */
-	if (evtimer_pending(&control_state.evt, NULL)) {
-		evtimer_del(&control_state.evt);
-		event_add(&control_state.ev, NULL);
-	}
+	if (ctl.pause)
+		control_resume();
 }
 
 static void
@@ -245,6 +246,5 @@ control_dispatch_client(struct imsgproc *proc, struct imsg *imsg, void *arg)
 	default:
 		log_debug("%s: error handling imsg %d", __func__,
 		    imsg->hdr.type);
-		break;
 	}
 }
