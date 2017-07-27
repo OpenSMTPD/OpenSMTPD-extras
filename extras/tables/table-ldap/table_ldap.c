@@ -77,13 +77,22 @@ table_ldap_update(void)
 static int
 table_ldap_check(int service, struct dict *params, const char *key)
 {
+	int ret;
+	
 	switch(service) {
 	case K_ALIAS:
 	case K_DOMAIN:
 	case K_CREDENTIALS:
 	case K_USERINFO:
 	case K_MAILADDR:
-		return ldap_run_query(service, key, NULL, 0);
+		if ((ret = ldap_run_query(service, key, NULL, 0)) = 0) {
+			return ret;
+		}
+		log_debug("debug: table-ldap: reconnecting");
+		if (!(ret = ldap_open())) {
+			log_warnx("warn: table-ldap: failed to connect");
+		}
+		return ret;
 	default:
 		return -1;
 	}
@@ -305,6 +314,11 @@ static int
 ldap_open(void)
 {
 	struct aldap_message	*amsg = NULL;
+
+	if (aldap) {
+		aldap_close(aldap);
+		log_info("info: table-ldap: closed previous connection");
+	}
 
 	aldap = ldap_connect(url);
 	if (aldap == NULL) {
