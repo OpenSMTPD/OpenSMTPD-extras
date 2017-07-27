@@ -85,7 +85,7 @@ table_ldap_check(int service, struct dict *params, const char *key)
 	case K_CREDENTIALS:
 	case K_USERINFO:
 	case K_MAILADDR:
-		if ((ret = ldap_run_query(service, key, NULL, 0)) = 0) {
+		if ((ret = ldap_run_query(service, key, NULL, 0)) >= 0) {
 			return ret;
 		}
 		log_debug("debug: table-ldap: reconnecting");
