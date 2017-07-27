@@ -165,7 +165,7 @@ smtpf_process_line(struct smtpf_client *clt, char *line)
 	if (!strcmp(cmd, "A")) {
 		smtpf_session_line(clt, 0, name, data);
 	}
-	if (!strcmp(cmd, "B")) {
+	else if (!strcmp(cmd, "B")) {
 		smtpf_session_line(clt, 1, name, data);
 	}
 	else if (!strcmp(cmd, "SMTPF")) {
