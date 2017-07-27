@@ -47,7 +47,7 @@ static void smtpf_dispatch_io(struct io *, int, void *);
 static void smtpf_process_line(struct smtpf_client *, char *);
 static void smtpf_session_open(struct smtpf_client *, const char *);
 static void smtpf_session_close(struct smtpf_client *, const char *);
-static void smtpf_session_line(struct smtpf_client *, const char *, const char *);
+static void smtpf_session_line(struct smtpf_client *, int, const char *, const char *);
 static struct smtpf_session *smtpf_session_find(struct smtpf_client *, const char *);
 static int smtpf_session_cmp(struct smtpf_session *, struct smtpf_session *);
 SPLAY_PROTOTYPE(sessiontree, smtpf_session, entry, smtpf_session_cmp);
@@ -162,8 +162,11 @@ smtpf_process_line(struct smtpf_client *clt, char *line)
 	*name++ = '\0';
 	*data++ = '\0';
 
-	if (!strcmp(cmd, "SMTP")) {
-		smtpf_session_line(clt, name, data);
+	if (!strcmp(cmd, "A")) {
+		smtpf_session_line(clt, 0, name, data);
+	}
+	if (!strcmp(cmd, "B")) {
+		smtpf_session_line(clt, 1, name, data);
 	}
 	else if (!strcmp(cmd, "SMTPF")) {
 		for (p = strtok_r(data, " ", &last); p; p = strtok_r(NULL, " ", &last)) {
@@ -259,7 +262,8 @@ smtpf_session_close(struct smtpf_client *clt, const char *name)
 }
 
 static void
-smtpf_session_line(struct smtpf_client *clt, const char *name, const char *line)
+smtpf_session_line(struct smtpf_client *clt, int srv, const char *name,
+    const char *line)
 {
 	struct smtpf_session *s;
 
@@ -269,7 +273,8 @@ smtpf_session_line(struct smtpf_client *clt, const char *name, const char *line)
 		return;
 	}
 
-	io_printf(clt->io, "SMTP:%s:%s\n", name, line);
+	/* relay between the two ends of the session */
+	io_printf(clt->io, "%c:%s:%s\n", srv ? 'A' : 'B', name, line);
 }
 
 static int
