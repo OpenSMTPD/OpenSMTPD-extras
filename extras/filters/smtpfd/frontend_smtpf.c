@@ -273,8 +273,11 @@ smtpf_session_line(struct smtpf_client *clt, int srv, const char *name,
 		return;
 	}
 
-	/* relay between the two ends of the session */
-	io_printf(clt->io, "%c:%s:%s\n", srv ? 'A' : 'B', name, line);
+	if (!srv && !strcmp(line, "HAHA"))
+		io_printf(clt->io, "A:%s:200 Funny!\n", name);
+	else
+		/* relay between the two ends of the session */
+		io_printf(clt->io, "%c:%s:%s\n", srv ? 'A' : 'B', name, line);
 }
 
 static int
