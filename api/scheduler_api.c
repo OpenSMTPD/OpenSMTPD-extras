@@ -28,9 +28,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 static int (*handler_init)(void);
 static int (*handler_insert)(struct scheduler_info *);

@@ -29,16 +29,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
-
-static int table_socketmap_update(void);
-static int table_socketmap_lookup(int, struct dict *, const char *, char *, size_t);
-static int table_socketmap_check(int, struct dict *, const char *);
-static int table_socketmap_fetch(int, struct dict *, char *, size_t);
-
-static int table_socketmap_connect(const char *);
+#include <smtpd-api.h>
 
 static char	       *config;
 static int		sock = -1;
@@ -54,53 +45,13 @@ enum socketmap_reply{
 	SM_PERM,
 };
 
-int
-main(int argc, char **argv)
-{
-	int	ch;
-
-	log_init(1);
-	log_verbose(~0);
-
-	while ((ch = getopt(argc, argv, "")) != -1) {
-		switch (ch) {
-		default:
-			log_warnx("warn: table-socketmap: bad option");
-			return 1;
-			/* NOTREACHED */
-		}
-	}
-	argc -= optind;
-	argv += optind;
-
-	if (argc != 1) {
-		log_warnx("warn: table-socketmap: bogus argument(s)");
-		return 1;
-	}
-
-	config = argv[0];
-
-	if (table_socketmap_connect(config) == 0) {
-		log_warnx("warn: table-socketmap: error connecting to %s", config);
-		return 1;
-	}
-
-	table_api_on_update(table_socketmap_update);
-	table_api_on_check(table_socketmap_check);
-	table_api_on_lookup(table_socketmap_lookup);
-	table_api_on_fetch(table_socketmap_fetch);
-	table_api_dispatch();
-
-	return 0;
-}
-
 static int
 table_socketmap_connect(const char *s)
 {
 	struct sockaddr_un	sun;
 
 	if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-		log_warn("warn: table-socketmap");
+		log_warn("warn: socket");
 		goto err;
 	}
 
@@ -108,17 +59,17 @@ table_socketmap_connect(const char *s)
 	sun.sun_family = AF_UNIX;
 	if (strlcpy(sun.sun_path, s, sizeof(sun.sun_path)) >=
 	    sizeof(sun.sun_path)) {
-		log_warnx("warn: table-socketmap: socket path too long");
+		log_warnx("warn: socket path too long");
 		goto err;
 	}
 
 	if (connect(sock, (struct sockaddr *)&sun, sizeof(sun)) == -1) {
-		log_warn("warn: table-socketmap");
+		log_warn("warn: connect");
 		goto err;
 	}
 
 	if ((sockstream = fdopen(sock, "w+")) == NULL) {
-		log_warn("warn: table-socketmap");
+		log_warn("warn: fdopen");
 		goto err;
 	}
 
@@ -145,7 +96,7 @@ table_socketmap_query(const char *name, const char *key)
 	fflush(sockstream);
 
 	if ((len = getline(&buf, &sz, sockstream)) != -1) {
-		log_warnx("warn: table-socketmap: socketmap has lost its socket");
+		log_warnx("warn: socketmap has lost its socket");
 		(void)strlcpy(repbuffer, "lost connection to socket", sizeof repbuffer);
 		ret = SM_PERM;
 		goto err;
@@ -154,7 +105,7 @@ table_socketmap_query(const char *name, const char *key)
 		buf[len - 1] = '\0';
 
 	if (strlcpy(repbuffer, buf, sizeof repbuffer) >= sizeof repbuffer) {
-		log_warnx("warn: table-socketmap: socketmap reply too large (>%zu bytes)",
+		log_warnx("warn: socketmap reply too large (>%zu bytes)",
 			sizeof repbuffer);
 		(void)strlcpy(repbuffer, "socketmap reply too large", sizeof repbuffer);
 		ret = SM_PERM;
@@ -213,11 +164,11 @@ table_socketmap_lookup(int service, struct dict *params, const char *key, char *
 	if (rep == SM_NOTFOUND)
 		return 0;
 	if (rep != SM_OK) {
-		log_warnx("warn: table-socketmap: %s", repbuffer);
+		log_warnx("warn: %s", repbuffer);
 		return -1;
 	}
 	if (strlcpy(dst, repbuffer, sz) >= sz) {
-		log_warnx("warn: table-socketmap: result too large");
+		log_warnx("warn: result too large");
 		return -1;
 	}
 
@@ -233,7 +184,7 @@ table_socketmap_lookup(int service, struct dict *params, const char *key, char *
 	case K_ADDRNAME:
 		break;
 	default:
-		log_warnx("warn: table-socketmap: unknown service %d", service);
+		log_warnx("warn: unknown service %d", service);
 		r = -1;
 	}
 
@@ -244,4 +195,40 @@ static int
 table_socketmap_fetch(int service, struct dict *params, char *key, size_t sz)
 {
 	return -1;
+}
+
+int
+main(int argc, char **argv)
+{
+	int ch;
+
+	log_init(1);
+	log_verbose(~0);
+
+	while ((ch = getopt(argc, argv, "")) != -1) {
+		switch (ch) {
+		default:
+			fatalx("bad option");
+			/* NOTREACHED */
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc != 1)
+		fatalx("bogus argument(s)");
+
+
+	config = argv[0];
+
+	if (table_socketmap_connect(config) == 0)
+		fatalx("error connecting to %s", config);
+
+	table_api_on_update(table_socketmap_update);
+	table_api_on_check(table_socketmap_check);
+	table_api_on_lookup(table_socketmap_lookup);
+	table_api_on_fetch(table_socketmap_fetch);
+	table_api_dispatch();
+
+	return 0;
 }

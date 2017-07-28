@@ -21,9 +21,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 static int
 scheduler_stub_init(void)
@@ -119,15 +117,14 @@ scheduler_stub_resume(uint64_t evpid)
 int
 main(int argc, char **argv)
 {
-	int	ch;
+	int ch;
 
 	log_init(1);
 
-	while ((ch = getopt(argc, argv, "f:")) != -1) {
+	while ((ch = getopt(argc, argv, "")) != -1) {
 		switch (ch) {
 		default:
-			log_warnx("warn: backend-scheduler-stub: bad option");
-			exit(1);
+			fatalx("bad option");
 			/* NOTREACHED */
 		}
 	}

@@ -19,7 +19,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#include <err.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -31,26 +30,16 @@
 #define _GNU_SOURCE
 #endif
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
-static int table_python_update(void);
-static int table_python_check(int, struct dict *, const char *);
-static int table_python_lookup(int, struct dict *, const char *, char *, size_t);
-static int table_python_fetch(int, struct dict *, char *, size_t);
-
-static PyObject *py_on_update;
-static PyObject *py_on_lookup;
-static PyObject *py_on_check;
-static PyObject *py_on_fetch;
+static PyObject *py_on_update, *py_on_lookup, *py_on_check, *py_on_fetch;
 
 static void
 check_err(const char *name)
 {
 	if (PyErr_Occurred()) {
 		PyErr_Print();
-		fatalx("warn: table-python: error in %s handler", name);
+		fatalx("error in %s handler", name);
 	}
 }
 
@@ -64,9 +53,8 @@ dispatch(PyObject *handler, PyObject *args)
 
 	if (PyErr_Occurred()) {
 		PyErr_Print();
-		fatalx("warn: table-python: exception");
+		fatalx("exception");
 	}
-
 	return ret;
 }
 
@@ -108,10 +96,8 @@ table_python_update(void)
 	if (py_on_update == NULL)
 		return 0;
 
-	ret = dispatch(py_on_update, PyTuple_New(0));
-
-	if (ret == NULL) {
-		log_warnx("table-python: update failed");
+	if ((ret = dispatch(py_on_update, PyTuple_New(0))) == NULL) {
+		log_warnx("warn: update failed");
 		return -1;
 	}
 
@@ -130,18 +116,15 @@ table_python_check(int service, struct dict *params, const char *key)
 	if (py_on_check == NULL)
 		return -1;
 
-	dict = dict_to_py(params);
-	if (dict == NULL)
+	if ((dict = dict_to_py(params)) == NULL)
 		return -1;
 
-	args = Py_BuildValue("iOs", service, dict, key);
-	if (args ==  NULL) {
+	if ((args = Py_BuildValue("iOs", service, dict, key)) == NULL) {
 		Py_DECREF(dict);
 		return -1;
 	}
 
-	ret = dispatch(py_on_check, args);
-	if (ret == NULL)
+	if ((ret = dispatch(py_on_check, args)) == NULL)
 		return -1;
 
 	r = PyObject_IsTrue(ret);
@@ -160,19 +143,15 @@ table_python_lookup(int service, struct dict *params, const char *key, char *buf
 	if (py_on_lookup == NULL)
 		return -1;
 
-	dict = dict_to_py(params);
-	if (dict == NULL)
+	if ((dict = dict_to_py(params)) == NULL)
 		return -1;
 
-	args = Py_BuildValue("iOs", service, dict, key);
-	if (args ==  NULL) {
+	if ((args = Py_BuildValue("iOs", service, dict, key)) ==  NULL) {
 		Py_DECREF(dict);
 		return -1;
 	}
 
-	ret = dispatch(py_on_lookup, args);
-
-	if (ret == NULL)
+	if ((ret = dispatch(py_on_lookup, args)) == NULL)
 		return -1;
 
 	if (ret == Py_None)
@@ -181,11 +160,11 @@ table_python_lookup(int service, struct dict *params, const char *key, char *buf
 		r = 1;
 		s = PyString_AS_STRING(ret);
 		if (strlcpy(buf, s, sz) >= sz) {
-			log_warnx("table-python: lookup: result too long");
+			log_warnx("warn: lookup: result too long");
 			r = -1;
 		}
 	} else {
-		log_warnx("table-python: lookup: invalid object returned");
+		log_warnx("warn: lookup: invalid object returned");
 		r = -1;
 	}
 
@@ -200,7 +179,7 @@ table_python_fetch(int service, struct dict *params, char *buf, size_t sz)
 	PyObject *dict, *args, *ret;
 	char	 *s;
 	int	  r;
-	
+
 	if (py_on_fetch == NULL)
 		return -1;
 
@@ -225,11 +204,11 @@ table_python_fetch(int service, struct dict *params, char *buf, size_t sz)
 		r = 1;
 		s = PyString_AS_STRING(ret);
 		if (strlcpy(buf, s, sz) >= sz) {
-			log_warnx("table-python: lookup: result too long");
+			log_warnx("warn: lookup: result too long");
 			r = -1;
 		}
 	} else {
-		log_warnx("table-python: lookup: invalid object returned");
+		log_warnx("warn: lookup: invalid object returned");
 		r = -1;
 	}
 
@@ -247,25 +226,25 @@ loadfile(const char * path)
 	char	*buf;
 
 	if ((f = fopen(path, "r")) == NULL)
-		err(1, "fopen");
+		fatal("fopen");
 
 	if (fseek(f, 0, SEEK_END) == -1)
-		err(1, "fseek");
+		fatal("fseek");
 
 	oz = ftello(f);
 
 	if (fseek(f, 0, SEEK_SET) == -1)
-		err(1, "fseek");
+		fatal("fseek");
 
 	if ((size_t)oz >= SIZE_MAX)
-		errx(1, "too big");
+		fatalx("too big");
 
 	sz = oz;
 
 	buf = xmalloc(sz + 1, "loadfile");
 
 	if (fread(buf, 1, sz, f) != sz)
-		err(1, "fread");
+		fatal("fread");
 
 	buf[sz] = '\0';
 
@@ -281,18 +260,16 @@ static PyMethodDef py_methods[] = {
 int
 main(int argc, char **argv)
 {
-	int		 ch;
-	char		*path;
-	char		*buf;
-	PyObject	*self, *code, *module;
+	int ch;
+	char *path, *buf;
+	PyObject *self, *code, *module;
 
-	log_init(-1);
+	log_init(1);
 
 	while ((ch = getopt(argc, argv, "")) != -1) {
 		switch (ch) {
 		default:
-			log_warnx("warn: table-python: bad option");
-			return 1;
+			fatalx("bad option");
 			/* NOTREACHED */
 		}
 	}
@@ -300,7 +277,7 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if (argc == 0)
-		errx(1, "missing path");
+		fatalx("missing path");
 	path = argv[0];
 
 	Py_Initialize();
@@ -322,19 +299,17 @@ main(int argc, char **argv)
 
 	if (code == NULL) {
 		PyErr_Print();
-		log_warnx("warn: table-python: failed to compile %s", path);
-		return 1;
+		fatalx("failed to compile %s", path);
 	}
 
 	module = PyImport_ExecCodeModuleEx("mytable", code, path);
 
 	if (module == NULL) {
 		PyErr_Print();
-		log_warnx("warn: table-python: failed to install module %s", path);
-		return 1;
+		fatalx("failed to install module %s", path);
 	}
 
-	log_debug("debug: table-python: starting...");
+	log_debug("debug: starting...");
 
 	py_on_update = PyObject_GetAttrString(module, "table_update");
 	py_on_check = PyObject_GetAttrString(module, "table_check");
@@ -348,7 +323,7 @@ main(int argc, char **argv)
 
 	table_api_dispatch();
 
-	log_debug("debug: table-python: exiting");
+	log_debug("debug: exiting");
 	Py_Finalize();
 
 	return 1;

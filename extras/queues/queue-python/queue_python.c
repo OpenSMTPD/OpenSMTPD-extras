@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <err.h>
 #include <unistd.h>
 
 /* _GNU_SOURCE is not properly protected in Python.h ... */
@@ -28,9 +27,7 @@
 #define _GNU_SOURCE
 #endif
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 static PyObject	*py_message_create;
 static PyObject	*py_message_commit;
@@ -51,7 +48,7 @@ check_err(const char *name)
 {
 	if (PyErr_Occurred()) {
 		PyErr_Print();
-		fatalx("fatal: queue-python: error in %s handler", name);
+		fatalx("fatal: error in %s handler", name);
 	}
 }
 
@@ -65,7 +62,7 @@ dispatch(PyObject *handler, PyObject *args)
 
 	if (PyErr_Occurred()) {
 		PyErr_Print();
-		fatalx("fatal: queue-python: exception");
+		fatalx("fatal: exception");
 	}
 
 	return ret;
@@ -381,25 +378,25 @@ loadfile(const char * path)
 	char	*buf;
 
 	if ((f = fopen(path, "r")) == NULL)
-		err(1, "fopen");
+		fatal("fopen");
 
 	if (fseek(f, 0, SEEK_END) == -1)
-		err(1, "fseek");
+		fatal("fseek");
 
 	oz = ftello(f);
 
 	if (fseek(f, 0, SEEK_SET) == -1)
-		err(1, "fseek");
+		fatal("fseek");
 
 	if (oz >= (off_t)SSIZE_MAX)
-		errx(1, "too big");
+		fatal("too big");
 
 	sz = oz;
 
 	buf = xmalloc(sz + 1, "loadfile");
 
 	if (fread(buf, 1, sz, f) != sz)
-		err(1, "fread");
+		fatal("fread");
 
 	buf[sz] = '\0';
 
@@ -411,18 +408,16 @@ loadfile(const char * path)
 int
 main(int argc, char **argv)
 {
-	int		ch;
-	char	       *path;
-	char	       *buf;
-	PyObject       *self, *code, *module;
+	int ch;
+	char *path, *buf;
+	PyObject *self, *code, *module;
 
 	log_init(1);
 
 	while ((ch = getopt(argc, argv, "")) != -1) {
 		switch (ch) {
 		default:
-			log_warnx("warn: backend-queue-python: bad option");
-			return 1;
+			fatalx("bad option");
 			/* NOTREACHED */
 		}
 	}
@@ -430,7 +425,7 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if (argc == 0)
-		errx(1, "missing path");
+		fatalx("missing path");
 	path = argv[0];
 
 
@@ -443,18 +438,16 @@ main(int argc, char **argv)
 
 	if (code == NULL) {
 		PyErr_Print();
-		log_warnx("warn: queue-python: failed to compile %s", path);
-		return 1;
+		fatalx("failed to compile %s", path);
 	}
 
 	module = PyImport_ExecCodeModuleEx("queue_python", code, path);
 	if (module == NULL) {
 		PyErr_Print();
-		log_warnx("warn: queue-python: failed to install module %s", path);
-		return 1;
+		fatalx("failed to install module %s", path);
 	}
 
-	log_debug("debug: queue-python: starting...");
+	log_debug("debug: starting...");
 
 	if ((py_message_create = PyObject_GetAttrString(module, "message_create")) == NULL)
 		goto nosuchmethod;
@@ -485,6 +478,8 @@ main(int argc, char **argv)
 
 	queue_api_no_chroot();
 	queue_api_dispatch();
+
+	log_debug("debug: exiting");
 
 	return 0;
 

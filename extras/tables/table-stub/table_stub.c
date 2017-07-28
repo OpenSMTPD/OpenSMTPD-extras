@@ -18,46 +18,7 @@
 
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
-
-static int table_stub_update(void);
-static int table_stub_check(int, struct dict *, const char *);
-static int table_stub_lookup(int, struct dict *, const char *, char *, size_t);
-static int table_stub_fetch(int, struct dict *, char *, size_t);
-
-int
-main(int argc, char **argv)
-{
-	int	ch;
-
-	log_init(1);
-
-	while ((ch = getopt(argc, argv, "")) != -1) {
-		switch (ch) {
-		default:
-			log_warnx("warn: table-stub: bad option");
-			return 1;
-			/* NOTREACHED */
-		}
-	}
-	argc -= optind;
-	argv += optind;
-
-	if (argc != 0) {
-		log_warnx("warn: table-stub: bogus argument(s)");
-		return 1;
-	}
-
-	table_api_on_update(table_stub_update);
-	table_api_on_check(table_stub_check);
-	table_api_on_lookup(table_stub_lookup);
-	table_api_on_fetch(table_stub_fetch);
-	table_api_dispatch();
-
-	return 0;
-}
+#include <smtpd-api.h>
 
 static int
 table_stub_update(void)
@@ -72,7 +33,8 @@ table_stub_check(int service, struct dict *params, const char *key)
 }
 
 static int
-table_stub_lookup(int service, struct dict *params, const char *key, char *dst, size_t sz)
+table_stub_lookup(int service, struct dict *params, const char *key, char *dst,
+    size_t sz)
 {
 	return -1;
 }
@@ -82,3 +44,33 @@ table_stub_fetch(int service, struct dict *params, char *dst, size_t sz)
 {
 	return -1;
 }
+
+int
+main(int argc, char **argv)
+{
+	int ch;
+
+	log_init(1);
+
+	while ((ch = getopt(argc, argv, "")) != -1) {
+		switch (ch) {
+		default:
+			fatalx("bad option");
+			/* NOTREACHED */
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc)
+		fatalx("bogus argument(s)");
+
+	table_api_on_update(table_stub_update);
+	table_api_on_check(table_stub_check);
+	table_api_on_lookup(table_stub_lookup);
+	table_api_on_fetch(table_stub_fetch);
+	table_api_dispatch();
+
+	return 0;
+}
+

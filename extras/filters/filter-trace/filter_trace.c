@@ -132,8 +132,7 @@ main(int argc, char **argv)
 			v |= TRACE_DEBUG;
 			break;
 		default:
-			log_warnx("warn: bad option");
-			return 1;
+			fatalx("bad option");
 			/* NOTREACHED */
 		}
 	}

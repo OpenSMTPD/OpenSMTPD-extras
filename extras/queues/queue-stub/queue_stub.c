@@ -20,9 +20,7 @@
 
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 static int
 queue_stub_message_create(uint32_t *msgid)
@@ -120,15 +118,14 @@ queue_stub_init(int server)
 int
 main(int argc, char **argv)
 {
-	int	ch;
+	int ch;
 
 	log_init(1);
 
 	while ((ch = getopt(argc, argv, "")) != -1) {
 		switch (ch) {
 		default:
-			log_warnx("warn: backend-queue-stub: bad option");
-			return 1;
+			fatalx("bad option");
 			/* NOTREACHED */
 		}
 	}

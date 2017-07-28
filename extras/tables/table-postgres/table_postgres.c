@@ -29,9 +29,7 @@
 
 #include <libpq-fe.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 enum {
 	SQL_ALIAS = 0,
@@ -59,67 +57,11 @@ struct config {
 	time_t		 source_update;
 };
 
-static int table_postgres_update(void);
-static int table_postgres_lookup(int, struct dict *params, const char *, char *, size_t);
-static int table_postgres_check(int, struct dict *params, const char *);
-static int table_postgres_fetch(int, struct dict *params, char *, size_t);
-
-static PGresult *table_postgres_query(const char *, int);
-
-static struct config 	*config_load(const char *);
-static void		 config_reset(struct config *);
-static int		 config_connect(struct config *);
-static void		 config_free(struct config *);
-
 #define	DEFAULT_EXPIRE	60
 #define	DEFAULT_REFRESH	1000
 
 static char		*conffile;
 static struct config	*config;
-
-int
-main(int argc, char **argv)
-{
-	int	ch;
-
-	log_init(1);
-	log_verbose(~0);
-
-	while ((ch = getopt(argc, argv, "")) != -1) {
-		switch (ch) {
-		default:
-			log_warnx("warn: table-postgres: bad option");
-			return 1;
-			/* NOTREACHED */
-		}
-	}
-	argc -= optind;
-	argv += optind;
-
-	if (argc != 1) {
-		log_warnx("warn: table-postgres: bogus argument(s)");
-		return 1;
-	}
-
-	conffile = argv[0];
-
-	config = config_load(conffile);
-	if (config == NULL) {
-		log_warnx("warn: table-postgres: error parsing config file");
-		return 1;
-	}
-	if (config_connect(config) == 0) {
-		log_warnx("warn: table-postgres: could not connect");
-	}
-
-	table_api_on_update(table_postgres_update);
-	table_api_on_check(table_postgres_check);
-	table_api_on_lookup(table_postgres_lookup);
-	table_api_on_fetch(table_postgres_fetch);
-	table_api_dispatch();
-
-	return 0;
-}
 
 static char *
 table_postgres_prepare_stmt(PGconn *_db, const char *query, int nparams,
@@ -130,20 +72,55 @@ table_postgres_prepare_stmt(PGconn *_db, const char *query, int nparams,
 	char			*stmt;
 
 	if (asprintf(&stmt, "stmt%u", n++) == -1) {
-		log_warn("warn: table-postgres: asprintf");
+		log_warn("warn: asprintf");
 		return NULL;
 	}
 
 	res = PQprepare(_db, stmt, query, nparams, NULL);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-		log_warnx("warn: table-postgres: PQprepare: %s",
-		    PQerrorMessage(_db));
+		log_warnx("warn: PQprepare: %s", PQerrorMessage(_db));
 		free(stmt);
 		stmt = NULL;
 	}
 	PQclear(res);
 
 	return stmt;
+}
+
+static void
+config_reset(struct config *conf)
+{
+	size_t	i;
+
+	for (i = 0; i < SQL_MAX; i++)
+		if (conf->statements[i]) {
+			free(conf->statements[i]);
+			conf->statements[i] = NULL;
+		}
+	if (conf->stmt_fetch_source) {
+		free(conf->stmt_fetch_source);
+		conf->stmt_fetch_source = NULL;
+	}
+	if (conf->db) {
+		PQfinish(conf->db);
+		conf->db = NULL;
+	}
+}
+
+static void
+config_free(struct config *conf)
+{
+	void	*value;
+
+	config_reset(conf);
+
+	while (dict_poproot(&conf->conf, &value))
+		free(value);
+
+	while (dict_poproot(&conf->sources, NULL))
+		;
+
+	free(conf);
 }
 
 static struct config *
@@ -158,7 +135,7 @@ config_load(const char *path)
 	long long	 ll;
 
 	if ((conf = calloc(1, sizeof(*conf))) == NULL) {
-		log_warn("warn: table-postgres: calloc");
+		log_warn("warn: calloc");
 		return NULL;
 	}
 
@@ -169,7 +146,7 @@ config_load(const char *path)
 	conf->source_expire = DEFAULT_EXPIRE;
 
 	if ((fp = fopen(path, "r")) == NULL) {
-		log_warn("warn: table-postgres: \"%s\"", path);
+		log_warn("warn: \"%s\"", path);
 		goto end;
 	}
 
@@ -194,18 +171,18 @@ config_load(const char *path)
 		}
 
 		if (value == NULL) {
-			log_warnx("warn: table-postgres: missing value for key %s", key);
+			log_warnx("warn: missing value for key %s", key);
 			goto end;
 		}
 
 		if (dict_check(&conf->conf, key)) {
-			log_warnx("warn: table-postgres: duplicate key %s", key);
+			log_warnx("warn: duplicate key %s", key);
 			goto end;
 		}
-		
+
 		value = strdup(value);
 		if (value == NULL) {
-			log_warn("warn: table-postgres: strdup");
+			log_warn("warn: strdup");
 			goto end;
 		}
 
@@ -216,7 +193,7 @@ config_load(const char *path)
 		e = NULL;
 		ll = strtonum(value, 0, INT_MAX, &e);
 		if (e) {
-			log_warnx("warn: table-postgres: bad value for fetch_source_expire: %s", e);
+			log_warnx("warn: bad value for fetch_source_expire: %s", e);
 			goto end;
 		}
 		conf->source_expire = ll;
@@ -225,7 +202,7 @@ config_load(const char *path)
 		e = NULL;
 		ll = strtonum(value, 0, INT_MAX, &e);
 		if (e) {
-			log_warnx("warn: table-postgres: bad value for fetch_source_refresh: %s", e);
+			log_warnx("warn: bad value for fetch_source_refresh: %s", e);
 			goto end;
 		}
 		conf->source_refresh = ll;
@@ -235,31 +212,11 @@ config_load(const char *path)
 	fclose(fp);
 	return conf;
 
-    end:
+end:
 	free(buf);
 	fclose(fp);
 	config_free(conf);
 	return NULL;
-}
-
-static void
-config_reset(struct config *conf)
-{
-	size_t	i;
-
-	for (i = 0; i < SQL_MAX; i++)
-		if (conf->statements[i]) {
-			free(conf->statements[i]);
-			conf->statements[i] = NULL;
-		}
-	if (conf->stmt_fetch_source) {
-		free(conf->stmt_fetch_source);
-		conf->stmt_fetch_source = NULL;
-	}
-	if (conf->db) {
-		PQfinish(conf->db);
-		conf->db = NULL;
-	}
 }
 
 static int
@@ -281,24 +238,24 @@ config_connect(struct config *conf)
 	size_t	 i;
 	char	*conninfo, *q;
 
-	log_debug("debug: table-postgres: (re)connecting");
+	log_debug("debug: (re)connecting");
 
 	/* Disconnect first, if needed */
 	config_reset(conf);
 
 	conninfo = dict_get(&conf->conf, "conninfo");
 	if (conninfo == NULL) {
-		log_warnx("warn: table-postgres: missing \"conninfo\" configuration directive");
+		log_warnx("warn: missing \"conninfo\" configuration directive");
 		goto end;
 	}
 
 	conf->db = PQconnectdb(conninfo);
 	if (conf->db == NULL) {
-		log_warnx("warn: table-postgres: PQconnectdb return NULL");
+		log_warnx("warn: PQconnectdb return NULL");
 		goto end;
 	}
 	if (PQstatus(conf->db) != CONNECTION_OK) {
-		log_warnx("warn: table-postgres: PQconnectdb: %s",
+		log_warnx("warn: PQconnectdb: %s",
 		    PQerrorMessage(conf->db));
 		goto end;
 	}
@@ -315,29 +272,13 @@ config_connect(struct config *conf)
 	    q, 0, 1)) == NULL)
 		goto end;
 
-	log_debug("debug: table-postgres: connected");
+	log_debug("debug: connected");
 
 	return 1;
 
     end:
 	config_reset(conf);
 	return 0;
-}
-
-static void
-config_free(struct config *conf)
-{
-	void	*value;
-
-	config_reset(conf);
-
-	while (dict_poproot(&conf->conf, &value))
-		free(value);
-
-	while (dict_poproot(&conf->sources, NULL))
-		;
-
-	free(conf);
 }
 
 static int
@@ -366,15 +307,14 @@ table_postgres_query(const char *key, int service)
 	char		*stmt;
 	int		 i;
 
-    retry:
-
+retry:
 	stmt = NULL;
-	for(i = 0; i < SQL_MAX; i++)
+	for (i = 0; i < SQL_MAX; i++) {
 		if (service == 1 << i) {
 			stmt = config->statements[i];
 			break;
 		}
-
+	}
 	if (stmt == NULL)
 		return NULL;
 
@@ -392,8 +332,7 @@ table_postgres_query(const char *key, int service)
 				goto retry;
 			return NULL;
 		}
-		log_warnx("warn: table-postgres: PQexecPrepared: %s",
-		    PQerrorMessage(config->db));
+		log_warnx("warn: PQexecPrepared: %s", PQerrorMessage(config->db));
 		PQclear(res);
 		return NULL;
 	}
@@ -445,31 +384,29 @@ table_postgres_lookup(int service, struct dict *params, const char *key, char *d
 		memset(dst, 0, sz);
 		for (i = 0; i < PQntuples(res); i++) {
 			if (dst[0] && strlcat(dst, ", ", sz) >= sz) {
-				log_warnx("warn: table-postgres: result too large");
+				log_warnx("warn: result too large");
 				r = -1;
 				break;
 			}
 			if (strlcat(dst, PQgetvalue(res, i, 0), sz) >= sz) {
-				log_warnx("warn: table-postgres: result too large");
+				log_warnx("warn: esult too large");
 				r = -1;
 				break;
 			}
 		}
 		break;
 	case K_CREDENTIALS:
-		if (snprintf(dst, sz, "%s:%s",
-		    PQgetvalue(res, 0, 0),
+		if (snprintf(dst, sz, "%s:%s", PQgetvalue(res, 0, 0),
  		    PQgetvalue(res, 0, 1)) > (ssize_t)sz) {
-			log_warnx("warn: table-postgres: result too large");
+			log_warnx("warn: result too large");
 			r = -1;
 		}
 		break;
 	case K_USERINFO:
-		if (snprintf(dst, sz, "%s:%s:%s",
-		    PQgetvalue(res, 0, 0),
+		if (snprintf(dst, sz, "%s:%s:%s", PQgetvalue(res, 0, 0),
 		    PQgetvalue(res, 0, 1),
 		    PQgetvalue(res, 0, 2)) > (ssize_t)sz) {
-			log_warnx("warn: table-postgres: result too large");
+			log_warnx("warn: result too large");
 			r = -1;
 		}
 		break;
@@ -479,19 +416,18 @@ table_postgres_lookup(int service, struct dict *params, const char *key, char *d
 	case K_MAILADDR:
 	case K_ADDRNAME:
 		if (strlcpy(dst, PQgetvalue(res, 0, 0), sz) >= sz) {
-			log_warnx("warn: table-postgres: result too large");
+			log_warnx("warn: result too large");
 			r = -1;
 		}
 		break;
 	default:
-		log_warnx("warn: table-postgres: unknown service %d",
+		log_warnx("warn: unknown service %d",
 		    service);
 		r = -1;
 	}
 
-    end:
+end:
 	PQclear(res);
-
 	return r;
 }
 
@@ -506,14 +442,11 @@ table_postgres_fetch(int service, struct dict *params, char *dst, size_t sz)
 	if (config->db == NULL && config_connect(config) == 0)
 		return -1;
 
-    retry:
-
+retry:
 	if (service != K_SOURCE)
 		return -1;
 
-	stmt = config->stmt_fetch_source;
-
-	if (stmt == NULL)
+	if ((stmt = config->stmt_fetch_source) == NULL)
 		return -1;
 
 	if (config->source_ncall < config->source_refresh &&
@@ -521,19 +454,16 @@ table_postgres_fetch(int service, struct dict *params, char *dst, size_t sz)
 	    goto fetch;
 
 	res = PQexecPrepared(config->db, stmt, 0, NULL, NULL, NULL, 0);
-
 	if (PQresultStatus(res) != PGRES_TUPLES_OK) {
 		errfld = PQresultErrorField(res, PG_DIAG_SQLSTATE);
 		if (errfld[0] == '0' && errfld[1] == '8') {
-			log_warnx("warn: table-postgres: trying to reconnect after error: %s",
-			    PQerrorMessage(config->db));
+			log_warnx("warn: trying to reconnect after error: %s", PQerrorMessage(config->db));
 			PQclear(res);
 			if (config_connect(config))
 				goto retry;
 			return -1;
 		}
-		log_warnx("warn: table-postgres: PQexecPrepared: %s",
-		    PQerrorMessage(config->db));
+		log_warnx("warn: PQexecPrepared: %s", PQerrorMessage(config->db));
 		PQclear(res);
 		return -1;
 	}
@@ -550,8 +480,7 @@ table_postgres_fetch(int service, struct dict *params, char *dst, size_t sz)
 	config->source_update = time(NULL);
 	config->source_ncall = 0;
 
-    fetch:
-
+fetch:
 	config->source_ncall += 1;
 
 	if (!dict_iter(&config->sources, &config->source_iter, &k, (void **)NULL)) {
@@ -564,4 +493,41 @@ table_postgres_fetch(int service, struct dict *params, char *dst, size_t sz)
 		return -1;
 
 	return 1;
+}
+
+int
+main(int argc, char **argv)
+{
+	int ch;
+
+	log_init(1);
+	log_verbose(~0);
+
+	while ((ch = getopt(argc, argv, "")) != -1) {
+		switch (ch) {
+		default:
+			fatalx("bad option");
+			/* NOTREACHED */
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc != 1)
+		fatalx("bogus argument(s)");
+
+	conffile = argv[0];
+
+	if ((config = config_load(conffile)) == NULL)
+		fatalx("error parsing config file");
+	if (config_connect(config) == 0)
+		fatalx("could not connect");
+
+	table_api_on_update(table_postgres_update);
+	table_api_on_check(table_postgres_check);
+	table_api_on_lookup(table_postgres_lookup);
+	table_api_on_fetch(table_postgres_fetch);
+	table_api_dispatch();
+
+	return 0;
 }

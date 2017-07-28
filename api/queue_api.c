@@ -30,9 +30,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 static int (*handler_close)(void);
 static int (*handler_message_create)(uint32_t *);

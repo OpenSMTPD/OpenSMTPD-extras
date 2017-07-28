@@ -47,7 +47,7 @@
 #include <unistd.h>
 
 #include "smtpd-defines.h"
-#include "smtpd-api.h"
+#include <smtpd-api.h>
 #include "log.h"
 
 static const char *in6addr_to_text(const struct in6_addr *);

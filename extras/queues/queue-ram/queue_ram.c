@@ -25,10 +25,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "queue_utils.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 #define stat_increment(a, b)	do {} while(0)
 #define stat_decrement(a, b)	do {} while(0)
@@ -51,10 +48,8 @@ get_message(uint32_t msgid)
 {
 	struct qr_message	*msg;
 
-        msg = tree_get(&messages, msgid);
-        if (msg == NULL)
-                log_warn("warn: queue-ram: message not found");
-
+	if ((msg = tree_get(&messages, msgid)) == NULL)
+		log_warn("warn: message not found");
 	return msg;
 }
 
@@ -65,7 +60,7 @@ queue_ram_message_create(uint32_t *msgid)
 
 	msg = calloc(1, sizeof(*msg));
 	if (msg == NULL) {
-		log_warn("warn: queue-ram: calloc");
+		log_warn("warn: calloc");
 		return 0;
 	}
 	tree_init(&msg->envelopes);
@@ -89,16 +84,16 @@ queue_ram_message_commit(uint32_t msgid, const char *path)
 	int			 ret;
 
 	if ((msg = tree_get(&messages, msgid)) == NULL) {
-		log_warnx("warn: queue-ram: msgid not found");
+		log_warnx("warn: msgid not found");
 		return 0;
 	}
 
 	if ((f = fopen(path, "rb")) == NULL) {
-		log_warn("warn: queue-ram: fopen: \"%s\"", path);
+		log_warn("warn: fopen: \"%s\"", path);
 		return 0;
 	}
 	if (fstat(fileno(f), &sb) == -1) {
-		log_warn("warn: queue-ram: fstat");
+		log_warn("warn: fstat");
 		fclose(f);
 		return 0;
 	}
@@ -106,7 +101,7 @@ queue_ram_message_commit(uint32_t msgid, const char *path)
 	msg->len = sb.st_size;
 	msg->buf = malloc(msg->len);
 	if (msg->buf == NULL) {
-		log_warn("warn: queue-ram: malloc");
+		log_warn("warn: malloc");
 		fclose(f);
 		return 0;
 	}
@@ -114,9 +109,9 @@ queue_ram_message_commit(uint32_t msgid, const char *path)
 	ret = 0;
 	n = fread(msg->buf, 1, msg->len, f);
 	if (ferror(f))
-		log_warn("warn: queue-ram: fread");
+		log_warn("warn: fread");
 	else if ((off_t)n != sb.st_size)
-		log_warnx("warn: queue-ram: bad read");
+		log_warnx("warn: bad read");
 	else {
 		ret = 1;
 		stat_increment("queue.ram.message.size", msg->len);
@@ -134,7 +129,7 @@ queue_ram_message_delete(uint32_t msgid)
 	uint64_t		 evpid;
 
 	if ((msg = tree_pop(&messages, msgid)) == NULL) {
-		log_warnx("warn: queue-ram: not found");
+		log_warnx("warn: not found");
 		return 0;
 	}
 	while (tree_poproot(&messages, &evpid, (void**)&evp)) {
@@ -157,32 +152,32 @@ queue_ram_message_fd_r(uint32_t msgid)
 	int			 fd, fd2;
 
 	if ((msg = tree_get(&messages, msgid)) == NULL) {
-		log_warnx("warn: queue-ram: not found");
+		log_warnx("warn: not found");
 		return -1;
 	}
 
 	fd = mktmpfile();
 	if (fd == -1) {
-		log_warn("warn: queue-ram: mktmpfile");
+		log_warn("warn: mktmpfile");
 		return -1;
 	}
 
 	fd2 = dup(fd);
 	if (fd2 == -1) {
-		log_warn("warn: queue-ram: dup");
+		log_warn("warn: dup");
 		close(fd);
 		return -1;
 	}
 	f = fdopen(fd2, "w");
 	if (f == NULL) {
-		log_warn("warn: queue-ram: fdopen");
+		log_warn("warn: fdopen");
 		close(fd);
 		close(fd2);
 		return -1;
 	}
 	n = fwrite(msg->buf, 1, msg->len, f);
 	if (n != msg->len) {
-		log_warn("warn: queue-ram: write");
+		log_warn("warn: write");
 		close(fd);
 		fclose(f);
 		return -1;
@@ -219,13 +214,13 @@ queue_ram_envelope_create(uint32_t msgid, const char *buf, size_t len,
 	} while (tree_check(&msg->envelopes, *evpid));
 	evp = calloc(1, sizeof *evp);
 	if (evp == NULL) {
-		log_warn("warn: queue-ram: calloc");
+		log_warn("warn: calloc");
 		return 0;
 	}
 	evp->len = len;
 	evp->buf = malloc(len);
 	if (evp->buf == NULL) {
-		log_warn("warn: queue-ram: malloc");
+		log_warn("warn: malloc");
 		free(evp);
 		return 0;
 	}
@@ -245,7 +240,7 @@ queue_ram_envelope_delete(uint64_t evpid)
 		return 0;
 
 	if ((evp = tree_pop(&msg->envelopes, evpid)) == NULL) {
-		log_warnx("warn: queue-ram: not found");
+		log_warnx("warn: not found");
 		return 0;
 	}
 	stat_decrement("queue.ram.envelope.size", evp->len);
@@ -271,12 +266,11 @@ queue_ram_envelope_update(uint64_t evpid, const char *buf, size_t len)
 		return 0;
 
 	if ((evp = tree_get(&msg->envelopes, evpid)) == NULL) {
-		log_warn("warn: queue-ram: not found");
+		log_warn("warn: not found");
 		return 0;
 	}
-	tmp = malloc(len);
-	if (tmp == NULL) {
-		log_warn("warn: queue-ram: malloc");
+	if ((tmp = malloc(len)) == NULL) {
+		log_warn("warn: malloc");
 		return 0;
 	}
 	memmove(tmp, buf, len);
@@ -298,11 +292,11 @@ queue_ram_envelope_load(uint64_t evpid, char *buf, size_t len)
 		return 0;
 
 	if ((evp = tree_get(&msg->envelopes, evpid)) == NULL) {
-		log_warn("warn: queue-ram: not found");
+		log_warn("warn: not found");
 		return 0;
 	}
 	if (len < evp->len) {
-		log_warnx("warn: queue-ram: buffer too small");
+		log_warnx("warn: buffer too small");
 		return 0;
 	}
 	memmove(buf, evp->buf, evp->len);
@@ -346,15 +340,14 @@ queue_ram_init(int server)
 int
 main(int argc, char **argv)
 {
-	int	ch;
+	int ch;
 
 	log_init(1);
 
 	while ((ch = getopt(argc, argv, "")) != -1) {
 		switch (ch) {
 		default:
-			log_warnx("warn: queue-ram: bad option");
-			return 1;
+			fatalx("bad option");
 			/* NOTREACHED */
 		}
 	}

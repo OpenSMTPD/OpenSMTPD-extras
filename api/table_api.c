@@ -31,9 +31,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "smtpd-defines.h"
-#include "smtpd-api.h"
-#include "log.h"
+#include <smtpd-api.h>
 
 static int (*handler_update)(void);
 static int (*handler_check)(int, struct dict *, const char *);
