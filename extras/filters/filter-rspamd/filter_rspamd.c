@@ -40,7 +40,7 @@ on_connect(uint64_t id, struct filter_connect *conn)
 	struct session	*rs = filter_api_session(id);
 	const char	*ip;
 
-	ip = filter_api_sockaddr_to_text((struct sockaddr *)&conn->local);
+	ip = filter_api_sockaddr_to_text((struct sockaddr *)&conn->remote);
 	if (! session_set_ip(rs, ip ? ip : "127.0.0.1"))
 		return filter_api_reject_code(id, FILTER_FAIL, 421,
 		    "temporary failure");
