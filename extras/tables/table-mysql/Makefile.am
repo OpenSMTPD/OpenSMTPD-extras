@@ -6,4 +6,4 @@ pkglibexec_PROGRAMS	 = table-mysql
 table_mysql_SOURCES	 = $(SRCS)
 table_mysql_SOURCES	+= table_mysql.c
 
-LDADD	+= -lmysqlclient
+LDADD	+= -L/usr/lib64/mysql -lmysqlclient
