@@ -57,8 +57,6 @@ struct config {
 	time_t		 source_update;
 };
 
-#define SQL_MAX_RESULT	5
-
 #define	DEFAULT_EXPIRE	60
 #define	DEFAULT_REFRESH	1000
 
