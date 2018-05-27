@@ -75,45 +75,6 @@ table_ldap_update(void)
 }
 
 static int
-table_ldap_check(int service, struct dict *params, const char *key)
-{
-	int ret;
-	
-	switch(service) {
-	case K_ALIAS:
-	case K_DOMAIN:
-	case K_CREDENTIALS:
-	case K_USERINFO:
-	case K_MAILADDR:
-		if ((ret = ldap_run_query(service, key, NULL, 0)) >= 0) {
-			return ret;
-		}
-		log_debug("debug: table-ldap: reconnecting");
-		if (!(ret = ldap_open())) {
-			log_warnx("warn: table-ldap: failed to connect");
-		}
-		return ret;
-	default:
-		return -1;
-	}
-}
-
-static int
-table_ldap_lookup(int service, struct dict *params, const char *key, char *dst, size_t sz)
-{
-	switch(service) {
-	case K_ALIAS:
-	case K_DOMAIN:
-	case K_CREDENTIALS:
-	case K_USERINFO:
-	case K_MAILADDR:
-		return ldap_run_query(service, key, dst, sz);
-	default:
-		return -1;
-	}
-}
-
-static int
 table_ldap_fetch(int service, struct dict *params, char *dst, size_t sz)
 {
 	return -1;
@@ -362,6 +323,31 @@ err:
 }
 
 static int
+table_ldap_lookup(int service, struct dict *params, const char *key, char *dst, size_t sz)
+{
+	int ret;
+
+	switch(service) {
+	case K_ALIAS:
+	case K_DOMAIN:
+	case K_CREDENTIALS:
+	case K_USERINFO:
+	case K_MAILADDR:
+		if ((ret = ldap_run_query(service, key, dst, sz)) > 0) {
+			return ret;
+		}
+		log_debug("debug: table-ldap: reconnecting");
+		if (!(ret = ldap_open())) {
+			log_warnx("warn: table-ldap: failed to connect");
+			return ret;
+		}
+		return ldap_run_query(service, key, dst, sz);
+	default:
+		return -1;
+	}
+}
+
+static int
 ldap_query(const char *filter, char **attributes, char ***outp, size_t n)
 {
 	struct aldap_message		*m = NULL;
@@ -496,6 +482,30 @@ end:
 			aldap_free_attr(res[i]);
 
 	return ret;
+}
+
+static int
+table_ldap_check(int service, struct dict *params, const char *key)
+{
+	int ret;
+	
+	switch(service) {
+	case K_ALIAS:
+	case K_DOMAIN:
+	case K_CREDENTIALS:
+	case K_USERINFO:
+	case K_MAILADDR:
+		if ((ret = ldap_run_query(service, key, NULL, 0)) >= 0) {
+			return ret;
+		}
+		log_debug("debug: table-ldap: reconnecting");
+		if (!(ret = ldap_open())) {
+			log_warnx("warn: table-ldap: failed to connect");
+		}
+		return ret;
+	default:
+		return -1;
+	}
 }
 
 int
