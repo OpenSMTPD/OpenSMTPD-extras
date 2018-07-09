@@ -45,8 +45,8 @@ struct smtpf_client {
 static void smtpf_close(struct smtpf_client *);
 static void smtpf_dispatch_io(struct io *, int, void *);
 static void smtpf_process_line(struct smtpf_client *, char *);
-static void smtpf_session_open(struct smtpf_client *, const char *);
-static void smtpf_session_close(struct smtpf_client *, const char *);
+static void smtpf_session_open(struct smtpf_client *, const char *, int, char **);
+static void smtpf_session_close(struct smtpf_client *, const char *, int, char **);
 static void smtpf_session_line(struct smtpf_client *, int, const char *, const char *);
 static struct smtpf_session *smtpf_session_find(struct smtpf_client *, const char *);
 static int smtpf_session_cmp(struct smtpf_session *, struct smtpf_session *);
@@ -79,6 +79,8 @@ frontend_smtpf_conn(uint32_t connid, struct listener *l, int sock,
 	}
 	io_set_callback(clt->io, smtpf_dispatch_io, clt);
 	io_attach(clt->io, sock);
+
+	log_debug("%08x:newconn", clt->id);
 }
 
 static void
@@ -86,6 +88,8 @@ smtpf_close(struct smtpf_client *clt)
 {
 	struct smtpf_session *s;
 	uint32_t connid;
+
+	log_debug("%08x:close", clt->id);
 
 	while ((s = SPLAY_ROOT(&clt->sessions))) {
 		SPLAY_REMOVE(sessiontree, &clt->sessions, s);
@@ -150,6 +154,8 @@ smtpf_process_line(struct smtpf_client *clt, char *line)
 	char *cmd, *name, *data, *last, *args[MAXARGS], *p;
 	int i = 0;
 
+	log_debug("%08x >>> %s", clt->id, line);
+
 	if ((name = strchr(line, ':')) == NULL) {
 		log_warnx("%s: invalid line \"%s\"", __func__, line);
 		return;
@@ -178,15 +184,10 @@ smtpf_process_line(struct smtpf_client *clt, char *line)
 		}
 		args[i] = NULL;
 
-		if (i != 1) {
-			log_warnx("%s: no command (%d)", __func__, i);
-			return;
-		}
-
 		if (!strcmp(args[0], "OPEN"))
-			smtpf_session_open(clt, name);
+			smtpf_session_open(clt, name, i - 1, &args[1]);
 		else if (!strcmp(args[0], "CLOSE"))
-			smtpf_session_close(clt, name);
+			smtpf_session_close(clt, name, i - 1, &args[1]);
 	}
 	else
 		log_warn("%s: invalid command \"%s\"", __func__, line);
@@ -215,7 +216,7 @@ smtpf_session_find(struct smtpf_client *clt, const char *name)
 }
 
 static void
-smtpf_session_open(struct smtpf_client *clt, const char *name)
+smtpf_session_open(struct smtpf_client *clt, const char *name, int argc, char **argv)
 {
 	struct smtpf_session *s;
 
@@ -240,21 +241,28 @@ smtpf_session_open(struct smtpf_client *clt, const char *name)
 	SPLAY_INSERT(sessiontree, &clt->sessions, s);
 	clt->last = s;
 	io_printf(clt->io, "SMTPF:%s:OPEN OK\n", name);
+	log_debug("%08x <<< SMTPF:%s:OPEN OK", clt->id, name);
 	return;
     fail:
 	io_printf(clt->io, "SMTPF:%s:OPEN FAILED\n", name);
+	log_debug("%08x <<< SMTPF:%s:OPEN FAILED", clt->id, name);
 }
 
 static void
-smtpf_session_close(struct smtpf_client *clt, const char *name)
+smtpf_session_close(struct smtpf_client *clt, const char *name, int argc, char **argv)
 {
 	struct smtpf_session *s;
 
 	s = smtpf_session_find(clt, name);
 	if (s == NULL) {
 		log_warnx("%s: session not found", __func__);
+	io_printf(clt->io, "SMTPF:%s:CLOSE NOT_FOUND\n", name);
+	log_debug("%08x <<< SMTPF:%s:CLOSE NOT_FOUND", clt->id, name);
 		return;
 	}
+
+	io_printf(clt->io, "SMTPF:%s:CLOSE OK\n", name);
+	log_debug("%08x <<< SMTPF:%s:CLOSE OK", clt->id, name);
 
 	SPLAY_REMOVE(sessiontree, &clt->sessions, s);
 	clt->last = NULL;
@@ -266,6 +274,7 @@ smtpf_session_line(struct smtpf_client *clt, int srv, const char *name,
     const char *line)
 {
 	struct smtpf_session *s;
+	char *buf, *p;
 
 	s = smtpf_session_find(clt, name);
 	if (s == NULL) {
@@ -273,11 +282,20 @@ smtpf_session_line(struct smtpf_client *clt, int srv, const char *name,
 		return;
 	}
 
-	if (!srv && !strcmp(line, "HAHA"))
-		io_printf(clt->io, "A:%s:200 Funny!\n", name);
-	else
+	if (!srv && !strcmp(line, "HAHA")) {
+		io_printf(clt->io, "A:%s:200 (from smtpfd) %s\n", name, line + 2);
+		log_debug("%08x <<< A:%s:200 (from smtpfd) %s", clt->id, name, line + 2);
+	}
+	else {
 		/* relay between the two ends of the session */
-		io_printf(clt->io, "%c:%s:%s\n", srv ? 'A' : 'B', name, line);
+		buf = strdup(line);
+		for (p = buf; *p; p++)
+			if (*p == 'z')
+				*p = 'x';
+		io_printf(clt->io, "%c:%s:%s\n", srv ? 'A' : 'B', name, buf);
+		log_debug("%08x <<< %c:%s:%s", clt->id, srv ? 'A' : 'B', name, buf);
+		free(buf);
+	}
 }
 
 static int
