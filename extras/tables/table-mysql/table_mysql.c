@@ -68,7 +68,7 @@ static void		 config_free(struct config *);
 #define	DEFAULT_REFRESH	1000
 
 static MYSQL_BIND	 results[SQL_MAX_RESULT];
-static char		 results_buffer[SQL_MAX_RESULT][SMTPD_MAXLINESIZE];
+static char		 results_buffer[SQL_MAX_RESULT][LINE_MAX];
 static char		*conffile;
 static struct config	*config;
 
@@ -333,7 +333,7 @@ table_mysql_query(const char *key, int service)
 	MYSQL_STMT	*stmt;
 	MYSQL_BIND	 param[1];
 	unsigned long	 keylen;
-	char		 buffer[SMTPD_MAXLINESIZE];
+	char		 buffer[LINE_MAX];
 	int		 i;
 
 retry:
@@ -586,7 +586,7 @@ main(int argc, char **argv)
 	for (i = 0; i < SQL_MAX_RESULT; i++) {
 		results[i].buffer_type = MYSQL_TYPE_STRING;
 		results[i].buffer = results_buffer[i];
-		results[i].buffer_length = SMTPD_MAXLINESIZE;
+		results[i].buffer_length = LINE_MAX;
 		results[i].is_null = 0;
 	}
 

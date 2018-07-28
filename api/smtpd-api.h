@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <limits.h>
 
 #include <event.h>
 #include <imsg.h>
@@ -229,7 +230,7 @@ struct scheduler_info {
 
 struct table_open_params {
 	uint32_t	version;
-	char		name[SMTPD_MAXLINESIZE];
+	char		name[LINE_MAX];
 };
 
 enum table_service {

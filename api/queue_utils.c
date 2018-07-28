@@ -59,7 +59,7 @@ int
 mktmpfile(void)
 {
 	static char	*tempdir = "/temporary";
-	char		 path[SMTPD_MAXPATHLEN];
+	char		 path[PATH_MAX];
 	int		 fd;
 	mode_t		 omode;
 

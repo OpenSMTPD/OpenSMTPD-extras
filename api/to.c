@@ -92,7 +92,7 @@ text_to_mailaddr(struct mailaddr *maddr, const char *email)
 {
 	char *username;
 	char *hostname;
-	char  buffer[SMTPD_MAXLINESIZE];
+	char  buffer[LINE_MAX];
 
 	if (strlcpy(buffer, email, sizeof buffer) >= sizeof buffer)
 		return 0;
@@ -129,7 +129,7 @@ text_to_mailaddr(struct mailaddr *maddr, const char *email)
 const char *
 mailaddr_to_text(const struct mailaddr *maddr)
 {
-	static char  buffer[SMTPD_MAXLINESIZE];
+	static char  buffer[LINE_MAX];
 
 	(void)strlcpy(buffer, maddr->user, sizeof buffer);
 	(void)strlcat(buffer, "@", sizeof buffer);

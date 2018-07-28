@@ -111,7 +111,7 @@ queue_msg_dispatch(void)
 	uint64_t	 evpid;
 	uint32_t	 msgid, version;
 	size_t		 n, m;
-	char		 buffer[8192], path[SMTPD_MAXPATHLEN];
+	char		 buffer[8192], path[PATH_MAX];
 	int		 r, fd;
 	FILE		*ifile, *ofile;
 
