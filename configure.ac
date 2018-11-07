@@ -1556,12 +1556,6 @@ AC_CONFIG_FILES([Makefile
 
 		extras/Makefile
 
-		extras/filters/Makefile
-		extras/filters/filter-monkey/Makefile
-		extras/filters/filter-stub/Makefile
-		extras/filters/filter-trace/Makefile
-		extras/filters/filter-void/Makefile
-
 		extras/queues/Makefile
 		extras/queues/queue-null/Makefile
 		extras/queues/queue-python/Makefile
@@ -1583,9 +1577,6 @@ AC_CONFIG_FILES([Makefile
 		extras/tables/table-socketmap/Makefile
 		extras/tables/table-sqlite/Makefile
 		extras/tables/table-stub/Makefile
-
-		extras/tools/Makefile
-		extras/tools/tool-stats/Makefile
 		])
 
 #l4761
