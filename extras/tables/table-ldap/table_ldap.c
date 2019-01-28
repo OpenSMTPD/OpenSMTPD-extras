@@ -333,7 +333,7 @@ table_ldap_lookup(int service, struct dict *params, const char *key, char *dst, 
 	case K_CREDENTIALS:
 	case K_USERINFO:
 	case K_MAILADDR:
-		if ((ret = ldap_run_query(service, key, dst, sz)) > 0) {
+		if ((ret = ldap_run_query(service, key, dst, sz)) >= 0) {
 			return ret;
 		}
 		log_debug("debug: table-ldap: reconnecting");
