@@ -501,8 +501,9 @@ table_ldap_check(int service, struct dict *params, const char *key)
 		log_debug("debug: table-ldap: reconnecting");
 		if (!(ret = ldap_open())) {
 			log_warnx("warn: table-ldap: failed to connect");
+			return ret;
 		}
-		return ret;
+		return ldap_run_query(service, key, NULL, 0);
 	default:
 		return -1;
 	}
