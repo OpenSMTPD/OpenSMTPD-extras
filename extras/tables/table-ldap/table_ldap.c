@@ -64,6 +64,7 @@ struct query {
 static int ldap_run_query(int type, const char *, char *, size_t);
 
 static char *config, *url, *username, *password, *basedn;
+static int credentials_bind;
 
 static struct aldap *aldap;
 static struct query queries[LDAP_MAX];
@@ -224,6 +225,11 @@ ldap_config(void)
 				value = NULL;
 		}
 
+		if (!strcmp(key, "credentials_bind")) {
+			credentials_bind = 1;
+			continue;
+		}
+
 		if (value == NULL) {
 			log_warnx("warn: missing value for key %s", key);
 			continue;
@@ -271,55 +277,63 @@ ldap_config(void)
 	return 1;
 }
 
-static int
-ldap_open(void)
+static struct aldap *
+ldap_open_with_credentials(const char *user, const char *pass)
 {
+	struct aldap		*acon;
 	struct aldap_message	*amsg = NULL;
 
-	if (aldap) {
-		aldap_close(aldap);
-		log_info("info: table-ldap: closed previous connection");
-	}
-
-	aldap = ldap_connect(url);
-	if (aldap == NULL) {
+	acon = ldap_connect(url);
+	if (acon == NULL) {
 		log_warnx("warn: ldap_connect error");
 		goto err;
 	}
 
-	if (aldap_bind(aldap, username, password) == -1) {
+	if (aldap_bind(acon, (char *)user, (char *)pass) == -1) {
 		log_warnx("warn: aldap_bind error");
 		goto err;
 	}
 
-	if ((amsg = aldap_parse(aldap)) == NULL) {
+	if ((amsg = aldap_parse(acon)) == NULL) {
 		log_warnx("warn: aldap_parse");
 		goto err;
 	}
 
 	switch (aldap_get_resultcode(amsg)) {
 	case LDAP_SUCCESS:
-		log_debug("debug: ldap server accepted credentials");
+		log_debug("debug: ldap server accepted credentials for %s", user);
 		break;
 	case LDAP_INVALID_CREDENTIALS:
-		log_warnx("warn: ldap server refused credentials");
+		log_warnx("warn: ldap server refused credentials for %s", user);
 		goto err;
 	default:
-		log_warnx("warn: failed to bind, result #%d",
+		log_warnx("warn: failed to bind user %s, result #%d", user,
 		    aldap_get_resultcode(amsg));
 		goto err;
 	}
 
 	if (amsg)
 		aldap_freemsg(amsg);
-	return 1;
+	return acon;
 
 err:
-	if (aldap)
-		aldap_close(aldap);
+	if (acon)
+		aldap_close(acon);
 	if (amsg)
 		aldap_freemsg(amsg);
-	return 0;
+	return NULL;
+}
+
+static int
+ldap_open(void)
+{
+	if (aldap) {
+		aldap_close(aldap);
+		log_info("info: table-ldap: closed previous connection");
+	}
+
+	aldap = ldap_open_with_credentials(username, password);
+	return aldap != NULL ? 1 : 0;
 }
 
 static int
@@ -348,7 +362,8 @@ table_ldap_lookup(int service, struct dict *params, const char *key, char *dst, 
 }
 
 static int
-ldap_query(const char *filter, char **attributes, char ***outp, size_t n)
+ldap_query(const char *filter, char **attributes, char ***outp, size_t n,
+    char **outdn)
 {
 	struct aldap_message		*m = NULL;
 	struct aldap_page_control	*pg = NULL;
@@ -389,6 +404,8 @@ ldap_query(const char *filter, char **attributes, char ***outp, size_t n)
 			if (found)
 				goto next;
 			found = 1;
+			if (outdn != NULL)
+				*outdn = aldap_get_dn(m);
 			for (i = 0; i < n; ++i)
 				if (aldap_match_attr(m, attributes[i], &outp[i]) != 1)
 					goto error;
@@ -438,7 +455,7 @@ ldap_run_query(int type, const char *key, char *dst, size_t sz)
 	}
 
 	memset(res, 0, sizeof(res));
-	ret = ldap_query(filter, q->attrs, res, q->attrn);
+	ret = ldap_query(filter, q->attrs, res, q->attrn, NULL);
 	if (ret <= 0 || dst == NULL)
 		goto end;
 
@@ -488,6 +505,58 @@ end:
 }
 
 static int
+ldap_check_user(const char *key)
+{
+	struct aldap	*acon;
+	struct query	*q;
+	char		 filter[MAX_LDAP_FILTERLEN], *dn;
+	char		 user[MAX_LDAP_USERNAME], *pass;
+	size_t		 user_len;
+
+	if (!credentials_bind)
+		return -1;
+
+	pass = strchr(key, ':');
+	if (pass == NULL)
+		return -1; /* key must be formatted as user:password */
+	++pass;
+
+	user_len = pass - key;
+	if (user_len > MAX_LDAP_USERNAME) {
+		log_warnx("warn: username too large");
+		return -1;
+	}
+	memmove(user, key, user_len - 1);
+	user[user_len - 1] = '\0';
+
+	q = &queries[LDAP_CREDENTIALS];
+
+	if (snprintf(filter, sizeof(filter), q->filter, user)
+	    >= (int)sizeof(filter)) {
+		log_warnx("warn: filter too large");
+		return -1;
+	}
+
+	switch (ldap_query(filter, NULL, NULL, 0, &dn)) {
+	case 0:
+		return 0;
+	case 1:
+		break;
+	default:
+		return -1;
+	}
+
+	acon = ldap_open_with_credentials(dn, pass);
+	free(dn);
+
+	if (acon == NULL)
+		return 0;
+
+	aldap_close(acon);
+	return 1;
+}
+
+static int
 table_ldap_check(int service, struct dict *params, const char *key)
 {
 	int ret;
@@ -507,6 +576,16 @@ table_ldap_check(int service, struct dict *params, const char *key)
 			return ret;
 		}
 		return ldap_run_query(service, key, NULL, 0);
+	case K_CHECKUSER:
+		if ((ret = ldap_check_user(key)) >= 0) {
+			return ret;
+		}
+		log_debug("debug: table-ldap: reconnecting");
+		if (!(ret = ldap_open())) {
+			log_warnx("warn: table-ldap: failed to connect");
+			return ret;
+		}
+		return ldap_check_user(key);
 	default:
 		return -1;
 	}
