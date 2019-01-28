@@ -386,10 +386,13 @@ ldap_query(const char *filter, char **attributes, char ***outp, size_t n)
 			if (m->message_type != LDAP_RES_SEARCH_ENTRY)
 				goto error;
 
+			if (found)
+				goto next;
 			found = 1;
 			for (i = 0; i < n; ++i)
 				if (aldap_match_attr(m, attributes[i], &outp[i]) != 1)
 					goto error;
+next:
 			aldap_freemsg(m);
 			m = NULL;
 		}
