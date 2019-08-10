@@ -95,7 +95,7 @@ table_socketmap_query(const char *name, const char *key)
 	fprintf(sockstream, "%s %s\n", name, key);
 	fflush(sockstream);
 
-	if ((len = getline(&buf, &sz, sockstream)) != -1) {
+	if ((len = getline(&buf, &sz, sockstream)) == -1) {
 		log_warnx("warn: socketmap has lost its socket");
 		(void)strlcpy(repbuffer, "lost connection to socket", sizeof repbuffer);
 		ret = SM_PERM;
