@@ -1134,6 +1134,19 @@ AC_ARG_WITH([table-mysql],
 			AC_DEFINE([HAVE_TABLE_MYSQL], [1],
 				[Define if you have experimental MySQL support])
 			HAVE_TABLE_MYSQL=yes
+			AC_PATH_PROG([MYSQL_CONFIG], [mysql_config], , $PATH)
+			if test "x$MYSQL_CONFIG" = "x"; then
+				AC_MSG_RESULT([mysql_config not found, proceeding with default settings])
+			else
+				AC_MSG_CHECKING([for MySQL lib path])
+				MYSQL_LIBS=`"$MYSQL_CONFIG" --libs | sed -n 's#.*-L\(\"/[^\"]*\"\).*#\1#p;s#.*-L\(/[^[:space:]]*\).*#\1#p;'`
+				if test "x$MYSQL_LIBS" = "x"; then
+					AC_MSG_RESULT([not found, proceeding with default settings])
+				else
+					AC_MSG_RESULT([found $MYSQL_LIBS])
+					LDFLAGS="-L${MYSQL_LIBS} ${LDFLAGS}"
+				fi
+			fi
 		fi
 	]
 )
