@@ -98,6 +98,15 @@ This is used to provide a query for looking up a domain. The question mark
 is replaced with the appropriate data. For the domain it would be the
 right hand side of the SMTP address. This expects one VARCHAR to be returned
 with a matching domain name.
+.Pp
+
+.It Xo
+.Ic query_mailaddrmap
+.Ar SQL statement
+.Xc
+This is used to provide a query for looking up a senders. The question mark
+is replaced with the appropriate data. This expects one VARCHAR to be returned
+with the address the sender is allowed to send mails from.
 .El
 
 A generic SQL statement would be something like:
