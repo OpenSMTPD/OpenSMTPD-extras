@@ -39,6 +39,7 @@ enum {
 	SQL_SOURCE,
 	SQL_MAILADDR,
 	SQL_ADDRNAME,
+	SQL_MAILADDRMAP,
 
 	SQL_MAX
 };
@@ -105,6 +106,7 @@ table_sqlite_update(void)
 		{ "query_source",	1 },
 		{ "query_mailaddr",	1 },
 		{ "query_addrname",	1 },
+		{ "query_mailaddrmap",	1 },
 	};
 	sqlite3		*_db;
 	sqlite3_stmt	*_statements[SQL_MAX];
@@ -346,6 +348,7 @@ table_sqlite_lookup(int service, struct dict *params, const char *key, char *dst
 
 	switch(service) {
 	case K_ALIAS:
+	case K_MAILADDRMAP:
 		memset(dst, 0, sz);
 		do {
 			value = sqlite3_column_text(stmt, 0);
