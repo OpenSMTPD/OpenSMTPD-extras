@@ -40,6 +40,7 @@ enum {
 	SQL_SOURCE,
 	SQL_MAILADDR,
 	SQL_ADDRNAME,
+	SQL_MAILADDRMAP,
 
 	SQL_MAX
 };
@@ -234,6 +235,7 @@ config_connect(struct config *conf)
 		{ "query_source",	1 },
 		{ "query_mailaddr",	1 },
 		{ "query_addrname",	1 },
+		{ "query_mailaddrmap",	1 },
 	};
 	size_t	 i;
 	char	*conninfo, *q;
@@ -381,6 +383,7 @@ table_postgres_lookup(int service, struct dict *params, const char *key, char *d
 	r = 1;
 	switch(service) {
 	case K_ALIAS:
+	case K_MAILADDRMAP:
 		memset(dst, 0, sz);
 		for (i = 0; i < PQntuples(res); i++) {
 			if (dst[0] && strlcat(dst, ", ", sz) >= sz) {
