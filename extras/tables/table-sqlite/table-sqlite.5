@@ -51,9 +51,9 @@ function. Such passwords can be generated using the
 utility or
 .Xr smtpctl 8
 encrypt command.
-
+.\"
 .Sh SQLITE TABLE CONFIG FILE
-
+.\"
 The following configuration options are available:
 .Pp
 .Bl -tag -width Ds
@@ -67,7 +67,7 @@ For example:
 dbpath /etc/mail/smtp.sqlite
 .Ed
 .Pp
-
+.\"
 .It Xo
 .Ic query_alias
 .Ar SQL statement
@@ -77,7 +77,7 @@ is replaced with the appropriate data. For alias it is the left hand side of
 the SMTP address. This expects one VARCHAR to be returned with the user name
 the alias resolves to.
 .Pp
-
+.\"
 .It Xo
 .Ic query_credentials
 .Ar SQL statement
@@ -89,7 +89,7 @@ returned, one with a user name and one with a password in
 .Xr crypt 3
 format.
 .Pp
-
+.\"
 .It Xo
 .Ic query_domain
 .Ar SQL statement
@@ -99,7 +99,7 @@ is replaced with the appropriate data. For the domain it would be the
 right hand side of the SMTP address. This expects one VARCHAR to be returned
 with a matching domain name.
 .Pp
-
+.\"
 .It Xo
 .Ic query_mailaddrmap
 .Ar SQL statement
@@ -108,27 +108,27 @@ This is used to provide a query for looking up a senders. The question mark
 is replaced with the appropriate data. This expects one VARCHAR to be returned
 with the address the sender is allowed to send mails from.
 .El
-
+.\"
 A generic SQL statement would be something like:
 .Bd -literal -offset indent
 query_ SELECT value FROM table WHERE key=?;
 .Ed
-
+.\"
 .Sh EXAMPLES
 Example based on the OpenSMTPD FAQ: Building a Mail Server
 The filtering part is excluded in this example.
-
+.\"
 The configuration below is for a medium-size mail server which handles
 multiple domains with multiple virtual users and is based on several
 assumptions. One is that a single system user named vmail is used for all
 virtual users. This user needs to be created:
-
+.\"
 .Bd -literal
 # useradd -g =uid -c "Virtual Mail" -d /var/vmail -s /sbin/nologin vmail
 # mkdir /var/vmail
 # chown vmail:vmail /var/vmail
 .Ed
-
+.\"
 .Ic Pa sqlite schema
 .Bd -literal -compact
 CREATE TABLE virtuals (
@@ -148,7 +148,7 @@ CREATE TABLE domains (
 INSERT INTO domains VALUES (1, "example.com");
 INSERT INTO domains VALUES (2, "example.net");
 INSERT INTO domains VALUES (3, "example.org");
-
+.\"
 INSERT INTO virtuals VALUES (1, "abuse@example.com", "bob@example.com");
 INSERT INTO virtuals VALUES (2, "postmaster@example.com", "bob@example.com");
 INSERT INTO virtuals VALUES (3, "webmaster@example.com", "bob@example.com");
@@ -157,11 +157,11 @@ INSERT INTO virtuals VALUES (5, "abuse@example.net", "alice@example.net");
 INSERT INTO virtuals VALUES (6, "postmaster@example.net", "alice@example.net");
 INSERT INTO virtuals VALUES (7, "webmaster@example.net", "alice@example.net");
 INSERT INTO virtuals VALUES (8, "alice@example.net", "vmail");
-
+.\"
 INSERT INTO credentials VALUES (1, "bob@example.com", "$2b$08$ANGFKBL.BnDLL0bUl7I6aumTCLRJSQluSQLuueWRG.xceworWrUIu");
 INSERT INTO credentials VALUES (2, "alice@example.net", "$2b$08$AkHdB37kaj2NEoTcISHSYOCEBA5vyW1RcD8H1HG.XX0P/G1KIYwii");
 .Ed
-
+.\"
 .Ic Pa /etc/mail/sqlite.conf
 .Bd -literal -compact
 dbpath /etc/mail/smtp.sqlite
@@ -169,7 +169,7 @@ query_alias SELECT destination FROM virtuals WHERE email=?;
 query_credentials SELECT email, password FROM credentials WHERE email=?;
 query_domain SELECT domain FROM domains WHERE domain=?;
 .Ed
-
+.\"
 .Ic Pa /etc/mail/smtpd.conf
 .Bd -literal -compact
 table domains sqlite:/etc/mail/sqlite.conf
@@ -179,7 +179,7 @@ listen on egress port 25 tls pki mail.example.com
 listen on egress port 587 tls-require pki mail.example.com auth <credentials>
 accept from any for domain <domains> virtual <virtuals> deliver to mbox
 .Ed
-
+.\"
 .Sh FILES
 .Bl -tag -width "/etc/mail/sqlite.conf" -compact
 .It Pa /etc/mail/sqlite.conf
@@ -191,7 +191,7 @@ Suggested
 .Xr sqlite3 1
 database file.
 .El
-
+.\"
 .Sh TODO
 Documenting the following query options:
 .Bd -literal -offset indent -compact
@@ -201,7 +201,7 @@ Documenting the following query options:
 .Ic query_mailaddr
 .Ic query_addrname
 .Ed
-
+.\"
 .Sh SEE ALSO
 .Xr smtpd.conf 5 ,
 .Xr smtpctl 8 ,
