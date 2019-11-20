@@ -129,7 +129,7 @@ virtual users. This user needs to be created:
 # chown vmail:vmail /var/vmail
 .Ed
 .\"
-.Ic Pa sqlite schema
+.Ic sqlite schema
 .Bd -literal -compact
 CREATE TABLE virtuals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -162,7 +162,7 @@ INSERT INTO credentials VALUES (1, "bob@example.com", "$2b$08$ANGFKBL.BnDLL0bUl7
 INSERT INTO credentials VALUES (2, "alice@example.net", "$2b$08$AkHdB37kaj2NEoTcISHSYOCEBA5vyW1RcD8H1HG.XX0P/G1KIYwii");
 .Ed
 .\"
-.Ic Pa /etc/mail/sqlite.conf
+.Pa /etc/mail/sqlite.conf
 .Bd -literal -compact
 dbpath /etc/mail/smtp.sqlite
 query_alias SELECT destination FROM virtuals WHERE email=?;
@@ -170,7 +170,7 @@ query_credentials SELECT email, password FROM credentials WHERE email=?;
 query_domain SELECT domain FROM domains WHERE domain=?;
 .Ed
 .\"
-.Ic Pa /etc/mail/smtpd.conf
+.Pa /etc/mail/smtpd.conf
 .Bd -literal -compact
 table domains sqlite:/etc/mail/sqlite.conf
 table virtuals sqlite:/etc/mail/sqlite.conf
