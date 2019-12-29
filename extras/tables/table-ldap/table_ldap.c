@@ -39,6 +39,9 @@
 #define MAX_LDAP_FILTERLEN       1024
 #define MAX_LDAP_FIELDLEN        128
 
+#define LDAP_USER_PASSWORD_ATTR  "userPassword"
+#define LDAP_CRYPT_HASH_PREFIX   "{CRYPT}"
+
 
 enum {
 	LDAP_ALIAS = 0,
@@ -409,6 +412,22 @@ end:
 }
 
 static int
+strip_hash_prefix(const char *attr_name, char *attr_val)
+{
+	size_t prefix_len;
+
+	if (strcasecmp(attr_name, LDAP_USER_PASSWORD_ATTR))
+		return 0;
+
+	prefix_len = strlen(LDAP_CRYPT_HASH_PREFIX);
+	if (strncmp(attr_val, LDAP_CRYPT_HASH_PREFIX, prefix_len))
+		return 0;
+
+	memmove(attr_val, attr_val + prefix_len, strlen(attr_val) - prefix_len + 1);
+	return 1;
+}
+
+static int
 ldap_run_query(int type, const char *key, char *dst, size_t sz)
 {
 	struct query	 *q;
@@ -460,6 +479,9 @@ ldap_run_query(int type, const char *key, char *dst, size_t sz)
 			ret = -1;
 		break;
 	case K_CREDENTIALS:
+		if (strip_hash_prefix(q->attrs[1], res[1][0]))
+			log_debug("debug: table-ldap: ldap_run_query: "
+			          "stripped userPassword hash prefix");
 		if (snprintf(dst, sz, "%s:%s", res[0][0], res[1][0]) >= (int)sz)
 			ret = -1;
 		break;
