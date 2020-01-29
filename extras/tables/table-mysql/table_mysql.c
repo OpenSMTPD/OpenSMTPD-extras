@@ -243,7 +243,7 @@ config_connect(struct config *conf)
 		{ "query_addrname",	1 },
 		{ "query_mailaddrmap",	1 },
 	};
-#if MYSQL_VERSION_ID >= 80001
+#if !defined(MARIADB_BASE_VERSION) && MYSQL_VERSION_ID >= 80001
 	bool reconn;
 #else
 	my_bool	 reconn;
