@@ -521,9 +521,7 @@ retry:
 	    goto fetch;
 
 	if (mysql_stmt_execute(stmt)) {
-		if (mysql_stmt_errno(stmt) == CR_SERVER_LOST ||
-		    mysql_stmt_errno(stmt) == CR_SERVER_GONE_ERROR ||
-		    mysql_stmt_errno(stmt) == CR_COMMANDS_OUT_OF_SYNC) {
+		if (mysql_stmt_errno(stmt)) {
 			log_warnx("warn: trying to reconnect after error: %s", mysql_stmt_error(stmt));
 			if (config_connect(config))
 				goto retry;
