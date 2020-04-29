@@ -1,9 +1,7 @@
 # OpenSMTPD-extras
 This is the mirror of the official repository of OpenSMTPD addons
 
-# THE PROTOCOL USED BY THESE ADD-ONS IS GOING TO BE REPLACED SOON.
 # THIS REPOSITORY IS IN MAINTENANCE, ONLY ACCEPTING BUG FIXES AND MINOR UPDATES.
-# NO NEW ADD-ONS WILL BE ACCEPTED UNTIL CURRENT ONE ARE REIMPLEMENTED.
 
 # How to install
 First, you need to clone the repository:
