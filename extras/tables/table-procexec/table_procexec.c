@@ -17,8 +17,10 @@
 #include <sys/types.h>
 
 #include <err.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include <smtpd-api.h>
@@ -85,6 +87,12 @@ table_procexec_update(void)
 {
 	struct timeval tv;
 	uint64_t reqid;
+	char *line = NULL;
+	size_t linecap = 0;
+	ssize_t linelen;
+	uint64_t reqid_res;
+	char *qid = NULL;
+	char *ep = NULL;
 
 	reqid = generate_uid();
 	gettimeofday(&tv, NULL);
@@ -93,7 +101,28 @@ table_procexec_update(void)
 		PROTOCOL_VERSION,
 		tv.tv_sec, tv.tv_usec, reqid);
 	fflush(backend_w);
-	return 1;
+
+	linelen = getline(&line, &linecap, backend_r);
+	if (linelen == 0)
+		return 0;
+	line[strcspn(line, "\n")] = '\0';
+
+	if (strncmp(line, "table-result|", 13) != 0)
+		return -1;
+	line += 13;
+
+	qid = line;
+	reqid_res = strtoull(qid, &ep, 16);
+	if (qid[0] == '\0' || *ep != '|')
+		return -1;
+	if (errno == ERANGE && reqid_res == ULLONG_MAX)
+		return -1;
+	if (reqid != reqid_res)
+		return -1;
+
+	line = ep+1;
+
+	return strcmp(line, "updated") == 0;
 }
 
 static int
@@ -101,6 +130,12 @@ table_procexec_check(int service, struct dict *params, const char *key)
 {
 	struct timeval tv;
 	uint64_t reqid;
+	char *line = NULL;
+	size_t linecap = 0;
+	ssize_t linelen;
+	uint64_t reqid_res;
+	char *qid = NULL;
+	char *ep = NULL;
 
 	reqid = generate_uid();
 	gettimeofday(&tv, NULL);
@@ -109,6 +144,36 @@ table_procexec_check(int service, struct dict *params, const char *key)
 		PROTOCOL_VERSION,
 		tv.tv_sec, tv.tv_usec, reqid, service_to_name(service), key);
 	fflush(backend_w);
+
+	linelen = getline(&line, &linecap, backend_r);
+	if (linelen == 0)
+		return 0;
+	line[strcspn(line, "\n")] = '\0';
+
+	if (strncmp(line, "table-result|", 13) != 0)
+		return -1;
+	line += 13;
+
+	qid = line;
+	reqid_res = strtoull(qid, &ep, 16);
+	if (qid[0] == '\0' || *ep != '|')
+		return -1;
+	if (errno == ERANGE && reqid_res == ULLONG_MAX)
+		return -1;
+	if (reqid != reqid_res)
+		return -1;
+
+	line = ep+1;
+
+	if (strcmp(line, "failure") == 0)
+		return -1;
+
+	if (strcmp(line, "not-found") == 0)
+		return 0;
+
+	if (strcmp(line, "found") == 0)
+		return 1;
+
 	return -1;
 }
 
@@ -118,6 +183,12 @@ table_procexec_lookup(int service, struct dict *params, const char *key, char *d
 {
 	struct timeval tv;
 	uint64_t reqid;
+	char *line = NULL;
+	size_t linecap = 0;
+	ssize_t linelen;
+	uint64_t reqid_res;
+	char *qid = NULL;
+	char *ep = NULL;
 
 	reqid = generate_uid();
 	gettimeofday(&tv, NULL);
@@ -126,6 +197,38 @@ table_procexec_lookup(int service, struct dict *params, const char *key, char *d
 		PROTOCOL_VERSION,
 		tv.tv_sec, tv.tv_usec, reqid, service_to_name(service), key);
 	fflush(backend_w);
+
+	linelen = getline(&line, &linecap, backend_r);
+	if (linelen == 0)
+		return 0;
+	line[strcspn(line, "\n")] = '\0';
+
+	if (strncmp(line, "table-result|", 13) != 0)
+		return -1;
+	line += 13;
+
+	qid = line;
+	reqid_res = strtoull(qid, &ep, 16);
+	if (qid[0] == '\0' || *ep != '|')
+		return -1;
+	if (errno == ERANGE && reqid_res == ULLONG_MAX)
+		return -1;
+	if (reqid != reqid_res)
+		return -1;
+
+	line = ep+1;
+
+	if (strcmp(line, "failure") == 0)
+		return -1;
+
+	if (strcmp(line, "not-found") == 0)
+		return 0;
+
+	if (strncmp(line, "found|", 6) == 0) {
+		if (strlcpy(dst, line+6, sz) >= sz)
+			return -1;
+		return 1;
+	}
 	return -1;
 }
 
@@ -134,6 +237,12 @@ table_procexec_fetch(int service, struct dict *params, char *dst, size_t sz)
 {
 	struct timeval tv;
 	uint64_t reqid;
+	char *line = NULL;
+	size_t linecap = 0;
+	ssize_t linelen;
+	uint64_t reqid_res;
+	char *qid = NULL;
+	char *ep = NULL;
 
 	reqid = generate_uid();
 	gettimeofday(&tv, NULL);
@@ -142,6 +251,38 @@ table_procexec_fetch(int service, struct dict *params, char *dst, size_t sz)
 		PROTOCOL_VERSION,
 		tv.tv_sec, tv.tv_usec, reqid, service_to_name(service));
 	fflush(backend_w);
+
+	linelen = getline(&line, &linecap, backend_r);
+	if (linelen == 0)
+		return 0;
+	line[strcspn(line, "\n")] = '\0';
+
+	if (strncmp(line, "table-result|", 13) != 0)
+		return -1;
+	line += 13;
+
+	qid = line;
+	reqid_res = strtoull(qid, &ep, 16);
+	if (qid[0] == '\0' || *ep != '|')
+		return -1;
+	if (errno == ERANGE && reqid_res == ULLONG_MAX)
+		return -1;
+	if (reqid != reqid_res)
+		return -1;
+
+	line = ep+1;
+
+	if (strcmp(line, "failure") == 0)
+		return -1;
+
+	if (strcmp(line, "not-found") == 0)
+		return 0;
+
+	if (strncmp(line, "found|", 6) == 0) {
+		if (strlcpy(dst, line+6, sz) >= sz)
+			return -1;
+		return 1;
+	}
 	return -1;
 }
 
