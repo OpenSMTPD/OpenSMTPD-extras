@@ -1251,6 +1251,19 @@ AC_ARG_WITH([table-stub],
 )
 AM_CONDITIONAL([HAVE_TABLE_STUB], [test $HAVE_TABLE_STUB = yes])
 
+HAVE_TABLE_PROCEXEC=no
+AC_ARG_WITH([table-procexec],
+	[  --with-table-procexec	Enable table procexec],
+	[
+		if test "x$withval" != "xno" ; then
+			AC_DEFINE([HAVE_TABLE_PROCEXEC], [1],
+				[Define if you have procexec support])
+			HAVE_TABLE_PROCEXEC=yes
+		fi
+	]
+)
+AM_CONDITIONAL([HAVE_TABLE_PROCEXEC], [test $HAVE_TABLE_PROCEXEC = yes])
+
 
 #
 # TOOLS
@@ -1581,6 +1594,7 @@ AC_CONFIG_FILES([Makefile
 		extras/tables/table-ldap/Makefile
 		extras/tables/table-mysql/Makefile
 		extras/tables/table-postgres/Makefile
+		extras/tables/table-procexec/Makefile
 		extras/tables/table-python/Makefile
 		extras/tables/table-redis/Makefile
 		extras/tables/table-socketmap/Makefile

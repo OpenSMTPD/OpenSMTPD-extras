@@ -36,3 +36,6 @@ if HAVE_TABLE_STUB
 SUBDIRS+=	table-stub
 endif
 
+if HAVE_TABLE_PROCEXEC
+SUBDIRS+=	table-procexec
+endif
