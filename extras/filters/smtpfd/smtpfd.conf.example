@@ -1,0 +1,18 @@
+global-text "Thanks for all the herring"
+
+yesno no
+integer 24
+
+group Starbucks {
+	group-v4address 1.2.3.4/32
+	group-v6address 1::1
+}
+
+group Timmys {
+	yesno yes
+	integer 1
+
+	group-v4address 8.8.8.8/32
+	group-v6address 8::8
+
+}
