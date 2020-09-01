@@ -1357,6 +1357,8 @@ AC_ARG_WITH([lua-type],
 	]
 )
 
+PKG_PROG_PKG_CONFIG
+
 #
 # check for python
 #
@@ -1425,12 +1427,9 @@ LUA_CPPFLAGS=
 LUA_LDFLAGS=
 if test x"${need_lua}" = x"yes"; then
    LUA_CONFIG=
-   for path in /usr/local/bin /usr/bin; do
-	if test -f ${path}/pkg-config; then
-		LUA_CONFIG=${path}/pkg-config
-		break
-	fi
-   done
+   if test "x$PKG_CONFIG" != x; then
+	LUA_CONFIG=$PKG_CONFIG
+   fi
 
    # if lua provided --with-lua, override
    if test x"${with_lua}" != x""; then
@@ -1471,12 +1470,9 @@ REDIS_CPPFLAGS=
 REDIS_LDFLAGS=
 if test x"${need_redis}" = x"yes"; then
    REDIS_CONFIG=
-   for path in /usr/local/bin /usr/bin; do
-	if test -f ${path}/pkg-config; then
-		REDIS_CONFIG=${path}/pkg-config
-		break
-	fi
-   done
+   if test "x$PKG_CONFIG" != x; then
+	REDIS_CONFIG=$PKG_CONFIG
+   fi
 
    # if redis provided --with-redis, override
    if test x"${with_hiredis}" != x""; then
