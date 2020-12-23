@@ -31,11 +31,13 @@
 
 #include <smtpd-api.h>
 
+#define REPLYBUFFERSIZE 100000
+
 static char	       *config;
-static int		sock = -1;
+static int			sock = -1;
+static int			connected = 0;
 static FILE	       *sockstream;
-#define	REPLYBUFFERSIZE	100000
-static char		repbuffer[REPLYBUFFERSIZE+1];
+static char			repbuffer[REPLYBUFFERSIZE+1];
 
 enum socketmap_reply{
 	SM_OK = 0,
@@ -73,6 +75,8 @@ table_socketmap_connect(const char *s)
 		goto err;
 	}
 
+	connected = 1;
+
 	return 1;
 
 err:
@@ -90,6 +94,13 @@ table_socketmap_query(const char *name, const char *key)
 	size_t	sz = 0;
 	ssize_t	len;
 	int	ret = SM_PERM;
+
+	if (!connected) {
+		if (!table_socketmap_connect(config)) {
+			log_warnx("error connecting to %s", config);
+			return ret;
+		}
+	}
 
 	memset(repbuffer, 0, sizeof repbuffer);
 	fprintf(sockstream, "%s %s\n", name, key);
@@ -220,9 +231,6 @@ main(int argc, char **argv)
 
 
 	config = argv[0];
-
-	if (table_socketmap_connect(config) == 0)
-		fatalx("error connecting to %s", config);
 
 	table_api_on_update(table_socketmap_update);
 	table_api_on_check(table_socketmap_check);
