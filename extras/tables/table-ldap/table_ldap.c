@@ -85,8 +85,8 @@ ldap_connect(const char *addr)
 {
 	struct aldap_url lu;
 	struct addrinfo	 hints, *res0, *res;
-	char		*buf;
-	int		 error, fd = -1;
+	char		*buf, port[32];
+	int		 error, r, fd = -1;
 
 	if ((buf = strdup(addr)) == NULL)
 		return NULL;
@@ -98,37 +98,32 @@ ldap_connect(const char *addr)
 		return NULL;
 	}
 
+	r = snprintf(port, sizeof(port), "%d", lu.port);
+	if (r < 0 || (size_t)r >= sizeof(port)) {
+		log_warnx("snprintf");
+		return NULL;
+	}
+
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = PF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM; /* DUMMY */
-	error = getaddrinfo(lu.host, NULL, &hints, &res0);
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_NUMERICSERV;
+	error = getaddrinfo(lu.host, port, &hints, &res0);
 	if (error == EAI_AGAIN || error == EAI_NODATA || error == EAI_NONAME)
 		return NULL;
 	if (error) {
-		log_warnx("warn: could not parse \"%s\": %s", lu.host,
-		    gai_strerror(error));
+		log_warnx("warn: could not parse \"%s:%s\": %s", lu.host,
+		    port, gai_strerror(error));
 		return NULL;
 	}
 
 	for (res = res0; res; res = res->ai_next) {
-		if (res->ai_family != AF_INET && res->ai_family != AF_INET6)
-			continue;
-
 		fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 		if (fd == -1)
 			continue;
 
-		if (res->ai_family == AF_INET) {
-			struct sockaddr_in sin4 = *(struct sockaddr_in *)res->ai_addr;
-			sin4.sin_port = htons(lu.port);
-			if (connect(fd, (struct sockaddr *)&sin4, res->ai_addrlen) == 0)
-				return aldap_init(fd);
-		} else if (res->ai_family == AF_INET6) {
-			struct sockaddr_in6 sin6 = *(struct sockaddr_in6 *)res->ai_addr;
-			sin6.sin6_port = htons(lu.port);
-			if (connect(fd, (struct sockaddr *)&sin6, res->ai_addrlen) == 0)
-				return aldap_init(fd);
-		}
+		if (connect(fd, res->ai_addr, res->ai_addrlen) == 0)
+			return aldap_init(fd);
 
 		close(fd);
 		fd = -1;
