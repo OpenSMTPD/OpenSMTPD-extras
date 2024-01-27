@@ -122,13 +122,16 @@ ldap_connect(const char *addr)
 		if (fd == -1)
 			continue;
 
-		if (connect(fd, res->ai_addr, res->ai_addrlen) == 0)
+		if (connect(fd, res->ai_addr, res->ai_addrlen) == 0) {
+			aldap_free_url(&lu);
 			return aldap_init(fd);
+		}
 
 		close(fd);
 		fd = -1;
 	}
 
+	aldap_free_url(&lu);
 	return NULL;
 }
 
