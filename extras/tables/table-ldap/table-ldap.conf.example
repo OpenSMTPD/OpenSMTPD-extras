@@ -1,0 +1,48 @@
+# basic ldap config: url username password basedn
+url: ldap://ldap.example.com
+username: cn=smtpd,cn=sysaccounts,cn=etc,dc=example,dc=com
+password: totalsecure
+basedn: cn=users,cn=accounts,dc=example,dc=com
+
+# filter/atributes for alias / virtual table usage
+# key will be the user / mailaddr
+# attributes is the destintion. in this example a user, but can also be an other mailaddress
+alias_filter: (&(objectclass=person)(mail=%s))
+alias_attributes: uid
+
+# key is the username (supplide by the client)
+# attributes are the username and the hashed password
+# problem with this is, it needs to be able to read the hashed password
+credentials_filter: (&(objectclass=posixaccount)(uid=%s))
+credentials_attributes: uid, authPassword
+
+# domain table (list)
+# used in match for domain <ldap>
+# atribute not realy intresting but need to be set
+domain_filter: (&(objectclass=dnsdomain)(cn=%s))
+domain_attributes: cn
+
+# userinfo
+# for extra userinfo
+# search for a username
+# attributes uid gid homedir
+userinfo_filter: (&(objectclass=posixaccount)(uid=%s))
+userinfo_attributes: uidNumber, gidNumber, homedir
+
+# mailaddr info
+# list of mailaddresses for a match statement
+# attribute will be ignored, but needed for ldap
+mailaddr_filter: (&(objectclass=posixaccount)(mail=%s))
+mailaddr_attributes: mail
+
+# mailaddrmap
+# used for listen on ... sender <senders>
+# maps the auth user to allowed mail addresses
+mailaddrmap_filter: (&(objectclass=posixaccount)(uid=%s))
+mailaddrmap_attributes: mail
+
+# netaddr info
+# used for "match from src <ldap>
+# propaly not that usefull because the key is the ip address and cidr mapping is not done
+netaddr_filter: (&(objectclass=host)(ipaddr=%s))
+netaddr_attributes: ipaddr
