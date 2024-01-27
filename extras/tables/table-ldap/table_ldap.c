@@ -332,13 +332,13 @@ table_ldap_lookup(int service, struct dict *params, const char *key, char *dst, 
 	case K_MAILADDR:
 	case K_MAILADDRMAP:
 	case K_NETADDR:
-		if ((ret = ldap_run_query(service, key, dst, sz)) > 0) {
+		if ((ret = ldap_run_query(service, key, dst, sz)) >= 0) {
 			return ret;
 		}
 		log_debug("debug: table-ldap: reconnecting");
-		if (!(ret = ldap_open())) {
+		if (!ldap_open()) {
 			log_warnx("warn: table-ldap: failed to connect");
-			return ret;
+			return -1;
 		}
 		return ldap_run_query(service, key, dst, sz);
 	default:
@@ -502,10 +502,11 @@ table_ldap_check(int service, struct dict *params, const char *key)
 			return ret;
 		}
 		log_debug("debug: table-ldap: reconnecting");
-		if (!(ret = ldap_open())) {
+		if (!ldap_open()) {
 			log_warnx("warn: table-ldap: failed to connect");
+			return -1;
 		}
-		return ret;
+		return ldap_run_query(service, key, NULL, 0);
 	default:
 		return -1;
 	}
