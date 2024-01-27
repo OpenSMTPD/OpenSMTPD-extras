@@ -588,9 +588,10 @@ aldap_parse_url(char *url, struct aldap_url *lu)
 		/* if a port is given */
 		if (*(forward2+1) != '\0') {
 #define PORT_MAX UINT16_MAX
-			lu->port = strtonum(++forward2, 0, PORT_MAX, &errstr);
+			strtonum(++forward2, 0, PORT_MAX, &errstr);
 			if (errstr)
 				goto fail;
+			lu->port = forward2;
 		}
 	} else {
 		lu->port = LDAP_PORT;

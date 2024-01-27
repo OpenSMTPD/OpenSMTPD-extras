@@ -19,7 +19,7 @@
 #include "ber.h"
 
 #define LDAP_URL "ldap://"
-#define LDAP_PORT 389
+#define LDAP_PORT "389"
 #define LDAP_PAGED_OID  "1.2.840.113556.1.4.319"
 
 struct aldap {
@@ -71,7 +71,7 @@ enum aldap_protocol {
 struct aldap_url {
 	int		 protocol;
 	char		*host;
-	in_port_t	 port;
+	char		*port;
 	char		*dn;
 #define MAXATTR 1024
 	char		*attributes[MAXATTR];
