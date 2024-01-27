@@ -48,6 +48,7 @@ enum {
 	LDAP_USERINFO,
 	LDAP_SOURCE,
 	LDAP_MAILADDR,
+	LDAP_MAILADDRMAP,
 	LDAP_ADDRNAME,
 
 	LDAP_MAX
@@ -248,6 +249,16 @@ ldap_config(void)
 		else if (!strcmp(key, "mailaddr_attributes")) {
 			ldap_parse_attributes(&queries[LDAP_MAILADDR],
 			    key, value, 1);
+		} else if (!strcmp(key, "mailaddrmap_filter"))
+			read_value(&queries[LDAP_MAILADDRMAP].filter, key, value);
+		else if (!strcmp(key, "mailaddrmap_attributes")) {
+			ldap_parse_attributes(&queries[LDAP_MAILADDRMAP],
+			    key, value, 1);
+		} else if (!strcmp(key, "netaddr_filter"))
+			read_value(&queries[LDAP_NETADDR].filter, key, value);
+		else if (!strcmp(key, "netaddr_attributes")) {
+			ldap_parse_attributes(&queries[LDAP_NETADDR],
+			    key, value, 1);
 		} else
 			log_warnx("warn: bogus entry \"%s\"", key);
 	}
@@ -319,6 +330,8 @@ table_ldap_lookup(int service, struct dict *params, const char *key, char *dst, 
 	case K_CREDENTIALS:
 	case K_USERINFO:
 	case K_MAILADDR:
+	case K_MAILADDRMAP:
+	case K_NETADDR:
 		if ((ret = ldap_run_query(service, key, dst, sz)) > 0) {
 			return ret;
 		}
@@ -409,6 +422,7 @@ ldap_run_query(int type, const char *key, char *dst, size_t sz)
 	case K_USERINFO:	q = &queries[LDAP_USERINFO];	break;
 	case K_SOURCE:		q = &queries[LDAP_SOURCE];	break;
 	case K_MAILADDR:	q = &queries[LDAP_MAILADDR];	break;
+	case K_MAILADDRMAP:	q = &queries[LDAP_MAILADDRMAP];	break;
 	case K_ADDRNAME:	q = &queries[LDAP_ADDRNAME];	break;
 	default:
 		return -1;
@@ -442,6 +456,7 @@ ldap_run_query(int type, const char *key, char *dst, size_t sz)
 		break;
 	case K_DOMAIN:
 	case K_MAILADDR:
+	case K_MAILADDRMAP:
 		if (strlcpy(dst, res[0][0], sz) >= sz)
 			ret = -1;
 		break;
@@ -481,6 +496,8 @@ table_ldap_check(int service, struct dict *params, const char *key)
 	case K_CREDENTIALS:
 	case K_USERINFO:
 	case K_MAILADDR:
+	case K_MAILADDRMAP:
+	case K_NETADDR:
 		if ((ret = ldap_run_query(service, key, NULL, 0)) >= 0) {
 			return ret;
 		}
