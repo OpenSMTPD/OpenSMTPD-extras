@@ -563,7 +563,7 @@ aldap_free_url(struct aldap_url *lu)
 }
 
 int
-aldap_parse_url(char *url, struct aldap_url *lu)
+aldap_parse_url(const char *url, struct aldap_url *lu)
 {
 	char		*p, *forward, *forward2;
 	const char	*errstr = NULL;
@@ -660,7 +660,6 @@ aldap_parse_url(char *url, struct aldap_url *lu)
 	if (p)
 		lu->filter = p;
 done:
-	free(url);
 	return (1);
 fail:
 	free(lu->buffer);

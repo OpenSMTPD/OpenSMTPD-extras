@@ -85,16 +85,10 @@ ldap_connect(const char *addr)
 {
 	struct aldap_url lu;
 	struct addrinfo	 hints, *res0, *res;
-	char		*buf;
 	int		 error, fd = -1;
 
-	if ((buf = strdup(addr)) == NULL)
-		return NULL;
-
-	/* aldap_parse_url frees buf on success */
-	if (aldap_parse_url(buf, &lu) != 1) {
+	if (aldap_parse_url(addr, &lu) != 1) {
 		log_warnx("warn: ldap_parse_url fail");
-		free(buf);
 		return NULL;
 	}
 

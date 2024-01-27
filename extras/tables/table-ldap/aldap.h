@@ -201,7 +201,7 @@ char	*aldap_get_dn(struct aldap_message *);
 char	*aldap_get_diagmsg(struct aldap_message *);
 char	**aldap_get_references(struct aldap_message *);
 void	 aldap_free_references(char **values);
-int	 aldap_parse_url(char *, struct aldap_url *);
+int	 aldap_parse_url(const char *, struct aldap_url *);
 void	 aldap_free_url(struct aldap_url *);
 #if 0
 int	 aldap_search_url(struct aldap *, char *, int, int, int);
