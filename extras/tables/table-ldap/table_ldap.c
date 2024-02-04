@@ -363,7 +363,7 @@ ldap_query(const char *filter, const char *key, char **attributes, char ***outp,
 		return -1;
 	if (strlcpy(key__, key, sizeof key__) >= sizeof key__)
 		return -1;
-	found = 0;
+	found = -1;
 	do {
 		if ((ret = aldap_search(aldap, basedn__, LDAP_SCOPE_SUBTREE,
 		    filter__, key__, NULL, 0, 0, 0, pg)) == -1) {
@@ -383,6 +383,8 @@ ldap_query(const char *filter, const char *key, char **attributes, char ***outp,
 					pg = m->page;
 				aldap_freemsg(m);
 				m = NULL;
+				if (found == -1)
+					found = 0;
 				break;
 			}
 			if (m->message_type != LDAP_RES_SEARCH_ENTRY)
@@ -397,7 +399,7 @@ ldap_query(const char *filter, const char *key, char **attributes, char ***outp,
 		}
 	} while (pg != NULL);
 
-	ret = found ? 1 : 0;
+	ret = found;
 	goto end;
 
 error:
