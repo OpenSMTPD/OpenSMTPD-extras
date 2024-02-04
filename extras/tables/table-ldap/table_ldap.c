@@ -431,6 +431,12 @@ ldap_run_query(int type, const char *key, char *dst, size_t sz)
 		return -1;
 	}
 
+	if (!q->filter) {
+		/* XXX get the string of the type */
+		log_warnx("warn: query %d without a filter configured", type);
+		return -1;
+	}
+
 	if (snprintf(filter, sizeof(filter), "%s", q->filter)
 	    >= (int)sizeof(filter)) {
 		log_warnx("warn: filter too large");
