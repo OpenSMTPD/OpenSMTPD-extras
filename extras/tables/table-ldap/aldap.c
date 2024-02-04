@@ -31,12 +31,12 @@
 #define ALDAP_VERSION 3
 
 static struct ber_element	*ldap_parse_search_filter(struct ber_element *,
-				    char *);
+				    char *, const char *);
 static struct ber_element	*ldap_do_parse_search_filter(
-				    struct ber_element *, char **);
+				    struct ber_element *, char **, const char *);
 char				**aldap_get_stringset(struct ber_element *);
 char				*utoa(char *);
-char				*parseval(char *, size_t);
+char				*parseval(char *, size_t, const char *);
 int				aldap_create_page_control(struct ber_element *,
 				    int, struct aldap_page_control *);
 
@@ -146,7 +146,7 @@ fail:
 
 int
 aldap_search(struct aldap *ldap, char *basedn, enum scope scope, char *filter,
-    char **attrs, int typesonly, int sizelimit, int timelimit,
+    const char *key, char **attrs, int typesonly, int sizelimit, int timelimit,
     struct aldap_page_control *page)
 {
 	struct ber_element *root = NULL, *ber, *c;
@@ -171,7 +171,7 @@ aldap_search(struct aldap *ldap, char *basedn, enum scope scope, char *filter,
 		goto fail;
 	}
 
-	if ((ber = ldap_parse_search_filter(ber, filter)) == NULL) {
+	if ((ber = ldap_parse_search_filter(ber, filter, key)) == NULL) {
 		ldap->err = ALDAP_ERR_PARSER_ERROR;
 		goto fail;
 	}
@@ -735,7 +735,7 @@ aldap_get_stringset(struct ber_element *elm)
  *	NULL, parse failed
  */
 static struct ber_element *
-ldap_parse_search_filter(struct ber_element *ber, char *filter)
+ldap_parse_search_filter(struct ber_element *ber, char *filter, const char *key)
 {
 	struct ber_element *elm;
 	char *cp;
@@ -747,7 +747,7 @@ ldap_parse_search_filter(struct ber_element *ber, char *filter)
 		return (NULL);
 	}
 
-	if ((elm = ldap_do_parse_search_filter(ber, &cp)) == NULL)
+	if ((elm = ldap_do_parse_search_filter(ber, &cp, key)) == NULL)
 		return (NULL);
 
 	if (*cp != '\0') {
@@ -777,7 +777,7 @@ ldap_parse_search_filter(struct ber_element *ber, char *filter)
  *
  */
 static struct ber_element *
-ldap_do_parse_search_filter(struct ber_element *prev, char **cpp)
+ldap_do_parse_search_filter(struct ber_element *prev, char **cpp, const char *key)
 {
 	struct ber_element *elm, *root = NULL;
 	char *attr_desc, *attr_val, *parsed_val, *cp;
@@ -809,7 +809,7 @@ ldap_do_parse_search_filter(struct ber_element *prev, char **cpp)
 
 		while (*cp == '(') {
 			if ((elm =
-			    ldap_do_parse_search_filter(elm, &cp)) == NULL)
+			    ldap_do_parse_search_filter(elm, &cp, key)) == NULL)
 				goto bad;
 		}
 
@@ -823,7 +823,7 @@ ldap_do_parse_search_filter(struct ber_element *prev, char **cpp)
 		ber_set_header(root, BER_CLASS_CONTEXT, LDAP_FILT_NOT);
 
 		cp++;				/* now points to sub-filter */
-		if (ldap_do_parse_search_filter(root, &cp) == NULL)
+		if (ldap_do_parse_search_filter(root, &cp, key) == NULL)
 			goto bad;
 
 		if (*cp != ')')			/* trailing `)` of filter */
@@ -914,7 +914,7 @@ ldap_do_parse_search_filter(struct ber_element *prev, char **cpp)
 				else
 					type = LDAP_FILT_SUBS_ANY;
 
-				if ((parsed_val = parseval(attr_val, len)) ==
+				if ((parsed_val = parseval(attr_val, len, key)) ==
 				    NULL)
 					goto callfail;
 				elm = ber_add_nstring(elm, parsed_val,
@@ -929,7 +929,7 @@ ldap_do_parse_search_filter(struct ber_element *prev, char **cpp)
 			break;
 		}
 
-		if ((parsed_val = parseval(attr_val, len)) == NULL)
+		if ((parsed_val = parseval(attr_val, len, key)) == NULL)
 			goto callfail;
 		elm = ber_add_nstring(elm, parsed_val, strlen(parsed_val));
 		free(parsed_val);
@@ -1217,13 +1217,13 @@ utoa(char *u)
  *	the argument u should be a NULL terminated sequence of ASCII bytes.
  */
 char *
-parseval(char *p, size_t len)
+parseval(char *p, size_t len, const char *key)
 {
 	char	 hex[3];
 	char	*cp = p, *buffer, *newbuffer;
-	size_t	 size, newsize, i, j;
+	size_t	 size, newsize, i, j, keylen;
 
-	size = 50;
+	size = len + 1;
 	if ((buffer = calloc(1, size)) == NULL)
 		return NULL;
 
@@ -1242,12 +1242,45 @@ parseval(char *p, size_t len)
 			(void)strlcpy(hex, cp + j + 1, sizeof(hex));
 			buffer[i] = (char)strtoumax(hex, NULL, 16);
 			j += 3;
+		} else if (cp[j] == '%') {
+			switch (cp[j + 1]) {
+			case '%':
+				buffer[i] = '%';
+				j += 2;
+				break;
+			case 's':
+				if (!key) {
+					free(buffer);
+					return NULL;
+				}
+				keylen = strlen(key);
+				if (!keylen) {
+					j += 2;
+					break;
+				}
+				newsize = size + keylen;
+				if ((newbuffer = realloc(buffer, newsize)) == NULL) {
+					free(buffer);
+					return NULL;
+				}
+				buffer = newbuffer;
+				size = newsize;
+				memcpy(buffer + i, key, keylen);
+				i += keylen - 1;
+				j += 2;
+				break;
+			default:
+				buffer[i] = '%';
+				j++;
+				break;
+			}
 		} else {
 			buffer[i] = cp[j];
 			j++;
 		}
 	}
 
+	buffer[i] = 0;
 	return buffer;
 }
 

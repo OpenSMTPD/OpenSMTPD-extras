@@ -193,7 +193,7 @@ void			 aldap_freemsg(struct aldap_message *);
 
 int	 aldap_bind(struct aldap *, char *, char *);
 int	 aldap_unbind(struct aldap *);
-int	 aldap_search(struct aldap *, char *, enum scope, char *, char **, int, int, int, struct aldap_page_control *);
+int	 aldap_search(struct aldap *, char *, enum scope, char *, const char *, char **, int, int, int, struct aldap_page_control *);
 int	 aldap_get_errno(struct aldap *, const char **);
 
 int	 aldap_get_resultcode(struct aldap_message *);

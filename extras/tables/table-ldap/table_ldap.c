@@ -347,7 +347,7 @@ table_ldap_lookup(int service, struct dict *params, const char *key, char *dst, 
 }
 
 static int
-ldap_query(const char *filter, char **attributes, char ***outp, size_t n)
+ldap_query(const char *filter, const char *key, char **attributes, char ***outp, size_t n)
 {
 	struct aldap_message		*m = NULL;
 	struct aldap_page_control	*pg = NULL;
@@ -355,15 +355,18 @@ ldap_query(const char *filter, char **attributes, char ***outp, size_t n)
 	size_t				 i;
 	char				 basedn__[MAX_LDAP_BASELEN];
 	char				 filter__[MAX_LDAP_FILTERLEN];
+	char				 key__[MAX_LDAP_IDENTIFIER];
 
 	if (strlcpy(basedn__, basedn, sizeof basedn__) >= sizeof basedn__)
 		return -1;
 	if (strlcpy(filter__, filter, sizeof filter__) >= sizeof filter__)
 		return -1;
+	if (strlcpy(key__, key, sizeof key__) >= sizeof key__)
+		return -1;
 	found = 0;
 	do {
 		if ((ret = aldap_search(aldap, basedn__, LDAP_SCOPE_SUBTREE,
-		    filter__, NULL, 0, 0, 0, pg)) == -1) {
+		    filter__, key__, NULL, 0, 0, 0, pg)) == -1) {
 			log_debug("ret=%d", ret);
 			return -1;
 		}
@@ -428,14 +431,14 @@ ldap_run_query(int type, const char *key, char *dst, size_t sz)
 		return -1;
 	}
 
-	if (snprintf(filter, sizeof(filter), q->filter, key)
+	if (snprintf(filter, sizeof(filter), "%s", q->filter)
 	    >= (int)sizeof(filter)) {
 		log_warnx("warn: filter too large");
 		return -1;
 	}
 
 	memset(res, 0, sizeof(res));
-	ret = ldap_query(filter, q->attrs, res, q->attrn);
+	ret = ldap_query(filter, key, q->attrs, res, q->attrn);
 	if (ret <= 0 || dst == NULL)
 		goto end;
 
