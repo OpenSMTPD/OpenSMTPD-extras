@@ -500,7 +500,7 @@ static int
 table_ldap_check(int service, struct dict *params, const char *key)
 {
 	int ret;
-	
+
 	switch(service) {
 	case K_ALIAS:
 	case K_DOMAIN:
