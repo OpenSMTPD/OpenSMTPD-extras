@@ -22,6 +22,8 @@ AC_INIT([OpenSMTPD-extras], [5.7.2], [bugs@opensmtpd.org], [opensmtpd-extras], [
 AC_LANG([C])
 AC_CONFIG_MACRO_DIR([m4])
 
+AC_USE_SYSTEM_EXTENSIONS
+
 AC_CONFIG_HEADER([config.h])
 AC_PROG_CC
 AC_CANONICAL_HOST
