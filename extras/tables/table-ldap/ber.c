@@ -1,5 +1,7 @@
+/*	$OpenBSD: ber.c,v 1.26 2023/11/10 12:12:02 martijn Exp $ */
+
 /*
- * Copyright (c) 2007 Reyk Floeter <reyk@vantronix.net>
+ * Copyright (c) 2007, 2012 Reyk Floeter <reyk@openbsd.org>
  * Copyright (c) 2006, 2007 Claudio Jeker <claudio@openbsd.org>
  * Copyright (c) 2006, 2007 Marc Balmer <mbalmer@openbsd.org>
  *
@@ -25,13 +27,12 @@
 #include <stdlib.h>
 #include <err.h>	/* XXX for debug output */
 #include <stdio.h>	/* XXX for debug output */
+#include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
 
 #include "ber.h"
-
-#define MINIMUM(a, b)	(((a) < (b)) ? (a) : (b))
 
 #define BER_TYPE_CONSTRUCTED	0x20	/* otherwise primitive */
 #define BER_TYPE_SINGLE_MAX	30
@@ -40,17 +41,16 @@
 #define BER_TAG_TYPE_MASK	0x7f
 #define BER_CLASS_SHIFT		6
 
-static int	ber_dump_element(struct ber *ber, struct ber_element *root);
-static void	ber_dump_header(struct ber *ber, struct ber_element *root);
-static void	ber_putc(struct ber *ber, unsigned char c);
-static void	ber_write(struct ber *ber, void *buf, size_t len);
-static ssize_t	get_id(struct ber *b, unsigned long *tag, int *class,
+static int	ober_dump_element(struct ber *ber, struct ber_element *root);
+static void	ober_dump_header(struct ber *ber, struct ber_element *root);
+static void	ober_putc(struct ber *ber, u_char c);
+static void	ober_write(struct ber *ber, void *buf, size_t len);
+static ssize_t	get_id(struct ber *b, unsigned int *tag, int *class,
     int *cstruct);
 static ssize_t	get_len(struct ber *b, ssize_t *len);
-static ssize_t	ber_read_element(struct ber *ber, struct ber_element *elm);
-static ssize_t	ber_readbuf(struct ber *b, void *buf, size_t nbytes);
-static ssize_t	ber_getc(struct ber *b, unsigned char *c);
-static ssize_t	ber_read(struct ber *ber, void *buf, size_t len);
+static ssize_t	ober_read_element(struct ber *ber, struct ber_element *elm);
+static ssize_t	ober_getc(struct ber *b, u_char *c);
+static ssize_t	ober_read(struct ber *ber, void *buf, size_t len);
 
 #ifdef DEBUG
 #define DPRINTF(...)	printf(__VA_ARGS__)
@@ -59,7 +59,7 @@ static ssize_t	ber_read(struct ber *ber, void *buf, size_t len);
 #endif
 
 struct ber_element *
-ber_get_element(unsigned long encoding)
+ober_get_element(unsigned int encoding)
 {
 	struct ber_element *elm;
 
@@ -67,13 +67,13 @@ ber_get_element(unsigned long encoding)
 		return NULL;
 
 	elm->be_encoding = encoding;
-	ber_set_header(elm, BER_CLASS_UNIVERSAL, BER_TYPE_DEFAULT);
+	ober_set_header(elm, BER_CLASS_UNIVERSAL, BER_TYPE_DEFAULT);
 
 	return elm;
 }
 
 void
-ber_set_header(struct ber_element *elm, int class, unsigned long type)
+ober_set_header(struct ber_element *elm, int class, unsigned int type)
 {
 	elm->be_class = class & BER_CLASS_MASK;
 	if (type == BER_TYPE_DEFAULT)
@@ -82,7 +82,7 @@ ber_set_header(struct ber_element *elm, int class, unsigned long type)
 }
 
 void
-ber_link_elements(struct ber_element *prev, struct ber_element *elm)
+ober_link_elements(struct ber_element *prev, struct ber_element *elm)
 {
 	if (prev != NULL) {
 		if ((prev->be_encoding == BER_TYPE_SEQUENCE ||
@@ -95,7 +95,7 @@ ber_link_elements(struct ber_element *prev, struct ber_element *elm)
 }
 
 struct ber_element *
-ber_unlink_elements(struct ber_element *prev)
+ober_unlink_elements(struct ber_element *prev)
 {
 	struct ber_element *elm;
 
@@ -113,53 +113,53 @@ ber_unlink_elements(struct ber_element *prev)
 }
 
 void
-ber_replace_elements(struct ber_element *prev, struct ber_element *new)
+ober_replace_elements(struct ber_element *prev, struct ber_element *new)
 {
 	struct ber_element *ber, *next;
 
-	ber = ber_unlink_elements(prev);
-	next = ber_unlink_elements(ber);
-	ber_link_elements(new, next);
-	ber_link_elements(prev, new);
+	ber = ober_unlink_elements(prev);
+	next = ober_unlink_elements(ber);
+	ober_link_elements(new, next);
+	ober_link_elements(prev, new);
 
 	/* cleanup old element */
-	ber_free_elements(ber);
+	ober_free_elements(ber);
 }
 
 struct ber_element *
-ber_add_sequence(struct ber_element *prev)
+ober_add_sequence(struct ber_element *prev)
 {
 	struct ber_element *elm;
 
-	if ((elm = ber_get_element(BER_TYPE_SEQUENCE)) == NULL)
+	if ((elm = ober_get_element(BER_TYPE_SEQUENCE)) == NULL)
 		return NULL;
 
-	ber_link_elements(prev, elm);
+	ober_link_elements(prev, elm);
 
 	return elm;
 }
 
 struct ber_element *
-ber_add_set(struct ber_element *prev)
+ober_add_set(struct ber_element *prev)
 {
 	struct ber_element *elm;
 
-	if ((elm = ber_get_element(BER_TYPE_SET)) == NULL)
+	if ((elm = ober_get_element(BER_TYPE_SET)) == NULL)
 		return NULL;
 
-	ber_link_elements(prev, elm);
+	ober_link_elements(prev, elm);
 
 	return elm;
 }
 
 struct ber_element *
-ber_add_enumerated(struct ber_element *prev, long long val)
+ober_add_enumerated(struct ber_element *prev, long long val)
 {
 	struct ber_element *elm;
-	unsigned int i, len = 0;
-	unsigned char cur, last = 0;
+	u_int i, len = 0;
+	u_char cur, last = 0;
 
-	if ((elm = ber_get_element(BER_TYPE_ENUMERATED)) == NULL)
+	if ((elm = ober_get_element(BER_TYPE_ENUMERATED)) == NULL)
 		return NULL;
 
 	elm->be_numeric = val;
@@ -176,19 +176,19 @@ ber_add_enumerated(struct ber_element *prev, long long val)
 	}
 	elm->be_len = len + 1;
 
-	ber_link_elements(prev, elm);
+	ober_link_elements(prev, elm);
 
 	return elm;
 }
 
 struct ber_element *
-ber_add_integer(struct ber_element *prev, long long val)
+ober_add_integer(struct ber_element *prev, long long val)
 {
 	struct ber_element *elm;
-	unsigned int i, len = 0;
-	unsigned char cur, last = 0;
+	u_int i, len = 0;
+	u_char cur, last = 0;
 
-	if ((elm = ber_get_element(BER_TYPE_INTEGER)) == NULL)
+	if ((elm = ober_get_element(BER_TYPE_INTEGER)) == NULL)
 		return NULL;
 
 	elm->be_numeric = val;
@@ -205,157 +205,196 @@ ber_add_integer(struct ber_element *prev, long long val)
 	}
 	elm->be_len = len + 1;
 
-	ber_link_elements(prev, elm);
+	ober_link_elements(prev, elm);
 
 	return elm;
 }
 
 int
-ber_get_integer(struct ber_element *elm, long long *n)
+ober_get_integer(struct ber_element *elm, long long *n)
 {
 	if (elm->be_encoding != BER_TYPE_INTEGER)
 		return -1;
 
-	*n = elm->be_numeric;
+	if (n != NULL)
+		*n = elm->be_numeric;
 	return 0;
 }
 
 int
-ber_get_enumerated(struct ber_element *elm, long long *n)
+ober_get_enumerated(struct ber_element *elm, long long *n)
 {
 	if (elm->be_encoding != BER_TYPE_ENUMERATED)
 		return -1;
 
-	*n = elm->be_numeric;
+	if (n != NULL)
+		*n = elm->be_numeric;
 	return 0;
 }
 
-
 struct ber_element *
-ber_add_boolean(struct ber_element *prev, int boolean)
+ober_add_boolean(struct ber_element *prev, int bool)
 {
 	struct ber_element *elm;
 
-	if ((elm = ber_get_element(BER_TYPE_BOOLEAN)) == NULL)
+	if ((elm = ober_get_element(BER_TYPE_BOOLEAN)) == NULL)
 		return NULL;
 
-	elm->be_numeric = boolean ? 0xff : 0;
+	elm->be_numeric = bool ? 0xff : 0;
 	elm->be_len = 1;
 
-	ber_link_elements(prev, elm);
+	ober_link_elements(prev, elm);
 
 	return elm;
 }
 
 int
-ber_get_boolean(struct ber_element *elm, int *b)
+ober_get_boolean(struct ber_element *elm, int *b)
 {
 	if (elm->be_encoding != BER_TYPE_BOOLEAN)
 		return -1;
 
-	*b = !(elm->be_numeric == 0);
+	if (b != NULL)
+		*b = !(elm->be_numeric == 0);
 	return 0;
 }
 
 struct ber_element *
-ber_add_string(struct ber_element *prev, const char *string)
+ober_add_string(struct ber_element *prev, const char *string)
 {
-	return ber_add_nstring(prev, string, strlen(string));
+	return ober_add_nstring(prev, string, strlen(string));
 }
 
 struct ber_element *
-ber_add_nstring(struct ber_element *prev, const char *string0, size_t len)
+ober_add_nstring(struct ber_element *prev, const char *string0, size_t len)
 {
 	struct ber_element *elm;
 	char *string;
 
-	if ((string = calloc(1, len)) == NULL)
+	if ((string = calloc(1, len + 1)) == NULL)
 		return NULL;
-	if ((elm = ber_get_element(BER_TYPE_OCTETSTRING)) == NULL) {
+	if ((elm = ober_get_element(BER_TYPE_OCTETSTRING)) == NULL) {
 		free(string);
 		return NULL;
 	}
 
-	memmove(string, string0, len);
+	bcopy(string0, string, len);
 	elm->be_val = string;
 	elm->be_len = len;
 	elm->be_free = 1;		/* free string on cleanup */
 
-	ber_link_elements(prev, elm);
+	ober_link_elements(prev, elm);
 
 	return elm;
 }
 
+struct ber_element *
+ober_add_ostring(struct ber_element *prev, struct ber_octetstring *s)
+{
+	return ober_add_nstring(prev, s->ostr_val, s->ostr_len);
+}
+
 int
-ber_get_string(struct ber_element *elm, char **s)
+ober_get_string(struct ber_element *elm, char **s)
 {
 	if (elm->be_encoding != BER_TYPE_OCTETSTRING)
 		return -1;
+	/* XXX some components use getstring on binary data containing \0 */
+#if 0
+	if (memchr(elm->be_val, '\0', elm->be_len) != NULL)
+		return -1;
+#endif
 
-	*s = elm->be_val;
+	if (s != NULL)
+		*s = elm->be_val;
 	return 0;
 }
 
 int
-ber_get_nstring(struct ber_element *elm, void **p, size_t *len)
+ober_get_nstring(struct ber_element *elm, void **p, size_t *len)
 {
 	if (elm->be_encoding != BER_TYPE_OCTETSTRING)
 		return -1;
 
-	*p = elm->be_val;
-	*len = elm->be_len;
+	if (len != NULL)
+		*len = elm->be_len;
+	if (p != NULL) {
+		if (len != NULL)
+			*p = elm->be_val;
+		else
+			*p = NULL;
+	}
+	return 0;
+}
+
+int
+ober_get_ostring(struct ber_element *elm, struct ber_octetstring *s)
+{
+	if (elm->be_encoding != BER_TYPE_OCTETSTRING)
+		return -1;
+
+	if (s != NULL) {
+		s->ostr_val = elm->be_val;
+		s->ostr_len = elm->be_len;
+	}
 	return 0;
 }
 
 struct ber_element *
-ber_add_bitstring(struct ber_element *prev, const void *v0, size_t len)
+ober_add_bitstring(struct ber_element *prev, const void *v0, size_t len)
 {
 	struct ber_element *elm;
 	void *v;
 
 	if ((v = calloc(1, len)) == NULL)
 		return NULL;
-	if ((elm = ber_get_element(BER_TYPE_BITSTRING)) == NULL) {
+	if ((elm = ober_get_element(BER_TYPE_BITSTRING)) == NULL) {
 		free(v);
 		return NULL;
 	}
 
-	memmove(v, v0, len);
+	bcopy(v0, v, len);
 	elm->be_val = v;
 	elm->be_len = len;
 	elm->be_free = 1;		/* free string on cleanup */
 
-	ber_link_elements(prev, elm);
+	ober_link_elements(prev, elm);
 
 	return elm;
 }
 
 int
-ber_get_bitstring(struct ber_element *elm, void **v, size_t *len)
+ober_get_bitstring(struct ber_element *elm, void **v, size_t *len)
 {
 	if (elm->be_encoding != BER_TYPE_BITSTRING)
 		return -1;
 
-	*v = elm->be_val;
-	*len = elm->be_len;
+	if (len != NULL)
+		*len = elm->be_len;
+	if (v != NULL) {
+		if (len != NULL)
+			*v = elm->be_val;
+		else
+			*v = NULL;
+	}
 	return 0;
 }
 
 struct ber_element *
-ber_add_null(struct ber_element *prev)
+ober_add_null(struct ber_element *prev)
 {
 	struct ber_element *elm;
 
-	if ((elm = ber_get_element(BER_TYPE_NULL)) == NULL)
+	if ((elm = ober_get_element(BER_TYPE_NULL)) == NULL)
 		return NULL;
 
-	ber_link_elements(prev, elm);
+	ober_link_elements(prev, elm);
 
 	return elm;
 }
 
 int
-ber_get_null(struct ber_element *elm)
+ober_get_null(struct ber_element *elm)
 {
 	if (elm->be_encoding != BER_TYPE_NULL)
 		return -1;
@@ -364,20 +403,20 @@ ber_get_null(struct ber_element *elm)
 }
 
 struct ber_element *
-ber_add_eoc(struct ber_element *prev)
+ober_add_eoc(struct ber_element *prev)
 {
 	struct ber_element *elm;
 
-	if ((elm = ber_get_element(BER_TYPE_EOC)) == NULL)
+	if ((elm = ober_get_element(BER_TYPE_EOC)) == NULL)
 		return NULL;
 
-	ber_link_elements(prev, elm);
+	ober_link_elements(prev, elm);
 
 	return elm;
 }
 
 int
-ber_get_eoc(struct ber_element *elm)
+ober_get_eoc(struct ber_element *elm)
 {
 	if (elm->be_encoding != BER_TYPE_EOC)
 		return -1;
@@ -386,10 +425,10 @@ ber_get_eoc(struct ber_element *elm)
 }
 
 size_t
-ber_oid2ber(struct ber_oid *o, uint8_t *buf, size_t len)
+ober_oid2ber(struct ber_oid *o, u_int8_t *buf, size_t len)
 {
-	uint32_t	 v;
-	unsigned int	 i, j = 0, k;
+	u_int32_t	 v;
+	u_int		 i, j = 0, k;
 
 	if (o->bo_n < BER_MIN_OID_LEN || o->bo_n > BER_MAX_OID_LEN ||
 	    o->bo_id[0] > 2 || o->bo_id[1] > 40)
@@ -398,7 +437,7 @@ ber_oid2ber(struct ber_oid *o, uint8_t *buf, size_t len)
 	v = (o->bo_id[0] * 40) + o->bo_id[1];
 	for (i = 2, j = 0; i <= o->bo_n; v = o->bo_id[i], i++) {
 		for (k = 28; k >= 7; k -= 7) {
-			if (v >= (unsigned int)(1 << k)) {
+			if (v >= (u_int)(1 << k)) {
 				if (len)
 					buf[j] = v >> k | BER_TAG_MORE;
 				j++;
@@ -413,7 +452,7 @@ ber_oid2ber(struct ber_oid *o, uint8_t *buf, size_t len)
 }
 
 int
-ber_string2oid(const char *oidstr, struct ber_oid *o)
+ober_string2oid(const char *oidstr, struct ber_oid *o)
 {
 	char			*sp, *p, str[BUFSIZ];
 	const char		*errstr;
@@ -434,17 +473,38 @@ ber_string2oid(const char *oidstr, struct ber_oid *o)
 	return (0);
 }
 
+int
+ober_oid_cmp(struct ber_oid *a, struct ber_oid *b)
+{
+	size_t	 i, min;
+
+	min = a->bo_n < b->bo_n ? a->bo_n : b->bo_n;
+	for (i = 0; i < min; i++) {
+		if (a->bo_id[i] < b->bo_id[i])
+			return (-1);
+		if (a->bo_id[i] > b->bo_id[i])
+			return (1);
+	}
+	/* a is parent of b */
+	if (a->bo_n < b->bo_n)
+		return (-2);
+	/* a is child of b */
+	if (a->bo_n > b->bo_n)
+		return 2;
+	return (0);
+}
+
 struct ber_element *
-ber_add_oid(struct ber_element *prev, struct ber_oid *o)
+ober_add_oid(struct ber_element *prev, struct ber_oid *o)
 {
 	struct ber_element	*elm;
-	uint8_t			*buf;
+	u_int8_t		*buf;
 	size_t			 len;
 
-	if ((elm = ber_get_element(BER_TYPE_OBJECT)) == NULL)
+	if ((elm = ober_get_element(BER_TYPE_OBJECT)) == NULL)
 		return (NULL);
 
-	if ((len = ber_oid2ber(o, NULL, 0)) == 0)
+	if ((len = ober_oid2ber(o, NULL, 0)) == 0)
 		goto fail;
 
 	if ((buf = calloc(1, len)) == NULL)
@@ -454,56 +514,56 @@ ber_add_oid(struct ber_element *prev, struct ber_oid *o)
 	elm->be_len = len;
 	elm->be_free = 1;
 
-	if (ber_oid2ber(o, buf, len) != len)
+	if (ober_oid2ber(o, buf, len) != len)
 		goto fail;
 
-	ber_link_elements(prev, elm);
+	ober_link_elements(prev, elm);
 
 	return (elm);
 
  fail:
-	ber_free_elements(elm);
+	ober_free_elements(elm);
 	return (NULL);
 }
 
 struct ber_element *
-ber_add_noid(struct ber_element *prev, struct ber_oid *o, int n)
+ober_add_noid(struct ber_element *prev, struct ber_oid *o, int n)
 {
 	struct ber_oid		 no;
 
 	if (n > BER_MAX_OID_LEN)
 		return (NULL);
 	no.bo_n = n;
-	memmove(&no.bo_id, &o->bo_id, sizeof(no.bo_id));
+	bcopy(&o->bo_id, &no.bo_id, sizeof(no.bo_id));
 
-	return (ber_add_oid(prev, &no));
+	return (ober_add_oid(prev, &no));
 }
 
 struct ber_element *
-ber_add_oidstring(struct ber_element *prev, const char *oidstr)
+ober_add_oidstring(struct ber_element *prev, const char *oidstr)
 {
 	struct ber_oid		 o;
 
-	if (ber_string2oid(oidstr, &o) == -1)
+	if (ober_string2oid(oidstr, &o) == -1)
 		return (NULL);
 
-	return (ber_add_oid(prev, &o));
+	return (ober_add_oid(prev, &o));
 }
 
 int
-ber_get_oid(struct ber_element *elm, struct ber_oid *o)
+ober_get_oid(struct ber_element *elm, struct ber_oid *o)
 {
-	uint8_t		*buf;
+	u_int8_t	*buf;
 	size_t		 len, i = 0, j = 0;
 
 	if (elm->be_encoding != BER_TYPE_OBJECT)
 		return (-1);
 
+	if (o == NULL)
+		return 0;
+
 	buf = elm->be_val;
 	len = elm->be_len;
-
-	if (!buf[i])
-		return (-1);
 
 	memset(o, 0, sizeof(*o));
 	o->bo_id[j++] = buf[i] / 40;
@@ -519,122 +579,139 @@ ber_get_oid(struct ber_element *elm, struct ber_oid *o)
 	return (0);
 }
 
+#define _MAX_SEQ		 128
 struct ber_element *
-ber_printf_elements(struct ber_element *ber, char *fmt, ...)
+ober_printf_elements(struct ber_element *ber, char *fmt, ...)
 {
 	va_list			 ap;
-	int			 d, class;
+	int			 d, class, level = 0;
 	size_t			 len;
-	unsigned long		 type;
+	unsigned int		 type;
 	long long		 i;
 	char			*s;
 	void			*p;
 	struct ber_oid		*o;
-	struct ber_element	*sub = ber, *e;
+	struct ber_element	*parent[_MAX_SEQ], *e;
+	struct ber_element	*origber = ber, *firstber = NULL;
+
+	memset(parent, 0, sizeof(struct ber_element *) * _MAX_SEQ);
 
 	va_start(ap, fmt);
+	
 	while (*fmt) {
 		switch (*fmt++) {
 		case 'B':
 			p = va_arg(ap, void *);
 			len = va_arg(ap, size_t);
-			if ((ber = ber_add_bitstring(ber, p, len)) == NULL)
+			if ((ber = ober_add_bitstring(ber, p, len)) == NULL)
 				goto fail;
 			break;
 		case 'b':
 			d = va_arg(ap, int);
-			if ((ber = ber_add_boolean(ber, d)) == NULL)
+			if ((ber = ober_add_boolean(ber, d)) == NULL)
 				goto fail;
 			break;
 		case 'd':
 			d = va_arg(ap, int);
-			if ((ber = ber_add_integer(ber, d)) == NULL)
+			if ((ber = ober_add_integer(ber, d)) == NULL)
 				goto fail;
 			break;
 		case 'e':
 			e = va_arg(ap, struct ber_element *);
-			ber_link_elements(ber, e);
+			ober_link_elements(ber, e);
 			break;
 		case 'E':
 			i = va_arg(ap, long long);
-			if ((ber = ber_add_enumerated(ber, i)) == NULL)
+			if ((ber = ober_add_enumerated(ber, i)) == NULL)
 				goto fail;
 			break;
 		case 'i':
 			i = va_arg(ap, long long);
-			if ((ber = ber_add_integer(ber, i)) == NULL)
+			if ((ber = ober_add_integer(ber, i)) == NULL)
 				goto fail;
 			break;
 		case 'O':
 			o = va_arg(ap, struct ber_oid *);
-			if ((ber = ber_add_oid(ber, o)) == NULL)
+			if ((ber = ober_add_oid(ber, o)) == NULL)
 				goto fail;
 			break;
 		case 'o':
 			s = va_arg(ap, char *);
-			if ((ber = ber_add_oidstring(ber, s)) == NULL)
+			if ((ber = ober_add_oidstring(ber, s)) == NULL)
 				goto fail;
 			break;
 		case 's':
 			s = va_arg(ap, char *);
-			if ((ber = ber_add_string(ber, s)) == NULL)
+			if ((ber = ober_add_string(ber, s)) == NULL)
 				goto fail;
 			break;
 		case 't':
 			class = va_arg(ap, int);
-			type = va_arg(ap, unsigned long);
-			ber_set_header(ber, class, type);
+			type = va_arg(ap, unsigned int);
+			ober_set_header(ber, class, type);
 			break;
 		case 'x':
 			s = va_arg(ap, char *);
 			len = va_arg(ap, size_t);
-			if ((ber = ber_add_nstring(ber, s, len)) == NULL)
+			if ((ber = ober_add_nstring(ber, s, len)) == NULL)
 				goto fail;
 			break;
 		case '0':
-			if ((ber = ber_add_null(ber)) == NULL)
+			if ((ber = ober_add_null(ber)) == NULL)
 				goto fail;
 			break;
 		case '{':
-			if ((ber = sub = ber_add_sequence(ber)) == NULL)
+			if (level >= _MAX_SEQ-1)
 				goto fail;
+			if ((ber= ober_add_sequence(ber)) == NULL)
+				goto fail;
+			parent[level++] = ber;
 			break;
 		case '(':
-			if ((ber = sub = ber_add_set(ber)) == NULL)
+			if (level >= _MAX_SEQ-1)
 				goto fail;
+			if ((ber = ober_add_set(ber)) == NULL)
+				goto fail;
+			parent[level++] = ber;
 			break;
 		case '}':
 		case ')':
-			ber = sub;
+			if (level <= 0 || parent[level - 1] == NULL)
+				goto fail;
+			ber = parent[--level];
 			break;
 		case '.':
-			if ((e = ber_add_eoc(ber)) == NULL)
+			if ((e = ober_add_eoc(ber)) == NULL)
 				goto fail;
 			ber = e;
 			break;
 		default:
 			break;
 		}
+		if (firstber == NULL)
+			firstber = ber;
 	}
 	va_end(ap);
 
 	return (ber);
  fail:
-	ber_free_elements(ber);
+	if (origber != NULL)
+		ober_unlink_elements(origber);
+	ober_free_elements(firstber);
 	return (NULL);
 }
 
 int
-ber_scanf_elements(struct ber_element *ber, char *fmt, ...)
+ober_scanf_elements(struct ber_element *ber, char *fmt, ...)
 {
-#define _MAX_SEQ		 128
 	va_list			 ap;
 	int			*d, level = -1;
-	unsigned long		*t;
-	long long		*i;
+	unsigned int		*t;
+	long long		*i, l;
 	void			**ptr;
 	size_t			*len, ret = 0, n = strlen(fmt);
 	char			**s;
+	off_t			*pos;
 	struct ber_oid		*o;
 	struct ber_element	*parent[_MAX_SEQ], **e;
 
@@ -642,18 +719,33 @@ ber_scanf_elements(struct ber_element *ber, char *fmt, ...)
 
 	va_start(ap, fmt);
 	while (*fmt) {
+		if (ber == NULL && *fmt != '$' && *fmt != '}' && *fmt != ')')
+			goto fail;
 		switch (*fmt++) {
+		case '$':
+			if (ber != NULL)
+				goto fail;
+			ret++;
+			continue;
 		case 'B':
 			ptr = va_arg(ap, void **);
 			len = va_arg(ap, size_t *);
-			if (ber_get_bitstring(ber, ptr, len) == -1)
+			if (ober_get_bitstring(ber, ptr, len) == -1)
 				goto fail;
 			ret++;
 			break;
 		case 'b':
 			d = va_arg(ap, int *);
-			if (ber_get_boolean(ber, d) == -1)
+			if (ober_get_boolean(ber, d) == -1)
 				goto fail;
+			ret++;
+			break;
+		case 'd':
+			d = va_arg(ap, int *);
+			if (ober_get_integer(ber, &l) == -1)
+				goto fail;
+			if (d != NULL)
+				*d = l;
 			ret++;
 			break;
 		case 'e':
@@ -663,19 +755,19 @@ ber_scanf_elements(struct ber_element *ber, char *fmt, ...)
 			continue;
 		case 'E':
 			i = va_arg(ap, long long *);
-			if (ber_get_enumerated(ber, i) == -1)
+			if (ober_get_enumerated(ber, i) == -1)
 				goto fail;
 			ret++;
 			break;
 		case 'i':
 			i = va_arg(ap, long long *);
-			if (ber_get_integer(ber, i) == -1)
+			if (ober_get_integer(ber, i) == -1)
 				goto fail;
 			ret++;
 			break;
 		case 'o':
 			o = va_arg(ap, struct ber_oid *);
-			if (ber_get_oid(ber, o) == -1)
+			if (ober_get_oid(ber, o) == -1)
 				goto fail;
 			ret++;
 			break;
@@ -684,21 +776,23 @@ ber_scanf_elements(struct ber_element *ber, char *fmt, ...)
 			break;
 		case 's':
 			s = va_arg(ap, char **);
-			if (ber_get_string(ber, s) == -1)
+			if (ober_get_string(ber, s) == -1)
 				goto fail;
 			ret++;
 			break;
 		case 't':
 			d = va_arg(ap, int *);
-			t = va_arg(ap, unsigned long *);
-			*d = ber->be_class;
-			*t = ber->be_type;
+			t = va_arg(ap, unsigned int *);
+			if (d != NULL)
+				*d = ber->be_class;
+			if (t != NULL)
+				*t = ber->be_type;
 			ret++;
 			continue;
 		case 'x':
 			ptr = va_arg(ap, void **);
 			len = va_arg(ap, size_t *);
-			if (ber_get_nstring(ber, ptr, len) == -1)
+			if (ober_get_nstring(ber, ptr, len) == -1)
 				goto fail;
 			ret++;
 			break;
@@ -712,12 +806,17 @@ ber_scanf_elements(struct ber_element *ber, char *fmt, ...)
 				goto fail;
 			ret++;
 			break;
+		case 'p':
+			pos = va_arg(ap, off_t *);
+			*pos = ober_getpos(ber);
+			ret++;
+			continue;
 		case '{':
 		case '(':
 			if (ber->be_encoding != BER_TYPE_SEQUENCE &&
 			    ber->be_encoding != BER_TYPE_SET)
 				goto fail;
-			if (ber->be_sub == NULL || level >= _MAX_SEQ-1)
+			if (level >= _MAX_SEQ-1)
 				goto fail;
 			parent[++level] = ber;
 			ber = ber->be_sub;
@@ -725,17 +824,15 @@ ber_scanf_elements(struct ber_element *ber, char *fmt, ...)
 			continue;
 		case '}':
 		case ')':
-			if (parent[level] == NULL)
+			if (level < 0 || parent[level] == NULL)
 				goto fail;
 			ber = parent[level--];
 			ret++;
-			continue;
+			break;
 		default:
 			goto fail;
 		}
 
-		if (ber->be_next == NULL)
-			continue;
 		ber = ber->be_next;
 	}
 	va_end(ap);
@@ -747,24 +844,33 @@ ber_scanf_elements(struct ber_element *ber, char *fmt, ...)
 
 }
 
+ssize_t
+ober_get_writebuf(struct ber *b, void **buf)
+{
+	if (b->br_wbuf == NULL)
+		return -1;
+	*buf = b->br_wbuf;
+	return (b->br_wend - b->br_wbuf);
+}
+
 /*
- * write ber elements to the socket
+ * write ber elements to the write buffer
  *
  * params:
- *	ber	holds the socket
+ *	ber	holds the destination write buffer byte stream
  *	root	fully populated element tree
  *
  * returns:
- *      >=0     number of bytes written
+ *	>=0	number of bytes written
  *	-1	on failure and sets errno
  */
-int
-ber_write_elements(struct ber *ber, struct ber_element *root)
+ssize_t
+ober_write_elements(struct ber *ber, struct ber_element *root)
 {
 	size_t len;
 
 	/* calculate length because only the definite form is required */
-	len = ber_calc_len(root);
+	len = ober_calc_len(root);
 	DPRINTF("write ber element of %zd bytes length\n", len);
 
 	if (ber->br_wbuf != NULL && ber->br_wbuf + len > ber->br_wend) {
@@ -780,21 +886,24 @@ ber_write_elements(struct ber *ber, struct ber_element *root)
 	/* reset write pointer */
 	ber->br_wptr = ber->br_wbuf;
 
-	if (ber_dump_element(ber, root) == -1)
+	if (ober_dump_element(ber, root) == -1)
 		return -1;
-
-	/* XXX this should be moved to a different function */
-	if (ber->fd != -1)
-		return write(ber->fd, ber->br_wbuf, len);
 
 	return (len);
 }
 
+void
+ober_set_readbuf(struct ber *b, void *buf, size_t len)
+{
+	b->br_rbuf = b->br_rptr = buf;
+	b->br_rend = (u_int8_t *)buf + len;
+}
+
 /*
- * read ber elements from the socket
+ * read ber elements from the read buffer
  *
  * params:
- *	ber	holds the socket and lot more
+ *	ber	holds a fully populated read buffer byte stream
  *	root	if NULL, build up an element tree from what we receive on
  *		the wire. If not null, use the specified encoding for the
  *		elements received.
@@ -804,35 +913,93 @@ ber_write_elements(struct ber *ber, struct ber_element *root)
  *	NULL, type mismatch or read error
  */
 struct ber_element *
-ber_read_elements(struct ber *ber, struct ber_element *elm)
+ober_read_elements(struct ber *ber, struct ber_element *elm)
 {
 	struct ber_element *root = elm;
 
 	if (root == NULL) {
-		if ((root = ber_get_element(0)) == NULL)
+		if ((root = ober_get_element(0)) == NULL)
 			return NULL;
 	}
 
 	DPRINTF("read ber elements, root %p\n", root);
 
-	if (ber_read_element(ber, root) == -1) {
+	if (ober_read_element(ber, root) == -1) {
 		/* Cleanup if root was allocated by us */
 		if (elm == NULL)
-			ber_free_elements(root);
+			ober_free_elements(root);
 		return NULL;
 	}
 
 	return root;
 }
 
+off_t
+ober_getpos(struct ber_element *elm)
+{
+	return elm->be_offs;
+}
+
+struct ber_element *
+ober_dup(struct ber_element *orig)
+{
+	struct ber_element *new;
+
+	if ((new = malloc(sizeof(*new))) == NULL)
+		return NULL;
+	memcpy(new, orig, sizeof(*new));
+	new->be_next = NULL;
+	new->be_sub = NULL;
+
+	if (orig->be_next != NULL) {
+		if ((new->be_next = ober_dup(orig->be_next)) == NULL)
+			goto fail;
+	}
+	if (orig->be_encoding == BER_TYPE_SEQUENCE ||
+	    orig->be_encoding == BER_TYPE_SET) {
+		if (orig->be_sub != NULL) {
+			if ((new->be_sub = ober_dup(orig->be_sub)) == NULL)
+				goto fail;
+		}
+	} else if (orig->be_encoding == BER_TYPE_OCTETSTRING ||
+	    orig->be_encoding == BER_TYPE_BITSTRING ||
+	    orig->be_encoding == BER_TYPE_OBJECT) {
+		if (orig->be_val != NULL) {
+			if ((new->be_val = malloc(orig->be_len)) == NULL)
+				goto fail;
+			memcpy(new->be_val, orig->be_val, orig->be_len);
+		}
+	} else
+		new->be_numeric = orig->be_numeric;
+	return new;
+ fail:
+	ober_free_elements(new);
+	return NULL;
+}
+
 void
-ber_free_elements(struct ber_element *root)
+ober_free_element(struct ber_element *root)
 {
 	if (root->be_sub && (root->be_encoding == BER_TYPE_SEQUENCE ||
 	    root->be_encoding == BER_TYPE_SET))
-		ber_free_elements(root->be_sub);
+		ober_free_elements(root->be_sub);
+	if (root->be_free && (root->be_encoding == BER_TYPE_OCTETSTRING ||
+	    root->be_encoding == BER_TYPE_BITSTRING ||
+	    root->be_encoding == BER_TYPE_OBJECT))
+		free(root->be_val);
+	free(root);
+}
+
+void
+ober_free_elements(struct ber_element *root)
+{
+	if (root == NULL)
+		return;
+	if (root->be_sub && (root->be_encoding == BER_TYPE_SEQUENCE ||
+	    root->be_encoding == BER_TYPE_SET))
+		ober_free_elements(root->be_sub);
 	if (root->be_next)
-		ber_free_elements(root->be_next);
+		ober_free_elements(root->be_next);
 	if (root->be_free && (root->be_encoding == BER_TYPE_OCTETSTRING ||
 	    root->be_encoding == BER_TYPE_BITSTRING ||
 	    root->be_encoding == BER_TYPE_OBJECT))
@@ -841,16 +1008,16 @@ ber_free_elements(struct ber_element *root)
 }
 
 size_t
-ber_calc_len(struct ber_element *root)
+ober_calc_len(struct ber_element *root)
 {
-	unsigned long t;
+	unsigned int t;
 	size_t s;
 	size_t size = 2;	/* minimum 1 byte head and 1 byte size */
 
 	/* calculate the real length of a sequence or set */
 	if (root->be_sub && (root->be_encoding == BER_TYPE_SEQUENCE ||
 	    root->be_encoding == BER_TYPE_SET))
-		root->be_len = ber_calc_len(root->be_sub);
+		root->be_len = ober_calc_len(root->be_sub);
 
 	/* fix header length for extended types */
 	if (root->be_type > BER_TYPE_SINGLE_MAX)
@@ -862,13 +1029,34 @@ ber_calc_len(struct ber_element *root)
 
 	/* calculate the length of the following elements */
 	if (root->be_next)
-		size += ber_calc_len(root->be_next);
+		size += ober_calc_len(root->be_next);
 
 	/* This is an empty element, do not use a minimal size */
-	if (root->be_type == BER_TYPE_EOC && root->be_len == 0)
+	if (root->be_class == BER_CLASS_UNIVERSAL &&
+	    root->be_type == BER_TYPE_EOC && root->be_len == 0)
 		return (0);
 
 	return (root->be_len + size);
+}
+
+void
+ober_set_application(struct ber *b, unsigned int (*cb)(struct ber_element *))
+{
+	b->br_application = cb;
+}
+
+void
+ober_set_writecallback(struct ber_element *elm, void (*cb)(void *, size_t),
+    void *arg)
+{
+	elm->be_cb = cb;
+	elm->be_cbarg = arg;
+}
+
+void
+ober_free(struct ber *b)
+{
+	free(b->br_wbuf);
 }
 
 /*
@@ -876,13 +1064,15 @@ ber_calc_len(struct ber_element *root)
  */
 
 static int
-ber_dump_element(struct ber *ber, struct ber_element *root)
+ober_dump_element(struct ber *ber, struct ber_element *root)
 {
 	unsigned long long l;
 	int i;
 	uint8_t u;
 
-	ber_dump_header(ber, root);
+	ober_dump_header(ber, root);
+	if (root->be_cb)
+		root->be_cb(root->be_cbarg, ber->br_wptr - ber->br_wbuf);
 
 	switch (root->be_encoding) {
 	case BER_TYPE_BOOLEAN:
@@ -891,35 +1081,34 @@ ber_dump_element(struct ber *ber, struct ber_element *root)
 		l = (unsigned long long)root->be_numeric;
 		for (i = root->be_len; i > 0; i--) {
 			u = (l >> ((i - 1) * 8)) & 0xff;
-			ber_putc(ber, u);
+			ober_putc(ber, u);
 		}
 		break;
 	case BER_TYPE_BITSTRING:
-		return -1;
 	case BER_TYPE_OCTETSTRING:
 	case BER_TYPE_OBJECT:
-		ber_write(ber, root->be_val, root->be_len);
+		ober_write(ber, root->be_val, root->be_len);
 		break;
 	case BER_TYPE_NULL:	/* no payload */
 	case BER_TYPE_EOC:
 		break;
 	case BER_TYPE_SEQUENCE:
 	case BER_TYPE_SET:
-		if (root->be_sub && ber_dump_element(ber, root->be_sub) == -1)
+		if (root->be_sub && ober_dump_element(ber, root->be_sub) == -1)
 			return -1;
 		break;
 	}
 
 	if (root->be_next == NULL)
 		return 0;
-	return ber_dump_element(ber, root->be_next);
+	return ober_dump_element(ber, root->be_next);
 }
 
 static void
-ber_dump_header(struct ber *ber, struct ber_element *root)
+ober_dump_header(struct ber *ber, struct ber_element *root)
 {
-	unsigned char id = 0, t, buf[8];
-	unsigned long type;
+	u_char	id = 0, t, buf[5];
+	unsigned int type;
 	size_t size;
 
 	/* class universal, type encoding depending on type value */
@@ -930,14 +1119,14 @@ ber_dump_header(struct ber *ber, struct ber_element *root)
 		    root->be_encoding == BER_TYPE_SET)
 			id |= BER_TYPE_CONSTRUCTED;
 
-		ber_putc(ber, id);
+		ober_putc(ber, id);
 	} else {
 		id = BER_TAG_MASK | (root->be_class << BER_CLASS_SHIFT);
 		if (root->be_encoding == BER_TYPE_SEQUENCE ||
 		    root->be_encoding == BER_TYPE_SET)
 			id |= BER_TYPE_CONSTRUCTED;
 
-		ber_putc(ber, id);
+		ober_putc(ber, id);
 
 		for (t = 0, type = root->be_type; type > 0; type >>= 7)
 			buf[t++] = type & ~BER_TAG_MORE;
@@ -945,26 +1134,26 @@ ber_dump_header(struct ber *ber, struct ber_element *root)
 		while (t-- > 0) {
 			if (t > 0)
 				buf[t] |= BER_TAG_MORE;
-			ber_putc(ber, buf[t]);
+			ober_putc(ber, buf[t]);
 		}
 	}
 
 	if (root->be_len < BER_TAG_MORE) {
 		/* short form */
-		ber_putc(ber, root->be_len);
+		ober_putc(ber, root->be_len);
 	} else {
 		for (t = 0, size = root->be_len; size > 0; size >>= 8)
 			buf[t++] = size & 0xff;
 
-		ber_putc(ber, t | BER_TAG_MORE);
+		ober_putc(ber, t | BER_TAG_MORE);
 
 		while (t > 0)
-			ber_putc(ber, buf[--t]);
+			ober_putc(ber, buf[--t]);
 	}
 }
 
 static void
-ber_putc(struct ber *ber, unsigned char c)
+ober_putc(struct ber *ber, u_char c)
 {
 	if (ber->br_wptr + 1 <= ber->br_wend)
 		*ber->br_wptr = c;
@@ -972,11 +1161,10 @@ ber_putc(struct ber *ber, unsigned char c)
 }
 
 static void
-ber_write(struct ber *ber, void *buf, size_t len)
+ober_write(struct ber *ber, void *buf, size_t len)
 {
 	if (ber->br_wptr + len <= ber->br_wend)
-		memmove(ber->br_wptr, buf, len);
-
+		bcopy(buf, ber->br_wptr, len);
 	ber->br_wptr += len;
 }
 
@@ -984,13 +1172,13 @@ ber_write(struct ber *ber, void *buf, size_t len)
  * extract a BER encoded tag. There are two types, a short and long form.
  */
 static ssize_t
-get_id(struct ber *b, unsigned long *tag, int *class, int *cstruct)
+get_id(struct ber *b, unsigned int *tag, int *class, int *cstruct)
 {
-	unsigned char u;
+	u_char u;
 	size_t i = 0;
-	unsigned long t = 0;
+	unsigned int t = 0;
 
-	if (ber_getc(b, &u) == -1)
+	if (ober_getc(b, &u) == -1)
 		return -1;
 
 	*class = (u >> BER_CLASS_SHIFT) & BER_CLASS_MASK;
@@ -1002,16 +1190,22 @@ get_id(struct ber *b, unsigned long *tag, int *class, int *cstruct)
 	}
 
 	do {
-		if (ber_getc(b, &u) == -1)
+		if (ober_getc(b, &u) == -1)
 			return -1;
+
+		/* enforce minimal number of octets for tag > 30 */
+		if (i == 0 && (u & ~BER_TAG_MORE) == 0) {
+			errno = EINVAL;
+			return -1;
+		}
+
 		t = (t << 7) | (u & ~BER_TAG_MORE);
 		i++;
+		if (i > sizeof(unsigned int)) {
+			errno = ERANGE;
+			return -1;
+		}
 	} while (u & BER_TAG_MORE);
-
-	if (i > sizeof(unsigned long)) {
-		errno = ERANGE;
-		return -1;
-	}
 
 	*tag = t;
 	return i + 1;
@@ -1023,10 +1217,10 @@ get_id(struct ber *b, unsigned long *tag, int *class, int *cstruct)
 static ssize_t
 get_len(struct ber *b, ssize_t *len)
 {
-	unsigned char u, n;
+	u_char	u, n;
 	ssize_t	s, r;
 
-	if (ber_getc(b, &u) == -1)
+	if (ober_getc(b, &u) == -1)
 		return -1;
 	if ((u & BER_TAG_MORE) == 0) {
 		/* short form */
@@ -1034,15 +1228,30 @@ get_len(struct ber *b, ssize_t *len)
 		return 1;
 	}
 
+	if (u == 0x80) {
+		/* Indefinite length not supported. */
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (u == 0xff) {
+		/* Reserved for future use. */
+		errno = EINVAL;
+		return -1;
+	}
+
 	n = u & ~BER_TAG_MORE;
-	if (sizeof(ssize_t) < n) {
+	/*
+	 * Limit to a decent size that works on all of our architectures.
+	 */
+	if (sizeof(int32_t) < n) {
 		errno = ERANGE;
 		return -1;
 	}
 	r = n + 1;
 
 	for (s = 0; n > 0; n--) {
-		if (ber_getc(b, &u) == -1)
+		if (ober_getc(b, &u) == -1)
 			return -1;
 		s = (s << 8) | u;
 	}
@@ -1053,38 +1262,52 @@ get_len(struct ber *b, ssize_t *len)
 		return -1;
 	}
 
-	if (s == 0) {
-		/* invalid encoding */
-		errno = EINVAL;
-		return -1;
-	}
-
 	*len = s;
 	return r;
 }
 
 static ssize_t
-ber_read_element(struct ber *ber, struct ber_element *elm)
+ober_read_element(struct ber *ber, struct ber_element *elm)
 {
 	long long val = 0;
 	struct ber_element *next;
-	unsigned long type;
-	int i, class, cstruct;
+	unsigned int type;
+	int i, class, cstruct, elements = 0;
 	ssize_t len, r, totlen = 0;
-	unsigned char c;
+	u_char c, last = 0;
 
 	if ((r = get_id(ber, &type, &class, &cstruct)) == -1)
 		return -1;
-	DPRINTF("ber read got class %d type %lu, %s\n",
-	    class, type, cstruct ? "constructive" : "primitive");
+	DPRINTF("ber read got class %d type %u, %s\n",
+	    class, type, cstruct ? "constructed" : "primitive");
 	totlen += r;
 	if ((r = get_len(ber, &len)) == -1)
 		return -1;
 	DPRINTF("ber read element size %zd\n", len);
 	totlen += r + len;
 
+	/* The encoding of boolean, integer, enumerated, and null values
+	 * must be primitive. */
+	if (class == BER_CLASS_UNIVERSAL)
+		if (type == BER_TYPE_BOOLEAN ||
+		    type == BER_TYPE_INTEGER ||
+		    type == BER_TYPE_ENUMERATED ||
+		    type == BER_TYPE_NULL)
+			if (cstruct) {
+				errno = EINVAL;
+				return -1;
+			}
+
+	/* If the total size of the element is larger than the buffer
+	 * don't bother to continue. */
+	if (len > ber->br_rend - ber->br_rptr) {
+		errno = ECANCELED;
+		return -1;
+	}
+
 	elm->be_type = type;
 	elm->be_len = len;
+	elm->be_offs = ber->br_offs;	/* element position within stream */
 	elm->be_class = class;
 
 	if (elm->be_encoding == 0) {
@@ -1109,20 +1332,40 @@ ber_read_element(struct ber *ber, struct ber_element *elm)
 	case BER_TYPE_EOC:	/* End-Of-Content */
 		break;
 	case BER_TYPE_BOOLEAN:
+		if (len != 1) {
+			errno = EINVAL;
+			return -1;
+		}
 	case BER_TYPE_INTEGER:
 	case BER_TYPE_ENUMERATED:
-		if (len > (ssize_t)sizeof(long long))
+		if (len < 1) {
+			errno = EINVAL;
 			return -1;
+		}
+		if (len > (ssize_t)sizeof(long long)) {
+			errno = ERANGE;
+			return -1;
+		}
 		for (i = 0; i < len; i++) {
-			if (ber_getc(ber, &c) != 1)
+			if (ober_getc(ber, &c) != 1)
 				return -1;
+
+			/* smallest number of contents octets only */
+			if ((i == 1 && last == 0 && (c & 0x80) == 0) ||
+			    (i == 1 && last == 0xff && (c & 0x80) != 0)) {
+				errno = EINVAL;
+				return -1;
+			}
+
 			val <<= 8;
 			val |= c;
+			last = c;
 		}
 
 		/* sign extend if MSB is set */
-		if (val >> ((i - 1) * 8) & 0x80)
-			val |= ULLONG_MAX << (i * 8);
+		if (len < (ssize_t)sizeof(long long) &&
+		    (val >> ((len - 1) * 8) & 0x80))
+			val |= ULLONG_MAX << (len * 8);
 		elm->be_numeric = val;
 		break;
 	case BER_TYPE_BITSTRING:
@@ -1131,7 +1374,7 @@ ber_read_element(struct ber *ber, struct ber_element *elm)
 			return -1;
 		elm->be_free = 1;
 		elm->be_len = len;
-		ber_read(ber, elm->be_val, len);
+		ober_read(ber, elm->be_val, len);
 		break;
 	case BER_TYPE_OCTETSTRING:
 	case BER_TYPE_OBJECT:
@@ -1140,28 +1383,47 @@ ber_read_element(struct ber *ber, struct ber_element *elm)
 			return -1;
 		elm->be_free = 1;
 		elm->be_len = len;
-		ber_read(ber, elm->be_val, len);
-		((unsigned char *)elm->be_val)[len] = '\0';
+		ober_read(ber, elm->be_val, len);
+		((u_char *)elm->be_val)[len] = '\0';
 		break;
 	case BER_TYPE_NULL:	/* no payload */
-		if (len != 0)
+		if (len != 0) {
+			errno = EINVAL;
 			return -1;
+		}
 		break;
 	case BER_TYPE_SEQUENCE:
 	case BER_TYPE_SET:
-		if (elm->be_sub == NULL) {
-			if ((elm->be_sub = ber_get_element(0)) == NULL)
+		if (len > 0 && elm->be_sub == NULL) {
+			if ((elm->be_sub = ober_get_element(0)) == NULL)
 				return -1;
 		}
 		next = elm->be_sub;
 		while (len > 0) {
-			r = ber_read_element(ber, next);
-			if (r == -1)
+			/*
+			 * Prevent stack overflow from excessive recursion
+			 * depth in ober_free_elements().
+			 */
+			if (elements >= BER_MAX_SEQ_ELEMENTS) {
+				errno = ERANGE;
 				return -1;
+			}
+			r = ober_read_element(ber, next);
+			if (r == -1) {
+				/* sub-element overflows sequence/set */
+				if (errno == ECANCELED)
+					errno = EINVAL;
+				return -1;
+			}
+			if (r > len) {
+				errno = EINVAL;
+				return -1;
+			}
+			elements++;
 			len -= r;
 			if (len > 0 && next->be_next == NULL) {
-				if ((next->be_next = ber_get_element(0)) ==
-				    NULL)
+				next->be_next = ober_get_element(0);
+				if (next->be_next == NULL)
 					return -1;
 			}
 			next = next->be_next;
@@ -1172,98 +1434,30 @@ ber_read_element(struct ber *ber, struct ber_element *elm)
 }
 
 static ssize_t
-ber_readbuf(struct ber *b, void *buf, size_t nbytes)
+ober_getc(struct ber *b, u_char *c)
 {
-	size_t	 sz;
-	size_t	 len;
+	return ober_read(b, c, 1);
+}
 
-	if (b->br_rbuf == NULL)
+static ssize_t
+ober_read(struct ber *ber, void *buf, size_t len)
+{
+	size_t	sz;
+
+	if (ber->br_rbuf == NULL) {
+		errno = ENOBUFS;
 		return -1;
+	}
 
-	sz = b->br_rend - b->br_rptr;
-	len = MINIMUM(nbytes, sz);
-	if (len == 0) {
+	sz = ber->br_rend - ber->br_rptr;
+	if (len > sz) {
 		errno = ECANCELED;
-		return (-1);	/* end of buffer and parser wants more data */
+		return -1;	/* parser wants more data than available */
 	}
 
-	memmove(buf, b->br_rptr, len);
-	b->br_rptr += len;
+	bcopy(ber->br_rptr, buf, len);
+	ber->br_rptr += len;
+	ber->br_offs += len;
 
-	return (len);
-}
-
-void
-ber_set_readbuf(struct ber *b, void *buf, size_t len)
-{
-	b->br_rbuf = b->br_rptr = buf;
-	b->br_rend = (uint8_t *)buf + len;
-}
-
-ssize_t
-ber_get_writebuf(struct ber *b, void **buf)
-{
-	if (b->br_wbuf == NULL)
-		return -1;
-	*buf = b->br_wbuf;
-	return (b->br_wend - b->br_wbuf);
-}
-
-void
-ber_set_application(struct ber *b, unsigned long (*cb)(struct ber_element *))
-{
-	b->br_application = cb;
-}
-
-void
-ber_free(struct ber *b)
-{
-	if (b->br_wbuf != NULL)
-		free (b->br_wbuf);
-}
-
-static ssize_t
-ber_getc(struct ber *b, unsigned char *c)
-{
-	ssize_t r;
-	/*
-	 * XXX calling read here is wrong in many ways. The most obvious one
-	 * being that we will block till data arrives.
-	 * But for now it is _good enough_ *gulp*
-	 */
-	if (b->fd == -1)
-		r = ber_readbuf(b, c, 1);
-	else
-		r = read(b->fd, c, 1);
-	return r;
-}
-
-static ssize_t
-ber_read(struct ber *ber, void *buf, size_t len)
-{
-	unsigned char *b = buf;
-	ssize_t	r, remain = len;
-
-	/*
-	 * XXX calling read here is wrong in many ways. The most obvious one
-	 * being that we will block till data arrives.
-	 * But for now it is _good enough_ *gulp*
-	 */
-
-	while (remain > 0) {
-		if (ber->fd == -1)
-			r = ber_readbuf(ber, b, remain);
-		else
-			r = read(ber->fd, b, remain);
-		if (r == -1) {
-			if (errno == EINTR || errno == EAGAIN)
-				continue;
-			return -1;
-		}
-		if (r == 0)
-			return (b - (unsigned char *)buf);
-		b += r;
-		remain -= r;
-	}
-	return (b - (unsigned char *)buf);
+	return len;
 }

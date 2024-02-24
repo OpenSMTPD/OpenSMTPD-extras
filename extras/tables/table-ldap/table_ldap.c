@@ -59,7 +59,7 @@ enum {
 struct query {
 	char	*filter;
 	char	*attrs[MAX_ATTRS];
-	int	 attrn;
+	size_t	 attrn;
 };
 
 static int ldap_run_query(int type, const char *, char *, size_t);
@@ -347,7 +347,7 @@ table_ldap_lookup(int service, struct dict *params, const char *key, char *dst, 
 }
 
 static int
-ldap_query(const char *filter, const char *key, char **attributes, char ***outp, size_t n)
+ldap_query(const char *filter, const char *key, char **attributes, struct aldap_stringset **outp, size_t n)
 {
 	struct aldap_message		*m = NULL;
 	struct aldap_page_control	*pg = NULL;
@@ -412,12 +412,36 @@ end:
 	return ret;
 }
 
+static size_t
+ldap_strlcat(char *dst, const struct ber_octetstring str, size_t sz)
+{
+	size_t ret;
+	char *s = calloc(str.ostr_len + 1, sizeof(*s));
+	if (!s) {
+		log_warn("can not allocate memory");
+		return sz;
+	}
+
+	if (strlcpy(s, str.ostr_val, str.ostr_len + 1) >= str.ostr_len + 1) {
+		ret = sz;
+		goto out;
+	}
+	ret = strlcat(dst, s, sz);
+
+out:
+	free(s);
+	return ret;
+}
+
 static int
 ldap_run_query(int type, const char *key, char *dst, size_t sz)
 {
-	struct query	 *q;
-	char		**res[4], filter[MAX_LDAP_FILTERLEN];
-	int		  ret, i;
+	struct query	 	*q;
+	struct aldap_stringset	*res[MAX_ATTRS];
+	char			 filter[MAX_LDAP_FILTERLEN];
+	int		  	 ret;
+	size_t			 i;
+	char			*r, *user, *pwhash, *uid, *gid, *home;
 
 	switch (type) {
 	case K_ALIAS:		q = &queries[LDAP_ALIAS];	break;
@@ -454,12 +478,12 @@ ldap_run_query(int type, const char *key, char *dst, size_t sz)
 
 	case K_ALIAS:
 		memset(dst, 0, sz);
-		for (i = 0; res[0][i]; i++) {
+		for (i = 0; i < res[0]->len; i++) {
 			if (i && strlcat(dst, ", ", sz) >= sz) {
 				ret = -1;
 				break;
 			}
-			if (strlcat(dst, res[0][i], sz) >= sz) {
+			if (ldap_strlcat(dst, res[0]->str[i], sz) >= sz) {
 				ret = -1;
 				break;
 			}
@@ -468,17 +492,28 @@ ldap_run_query(int type, const char *key, char *dst, size_t sz)
 	case K_DOMAIN:
 	case K_MAILADDR:
 	case K_MAILADDRMAP:
-		if (strlcpy(dst, res[0][0], sz) >= sz)
+		r = strndup(res[0]->str[0].ostr_val, res[0]->str[0].ostr_len);
+		if (!r || strlcpy(dst, r, sz) >= sz)
 			ret = -1;
+		free(r);
 		break;
 	case K_CREDENTIALS:
-		if (snprintf(dst, sz, "%s:%s", res[0][0], res[1][0]) >= (int)sz)
+		user = strndup(res[0]->str[0].ostr_val, res[0]->str[0].ostr_len);
+		pwhash = strndup(res[1]->str[0].ostr_val, res[1]->str[0].ostr_len);
+		if (!user || !pwhash || snprintf(dst, sz, "%s:%s", user, pwhash) >= (int)sz)
 			ret = -1;
+		free(user);
+		free(pwhash);
 		break;
 	case K_USERINFO:
-		if (snprintf(dst, sz, "%s:%s:%s", res[0][0], res[1][0],
-		    res[2][0]) >= (int)sz)
+		uid = strndup(res[0]->str[0].ostr_val, res[0]->str[0].ostr_len);
+		gid = strndup(res[1]->str[0].ostr_val, res[1]->str[0].ostr_len);
+		home = strndup(res[2]->str[0].ostr_val, res[2]->str[0].ostr_len);
+		if (!uid || !gid || !home || snprintf(dst, sz, "%s:%s:%s", uid, gid, home) >= (int)sz)
 			ret = -1;
+		free(uid);
+		free(gid);
+		free(home);
 		break;
 	default:
 		log_warnx("warn: unsupported lookup kind");

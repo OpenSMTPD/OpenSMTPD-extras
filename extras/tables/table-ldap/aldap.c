@@ -1,3 +1,5 @@
+/*	$OpenBSD: aldap.c,v 1.10 2022/03/31 09:03:48 martijn Exp $ */
+
 /*
  * Copyright (c) 2008 Alexander Schrijver <aschrijver@openbsd.org>
  * Copyright (c) 2006, 2007 Marc Balmer <mbalmer@openbsd.org>
@@ -17,11 +19,15 @@
 
 #include "includes.h"
 
+#include <arpa/inet.h>
+#include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+
+#include <event.h>
 
 #include "aldap.h"
 
@@ -34,11 +40,15 @@ static struct ber_element	*ldap_parse_search_filter(struct ber_element *,
 				    char *, const char *);
 static struct ber_element	*ldap_do_parse_search_filter(
 				    struct ber_element *, char **, const char *);
-char				**aldap_get_stringset(struct ber_element *);
+struct aldap_stringset		*aldap_get_stringset(struct ber_element *);
 char				*utoa(char *);
+static int			 isu8cont(unsigned char);
 char				*parseval(char *, size_t, const char *);
 int				aldap_create_page_control(struct ber_element *,
 				    int, struct aldap_page_control *);
+int				aldap_send(struct aldap *,
+				    struct ber_element *);
+unsigned int			aldap_application(struct ber_element *);
 
 #ifdef DEBUG
 void			 ldap_debug_elements(struct ber_element *);
@@ -52,13 +62,22 @@ void			 ldap_debug_elements(struct ber_element *);
 #define LDAP_DEBUG(x, y)	do { } while (0)
 #endif
 
+unsigned int
+aldap_application(struct ber_element *elm)
+{
+	return BER_TYPE_OCTETSTRING;
+}
+
 int
 aldap_close(struct aldap *al)
 {
-	if (close(al->ber.fd) == -1)
-		return (-1);
-
-	ber_free(&al->ber);
+	if (al->tls != NULL) {
+		tls_close(al->tls);
+		tls_free(al->tls);
+	}
+	close(al->fd);
+	ober_free(&al->ber);
+	evbuffer_free(al->buf);
 	free(al);
 
 	return (0);
@@ -71,43 +90,142 @@ aldap_init(int fd)
 
 	if ((a = calloc(1, sizeof(*a))) == NULL)
 		return NULL;
-	a->ber.fd = fd;
+	a->buf = evbuffer_new();
+	a->fd = fd;
+	ober_set_application(&a->ber, aldap_application);
 
 	return a;
+}
+
+static int
+tls_handshake_wrapper(struct tls *ctx)
+{
+	int ret;
+	do {
+		ret = tls_handshake(ctx);
+	} while (ret == TLS_WANT_POLLIN || ret == TLS_WANT_POLLOUT);
+	return ret;
+}
+
+int
+aldap_tls(struct aldap *ldap, struct tls_config *cfg, const char *name)
+{
+	ldap->tls = tls_client();
+	if (ldap->tls == NULL) {
+		ldap->err = ALDAP_ERR_OPERATION_FAILED;
+		return (-1);
+	}
+
+	if (tls_configure(ldap->tls, cfg) == -1) {
+		ldap->err = ALDAP_ERR_TLS_ERROR;
+		return (-1);
+	}
+
+	if (tls_connect_socket(ldap->tls, ldap->fd, name) == -1) {
+		ldap->err = ALDAP_ERR_TLS_ERROR;
+		return (-1);
+	}
+
+	if (tls_handshake_wrapper(ldap->tls) == -1) {
+		ldap->err = ALDAP_ERR_TLS_ERROR;
+		return (-1);
+	}
+
+	return (0);
+}
+
+int
+aldap_send(struct aldap *ldap, struct ber_element *root)
+{
+	void *ptr;
+	char *data;
+	size_t len, done;
+	ssize_t error, wrote;
+
+	len = ober_calc_len(root);
+	error = ober_write_elements(&ldap->ber, root);
+	ober_free_elements(root);
+	if (error == -1)
+		return -1;
+
+	ober_get_writebuf(&ldap->ber, &ptr);
+	done = 0;
+	data = ptr;
+	while (len > 0) {
+		if (ldap->tls != NULL) {
+			wrote = tls_write(ldap->tls, data + done, len);
+			if (wrote == TLS_WANT_POLLIN ||
+			    wrote == TLS_WANT_POLLOUT)
+				continue;
+		} else
+			wrote = write(ldap->fd, data + done, len);
+
+		if (wrote == -1)
+			return -1;
+
+		len -= wrote;
+		done += wrote;
+	}
+
+	return 0;
+}
+
+int
+aldap_req_starttls(struct aldap *ldap)
+{
+	struct ber_element *root = NULL, *ber;
+
+	if ((root = ober_add_sequence(NULL)) == NULL)
+		goto fail;
+
+	ber = ober_printf_elements(root, "d{tst", ++ldap->msgid, BER_CLASS_APP,
+	    LDAP_REQ_EXTENDED, LDAP_STARTTLS_OID, BER_CLASS_CONTEXT, 0);
+	if (ber == NULL) {
+		ldap->err = ALDAP_ERR_OPERATION_FAILED;
+		goto fail;
+	}
+
+	if (aldap_send(ldap, root) == -1)
+		goto fail;
+
+	return (ldap->msgid);
+fail:
+	if (root != NULL)
+		ober_free_elements(root);
+
+	ldap->err = ALDAP_ERR_OPERATION_FAILED;
+	return (-1);
 }
 
 int
 aldap_bind(struct aldap *ldap, char *binddn, char *bindcred)
 {
 	struct ber_element *root = NULL, *elm;
-	int error;
 
 	if (binddn == NULL)
 		binddn = "";
 	if (bindcred == NULL)
 		bindcred = "";
 
-	if ((root = ber_add_sequence(NULL)) == NULL)
+	if ((root = ober_add_sequence(NULL)) == NULL)
 		goto fail;
 
-	elm = ber_printf_elements(root, "d{tdsst", ++ldap->msgid, BER_CLASS_APP,
-	    (unsigned long)LDAP_REQ_BIND, ALDAP_VERSION, binddn, bindcred,
-	    BER_CLASS_CONTEXT, (unsigned long)LDAP_AUTH_SIMPLE);
+	elm = ober_printf_elements(root, "d{tdsst", ++ldap->msgid, BER_CLASS_APP,
+	    LDAP_REQ_BIND, ALDAP_VERSION, binddn, bindcred, BER_CLASS_CONTEXT,
+	    LDAP_AUTH_SIMPLE);
 	if (elm == NULL)
 		goto fail;
 
 	LDAP_DEBUG("aldap_bind", root);
 
-	error = ber_write_elements(&ldap->ber, root);
-	ber_free_elements(root);
-	root = NULL;
-	if (error == -1)
+	if (aldap_send(ldap, root) == -1) {
+		root = NULL;
 		goto fail;
-
+	}
 	return (ldap->msgid);
 fail:
 	if (root != NULL)
-		ber_free_elements(root);
+		ober_free_elements(root);
 
 	ldap->err = ALDAP_ERR_OPERATION_FAILED;
 	return (-1);
@@ -117,27 +235,24 @@ int
 aldap_unbind(struct aldap *ldap)
 {
 	struct ber_element *root = NULL, *elm;
-	int error;
 
-	if ((root = ber_add_sequence(NULL)) == NULL)
+	if ((root = ober_add_sequence(NULL)) == NULL)
 		goto fail;
-	elm = ber_printf_elements(root, "d{t", ++ldap->msgid, BER_CLASS_APP,
+	elm = ober_printf_elements(root, "d{t", ++ldap->msgid, BER_CLASS_APP,
 	    LDAP_REQ_UNBIND_30);
 	if (elm == NULL)
 		goto fail;
 
 	LDAP_DEBUG("aldap_unbind", root);
 
-	error = ber_write_elements(&ldap->ber, root);
-	ber_free_elements(root);
-	root = NULL;
-	if (error == -1)
+	if (aldap_send(ldap, root) == -1) {
+		root = NULL;
 		goto fail;
-
+	}
 	return (ldap->msgid);
 fail:
 	if (root != NULL)
-		ber_free_elements(root);
+		ober_free_elements(root);
 
 	ldap->err = ALDAP_ERR_OPERATION_FAILED;
 
@@ -150,21 +265,21 @@ aldap_search(struct aldap *ldap, char *basedn, enum scope scope, char *filter,
     struct aldap_page_control *page)
 {
 	struct ber_element *root = NULL, *ber, *c;
-	int i, error;
+	int i;
 
-	if ((root = ber_add_sequence(NULL)) == NULL)
+	if ((root = ober_add_sequence(NULL)) == NULL)
 		goto fail;
 
-	ber = ber_printf_elements(root, "d{t", ++ldap->msgid, BER_CLASS_APP,
-	    (unsigned long) LDAP_REQ_SEARCH);
+	ber = ober_printf_elements(root, "d{t", ++ldap->msgid, BER_CLASS_APP,
+	    LDAP_REQ_SEARCH);
 	if (ber == NULL) {
 		ldap->err = ALDAP_ERR_OPERATION_FAILED;
 		goto fail;
 	}
 
-	c = ber;
-	ber = ber_printf_elements(ber, "sEEddb", basedn, (long long)scope,
-	                         (long long)LDAP_DEREF_NEVER, sizelimit,
+	c = ber;	
+	ber = ober_printf_elements(ber, "sEEddb", basedn, (long long)scope,
+	                         (long long)LDAP_DEREF_NEVER, sizelimit, 
 				 timelimit, typesonly);
 	if (ber == NULL) {
 		ldap->err = ALDAP_ERR_OPERATION_FAILED;
@@ -176,11 +291,11 @@ aldap_search(struct aldap *ldap, char *basedn, enum scope scope, char *filter,
 		goto fail;
 	}
 
-	if ((ber = ber_add_sequence(ber)) == NULL)
+	if ((ber = ober_add_sequence(ber)) == NULL)
 		goto fail;
 	if (attrs != NULL)
 		for (i = 0; attrs[i] != NULL; i++) {
-			if ((ber = ber_add_string(ber, attrs[i])) == NULL)
+			if ((ber = ober_add_string(ber, attrs[i])) == NULL)
 				goto fail;
 		}
 
@@ -188,10 +303,8 @@ aldap_search(struct aldap *ldap, char *basedn, enum scope scope, char *filter,
 
 	LDAP_DEBUG("aldap_search", root);
 
-	error = ber_write_elements(&ldap->ber, root);
-	ber_free_elements(root);
-	root = NULL;
-	if (error == -1) {
+	if (aldap_send(ldap, root) == -1) {
+		root = NULL;
 		ldap->err = ALDAP_ERR_OPERATION_FAILED;
 		goto fail;
 	}
@@ -200,7 +313,7 @@ aldap_search(struct aldap *ldap, char *basedn, enum scope scope, char *filter,
 
 fail:
 	if (root != NULL)
-		ber_free_elements(root);
+		ober_free_elements(root);
 
 	return (-1);
 }
@@ -209,37 +322,36 @@ int
 aldap_create_page_control(struct ber_element *elm, int size,
     struct aldap_page_control *page)
 {
-	int len;
+	ssize_t len;
 	struct ber c;
 	struct ber_element *ber = NULL;
 
 	c.br_wbuf = NULL;
-	c.fd = -1;
 
-	ber = ber_add_sequence(NULL);
+	ber = ober_add_sequence(NULL);
 
 	if (page == NULL) {
-		if (ber_printf_elements(ber, "ds", 50, "") == NULL)
+		if (ober_printf_elements(ber, "ds", 50, "") == NULL)
 			goto fail;
 	} else {
-		if (ber_printf_elements(ber, "dx", 50, page->cookie,
+		if (ober_printf_elements(ber, "dx", 50, page->cookie,
 			    page->cookie_len) == NULL)
 			goto fail;
 	}
 
-	if ((len = ber_write_elements(&c, ber)) < 1)
+	if ((len = ober_write_elements(&c, ber)) < 1)
 		goto fail;
-	if (ber_printf_elements(elm, "{t{sx", 2, 0, LDAP_PAGED_OID,
+	if (ober_printf_elements(elm, "{t{sx", 2, 0, LDAP_PAGED_OID,
 		                c.br_wbuf, (size_t)len) == NULL)
 		goto fail;
 
-	ber_free_elements(ber);
-	ber_free(&c);
+	ober_free_elements(ber);
+	ober_free(&c);
 	return len;
 fail:
 	if (ber != NULL)
-		ber_free_elements(ber);
-	ber_free(&c);
+		ober_free_elements(ber);
+	ober_free(&c);	
 
 	return (-1);
 }
@@ -248,20 +360,52 @@ struct aldap_message *
 aldap_parse(struct aldap *ldap)
 {
 	int			 class;
-	unsigned long		 type;
+	unsigned int		 type;
 	long long		 msgid = 0;
 	struct aldap_message	*m;
 	struct ber_element	*a = NULL, *ep;
+	char			 rbuf[512];
+	int			 ret, retry;
 
 	if ((m = calloc(1, sizeof(struct aldap_message))) == NULL)
 		return NULL;
 
-	if ((m->msg = ber_read_elements(&ldap->ber, NULL)) == NULL)
-		goto parsefail;
+	retry = 0;
+	while (m->msg == NULL) {
+		if (retry || EVBUFFER_LENGTH(ldap->buf) == 0) {
+			if (ldap->tls) {
+				ret = tls_read(ldap->tls, rbuf, sizeof(rbuf));
+				if (ret == TLS_WANT_POLLIN ||
+				    ret == TLS_WANT_POLLOUT)
+					continue;
+			} else
+				ret = read(ldap->fd, rbuf, sizeof(rbuf));
+
+			if (ret <= 0) {
+				goto parsefail;
+			}
+
+			evbuffer_add(ldap->buf, rbuf, ret);
+		}
+
+		if (EVBUFFER_LENGTH(ldap->buf) > 0) {
+			ober_set_readbuf(&ldap->ber, EVBUFFER_DATA(ldap->buf),
+			    EVBUFFER_LENGTH(ldap->buf));
+			errno = 0;
+			m->msg = ober_read_elements(&ldap->ber, NULL);
+			if (errno != 0 && errno != ECANCELED) {
+				goto parsefail;
+			}
+
+			retry = 1;
+		}
+	}
+
+	evbuffer_drain(ldap->buf, ldap->ber.br_rptr - ldap->ber.br_rbuf);
 
 	LDAP_DEBUG("message", m->msg);
 
-	if (ber_scanf_elements(m->msg, "{ite", &msgid, &class, &type, &a) != 0)
+	if (ober_scanf_elements(m->msg, "{ite", &msgid, &class, &type, &a) != 0)
 		goto parsefail;
 	m->msgid = msgid;
 	m->message_type = type;
@@ -275,15 +419,17 @@ aldap_parse(struct aldap *ldap)
 	case LDAP_RES_MODRDN:
 	case LDAP_RES_COMPARE:
 	case LDAP_RES_SEARCH_RESULT:
-		if (ber_scanf_elements(m->protocol_op, "{EeSeSe",
-		    &m->body.res.rescode, &m->dn, &m->body.res.diagmsg, &a) != 0)
+		if (ober_scanf_elements(m->protocol_op, "{EeSe",
+		    &m->body.res.rescode, &m->dn, &m->body.res.diagmsg) != 0)
 			goto parsefail;
-		if (m->body.res.rescode == LDAP_REFERRAL)
-			if (ber_scanf_elements(a, "{e", &m->references) != 0)
+		if (m->body.res.rescode == LDAP_REFERRAL) {
+			a = m->body.res.diagmsg->be_next;
+			if (ober_scanf_elements(a, "{e", &m->references) != 0)
 				goto parsefail;
+		}
 		if (m->msg->be_sub) {
 			for (ep = m->msg->be_sub; ep != NULL; ep = ep->be_next) {
-				ber_scanf_elements(ep, "t", &class, &type);
+				ober_scanf_elements(ep, "t", &class, &type);
 				if (class == 2 && type == 0)
 					m->page = aldap_parse_page_control(ep->be_sub->be_sub,
 					    ep->be_sub->be_sub->be_len);
@@ -292,25 +438,32 @@ aldap_parse(struct aldap *ldap)
 			m->page = NULL;
 		break;
 	case LDAP_RES_SEARCH_ENTRY:
-		if (ber_scanf_elements(m->protocol_op, "{eS{e", &m->dn,
+		if (ober_scanf_elements(m->protocol_op, "{eS{e", &m->dn,
 		    &m->body.search.attrs) != 0)
 			goto parsefail;
 		break;
 	case LDAP_RES_SEARCH_REFERENCE:
-		if (ber_scanf_elements(m->protocol_op, "{e", &m->references) != 0)
+		if (ober_scanf_elements(m->protocol_op, "{e", &m->references) != 0)
 			goto parsefail;
+		break;
+	case LDAP_RES_EXTENDED:
+		if (ober_scanf_elements(m->protocol_op, "{E",
+		    &m->body.res.rescode) != 0) {
+			goto parsefail;
+		}
 		break;
 	}
 
 	return m;
 parsefail:
+	evbuffer_drain(ldap->buf, EVBUFFER_LENGTH(ldap->buf));
 	ldap->err = ALDAP_ERR_PARSER_ERROR;
 	aldap_freemsg(m);
 	return NULL;
 }
 
 struct aldap_page_control *
-aldap_parse_page_control(struct ber_element *control, size_t len)
+aldap_parse_page_control(struct ber_element *control, size_t len) 
 {
 	char *oid, *s;
 	char *encoded;
@@ -319,42 +472,38 @@ aldap_parse_page_control(struct ber_element *control, size_t len)
 	struct aldap_page_control *page;
 
 	b.br_wbuf = NULL;
-	b.fd = -1;
-	ber_scanf_elements(control, "ss", &oid, &encoded);
-	ber_set_readbuf(&b, encoded, control->be_next->be_len);
-	elm = ber_read_elements(&b, NULL);
-	if (elm == NULL) {
-		ber_free(&b);
-		return NULL;
-	}
+	ober_scanf_elements(control, "ss", &oid, &encoded);
+	ober_set_readbuf(&b, encoded, control->be_next->be_len);
+	elm = ober_read_elements(&b, NULL);
 
 	if ((page = malloc(sizeof(struct aldap_page_control))) == NULL) {
-		ber_free_elements(elm);
-		ber_free(&b);
+		if (elm != NULL)
+			ober_free_elements(elm);
+		ober_free(&b);
 		return NULL;
 	}
 
-	ber_scanf_elements(elm->be_sub, "is", &page->size, &s);
+	ober_scanf_elements(elm->be_sub, "is", &page->size, &s);
 	page->cookie_len = elm->be_sub->be_next->be_len;
 
 	if ((page->cookie = malloc(page->cookie_len)) == NULL) {
-		ber_free_elements(elm);
-		ber_free(&b);
+		if (elm != NULL)
+			ober_free_elements(elm);
+		ober_free(&b);
 		free(page);
 		return NULL;
 	}
 	memcpy(page->cookie, s, page->cookie_len);
 
-	ber_free_elements(elm);
-	ber_free(&b);
+	ober_free_elements(elm);
+	ober_free(&b);
 	return page;
 }
 
 void
 aldap_freepage(struct aldap_page_control *page)
 {
-	if (page->cookie)
-		free(page->cookie);
+	free(page->cookie);
 	free(page);
 }
 
@@ -362,7 +511,7 @@ void
 aldap_freemsg(struct aldap_message *msg)
 {
 	if (msg->msg)
-		ber_free_elements(msg->msg);
+		ober_free_elements(msg->msg);
 	free(msg);
 }
 
@@ -380,13 +529,13 @@ aldap_get_dn(struct aldap_message *msg)
 	if (msg->dn == NULL)
 		return NULL;
 
-	if (ber_get_string(msg->dn, &dn) == -1)
+	if (ober_get_string(msg->dn, &dn) == -1)
 		return NULL;
 
 	return utoa(dn);
 }
 
-char **
+struct aldap_stringset *
 aldap_get_references(struct aldap_message *msg)
 {
 	if (msg->references == NULL)
@@ -416,7 +565,7 @@ aldap_get_diagmsg(struct aldap_message *msg)
 	if (msg->body.res.diagmsg == NULL)
 		return NULL;
 
-	if (ber_get_string(msg->body.res.diagmsg, &s) == -1)
+	if (ober_get_string(msg->body.res.diagmsg, &s) == -1)
 		return NULL;
 
 	return utoa(s);
@@ -432,7 +581,7 @@ aldap_count_attrs(struct aldap_message *msg)
 		return (-1);
 
 	for (i = 0, a = msg->body.search.attrs;
-	    a != NULL && ber_get_eoc(a) != 0;
+	    a != NULL && ober_get_eoc(a) != 0;
 	    i++, a = a->be_next)
 		;
 
@@ -440,17 +589,18 @@ aldap_count_attrs(struct aldap_message *msg)
 }
 
 int
-aldap_first_attr(struct aldap_message *msg, char **outkey, char ***outvalues)
+aldap_first_attr(struct aldap_message *msg, char **outkey,
+    struct aldap_stringset **outvalues)
 {
-	struct ber_element *b, *c;
+	struct ber_element *b;
 	char *key;
-	char **ret;
+	struct aldap_stringset *ret;
 
 	if (msg->body.search.attrs == NULL)
 		goto fail;
 
-	if (ber_scanf_elements(msg->body.search.attrs, "{s(e)}e",
-	    &key, &b, &c) != 0)
+	if (ober_scanf_elements(msg->body.search.attrs, "{s(e)}",
+	    &key, &b) != 0)
 		goto fail;
 
 	msg->body.search.iter = msg->body.search.attrs->be_next;
@@ -469,22 +619,22 @@ fail:
 }
 
 int
-aldap_next_attr(struct aldap_message *msg, char **outkey, char ***outvalues)
+aldap_next_attr(struct aldap_message *msg, char **outkey,
+    struct aldap_stringset **outvalues)
 {
-	struct ber_element *a, *b;
+	struct ber_element *a;
 	char *key;
-	char **ret;
+	struct aldap_stringset *ret;
 
 	if (msg->body.search.iter == NULL)
 		goto notfound;
 
 	LDAP_DEBUG("attr", msg->body.search.iter);
 
-	if (ber_get_eoc(msg->body.search.iter) == 0)
+	if (ober_get_eoc(msg->body.search.iter) == 0)
 		goto notfound;
 
-	if (ber_scanf_elements(msg->body.search.iter, "{s(e)}e", &key, &a, &b)
-	    != 0)
+	if (ober_scanf_elements(msg->body.search.iter, "{s(e)}", &key, &a) != 0)
 		goto fail;
 
 	msg->body.search.iter = msg->body.search.iter->be_next;
@@ -504,11 +654,12 @@ notfound:
 }
 
 int
-aldap_match_attr(struct aldap_message *msg, char *inkey, char ***outvalues)
+aldap_match_attr(struct aldap_message *msg, char *inkey,
+    struct aldap_stringset **outvalues)
 {
 	struct ber_element *a, *b;
 	char *descr = NULL;
-	char **ret;
+	struct aldap_stringset *ret;
 
 	if (msg->body.search.attrs == NULL)
 		goto fail;
@@ -518,9 +669,9 @@ aldap_match_attr(struct aldap_message *msg, char *inkey, char ***outvalues)
 	for (a = msg->body.search.attrs;;) {
 		if (a == NULL)
 			goto notfound;
-		if (ber_get_eoc(a) == 0)
+		if (ober_get_eoc(a) == 0)
 			goto notfound;
-		if (ber_scanf_elements(a, "{s(e", &descr, &b) != 0)
+		if (ober_scanf_elements(a, "{s(e", &descr, &b) != 0)
 			goto fail;
 		if (strcasecmp(descr, inkey) == 0)
 			goto attrfound;
@@ -541,16 +692,12 @@ notfound:
 }
 
 int
-aldap_free_attr(char **values)
+aldap_free_attr(struct aldap_stringset *values)
 {
-	int i;
-
 	if (values == NULL)
 		return -1;
 
-	for (i = 0; values[i] != NULL; i++)
-		free(values[i]);
-
+	free(values->str);
 	free(values);
 
 	return (1);
@@ -569,15 +716,24 @@ aldap_parse_url(const char *url, struct aldap_url *lu)
 	const char	*errstr = NULL;
 	int		 i;
 
-	if ((lu->buffer = strdup(url)) == NULL)
+	if ((lu->buffer = p = strdup(url)) == NULL)
 		return (-1);
-	p = lu->buffer;
 
 	/* protocol */
-	if (strncasecmp(LDAP_URL, p, strlen(LDAP_URL)) != 0)
-		goto fail;
-	lu->protocol = LDAP;
-	p += strlen(LDAP_URL);
+	if (strncasecmp(LDAP_URL, p, strlen(LDAP_URL)) == 0) {
+		lu->protocol = LDAP;
+		p += strlen(LDAP_URL);
+	} else if (strncasecmp(LDAPS_URL, p, strlen(LDAPS_URL)) == 0) {
+		lu->protocol = LDAPS;
+		p += strlen(LDAPS_URL);
+	} else if (strncasecmp(LDAPTLS_URL, p, strlen(LDAPTLS_URL)) == 0) {
+		lu->protocol = LDAPTLS;
+		p += strlen(LDAPTLS_URL);
+	} else if (strncasecmp(LDAPI_URL, p, strlen(LDAPI_URL)) == 0) {
+		lu->protocol = LDAPI;
+		p += strlen(LDAPI_URL);
+	} else
+		lu->protocol = -1;
 
 	/* host and optional port */
 	if ((forward = strchr(p, '/')) != NULL)
@@ -595,6 +751,8 @@ aldap_parse_url(const char *url, struct aldap_url *lu)
 		}
 	} else {
 		lu->port = LDAP_PORT;
+		if (lu->protocol == LDAPS)
+			lu->port = LDAPS_PORT;
 	}
 	/* fail if no host is given */
 	if (strlen(p) == 0)
@@ -667,10 +825,9 @@ fail:
 	return (-1);
 }
 
-#if 0
 int
 aldap_search_url(struct aldap *ldap, char *url, int typesonly, int sizelimit,
-    int timelimit)
+    int timelimit, struct aldap_page_control *page)
 {
 	struct aldap_url *lu;
 
@@ -680,8 +837,8 @@ aldap_search_url(struct aldap *ldap, char *url, int typesonly, int sizelimit,
 	if (aldap_parse_url(url, lu))
 		goto fail;
 
-	if (aldap_search(ldap, lu->dn, lu->scope, lu->filter, lu->attributes,
-	    typesonly, sizelimit, timelimit) == -1)
+	if (aldap_search(ldap, lu->dn, lu->scope, lu->filter, NULL,
+            lu->attributes, typesonly, sizelimit, timelimit, page) == -1)
 		goto fail;
 
 	aldap_free_url(lu);
@@ -690,39 +847,40 @@ fail:
 	aldap_free_url(lu);
 	return (-1);
 }
-#endif
 
 /*
  * internal functions
  */
 
-char **
+struct aldap_stringset *
 aldap_get_stringset(struct ber_element *elm)
 {
 	struct ber_element *a;
 	int i;
-	char **ret;
-	char *s;
+	struct aldap_stringset *ret;
 
 	if (elm->be_type != BER_TYPE_OCTETSTRING)
 		return NULL;
 
-	for (a = elm, i = 1; i > 0 && a != NULL && a->be_type ==
-	    BER_TYPE_OCTETSTRING; a = a->be_next, i++)
+	if ((ret = malloc(sizeof(*ret))) == NULL)
+		return NULL;
+	for (a = elm, ret->len = 0; a != NULL && a->be_type ==
+	    BER_TYPE_OCTETSTRING; a = a->be_next, ret->len++)
 		;
-	if (i == 1)
+	if (ret->len == 0) {
+		free(ret);
 		return NULL;
+	}
 
-	if ((ret = calloc(i + 1, sizeof(char *))) == NULL)
+	if ((ret->str = reallocarray(NULL, ret->len,
+	    sizeof(*(ret->str)))) == NULL) {
+		free(ret);
 		return NULL;
+	}
 
 	for (a = elm, i = 0; a != NULL && a->be_type == BER_TYPE_OCTETSTRING;
-	    a = a->be_next, i++) {
-
-		ber_get_string(a, &s);
-		ret[i] = utoa(s);
-	}
-	ret[i + 1] = NULL;
+	    a = a->be_next, i++)
+		(void) ober_get_ostring(a, &(ret->str[i]));
 
 	return ret;
 }
@@ -751,8 +909,8 @@ ldap_parse_search_filter(struct ber_element *ber, char *filter, const char *key)
 		return (NULL);
 
 	if (*cp != '\0') {
-		ber_free_elements(elm);
-		ber_link_elements(ber, NULL);
+		ober_free_elements(elm);
+		ober_link_elements(ber, NULL);
 		errno = EINVAL;
 		return (NULL);
 	}
@@ -799,10 +957,10 @@ ldap_do_parse_search_filter(struct ber_element *prev, char **cpp, const char *ke
 		else
 			type = LDAP_FILT_OR;
 
-		if ((elm = ber_add_set(prev)) == NULL)
+		if ((elm = ober_add_set(prev)) == NULL)
 			goto callfail;
 		root = elm;
-		ber_set_header(elm, BER_CLASS_CONTEXT, type);
+		ober_set_header(elm, BER_CLASS_CONTEXT, type);
 
 		if (*++cp != '(')		/* opening `(` of filter */
 			goto syntaxfail;
@@ -818,12 +976,12 @@ ldap_do_parse_search_filter(struct ber_element *prev, char **cpp, const char *ke
 		break;
 
 	case '!':		/* NOT */
-		if ((root = ber_add_sequence(prev)) == NULL)
+		if ((root = ober_add_sequence(prev)) == NULL)
 			goto callfail;
-		ber_set_header(root, BER_CLASS_CONTEXT, LDAP_FILT_NOT);
+		ober_set_header(root, BER_CLASS_CONTEXT, LDAP_FILT_NOT);
 
 		cp++;				/* now points to sub-filter */
-		if (ldap_do_parse_search_filter(root, &cp, key) == NULL)
+		if ((elm = ldap_do_parse_search_filter(root, &cp, key)) == NULL)
 			goto bad;
 
 		if (*cp != ')')			/* trailing `)` of filter */
@@ -862,18 +1020,18 @@ ldap_do_parse_search_filter(struct ber_element *prev, char **cpp, const char *ke
 		if (strncmp(attr_val, "*)", 2) == 0) {
 			cp++;			/* point to trailing `)` */
 			if ((root =
-			    ber_add_nstring(prev, attr_desc, len)) == NULL)
+			    ober_add_nstring(prev, attr_desc, len)) == NULL)
 				goto bad;
 
-			ber_set_header(root, BER_CLASS_CONTEXT, LDAP_FILT_PRES);
+			ober_set_header(root, BER_CLASS_CONTEXT, LDAP_FILT_PRES);
 			break;
 		}
 
-		if ((root = ber_add_sequence(prev)) == NULL)
+		if ((root = ober_add_sequence(prev)) == NULL)
 			goto callfail;
-		ber_set_header(root, BER_CLASS_CONTEXT, type);
+		ober_set_header(root, BER_CLASS_CONTEXT, type);
 
-		if ((elm = ber_add_nstring(root, attr_desc, len)) == NULL)
+		if ((elm = ober_add_nstring(root, attr_desc, len)) == NULL)
 			goto callfail;
 
 		len = strcspn(attr_val, "*)");
@@ -888,9 +1046,9 @@ ldap_do_parse_search_filter(struct ber_element *prev, char **cpp, const char *ke
 
 			cp = attr_val;
 
-			ber_set_header(root, BER_CLASS_CONTEXT, LDAP_FILT_SUBS);
+			ober_set_header(root, BER_CLASS_CONTEXT, LDAP_FILT_SUBS);
 
-			if ((elm = ber_add_sequence(elm)) == NULL)
+			if ((elm = ober_add_sequence(elm)) == NULL)
 				goto callfail;
 
 			for (initial = 1;; cp++, initial = 0) {
@@ -917,12 +1075,12 @@ ldap_do_parse_search_filter(struct ber_element *prev, char **cpp, const char *ke
 				if ((parsed_val = parseval(attr_val, len, key)) ==
 				    NULL)
 					goto callfail;
-				elm = ber_add_nstring(elm, parsed_val,
+				elm = ober_add_nstring(elm, parsed_val,
 				    strlen(parsed_val));
 				free(parsed_val);
 				if (elm == NULL)
 					goto callfail;
-				ber_set_header(elm, BER_CLASS_CONTEXT, type);
+				ober_set_header(elm, BER_CLASS_CONTEXT, type);
 				if (type == LDAP_FILT_SUBS_FIN)
 					break;
 			}
@@ -931,7 +1089,7 @@ ldap_do_parse_search_filter(struct ber_element *prev, char **cpp, const char *ke
 
 		if ((parsed_val = parseval(attr_val, len, key)) == NULL)
 			goto callfail;
-		elm = ber_add_nstring(elm, parsed_val, strlen(parsed_val));
+		elm = ober_add_nstring(elm, parsed_val, strlen(parsed_val));
 		free(parsed_val);
 		if (elm == NULL)
 			goto callfail;
@@ -947,8 +1105,8 @@ syntaxfail:		/* XXX -- error reporting */
 callfail:
 bad:
 	if (root != NULL)
-		ber_free_elements(root);
-	ber_link_elements(prev, NULL);
+		ober_free_elements(root);
+	ober_link_elements(prev, NULL);
 	return (NULL);
 }
 
@@ -965,12 +1123,12 @@ ldap_debug_elements(struct ber_element *root)
 	int		 d;
 	char		*buf;
 	size_t		 len;
-	unsigned int	 i;
+	u_int		 i;
 	int		 constructed;
 	struct ber_oid	 o;
 
 	/* calculate lengths */
-	ber_calc_len(root);
+	ober_calc_len(root);
 
 	switch (root->be_encoding) {
 	case BER_TYPE_SEQUENCE:
@@ -1077,7 +1235,7 @@ ldap_debug_elements(struct ber_element *root)
 		break;
 	case BER_CLASS_PRIVATE:
 		fprintf(stderr, "class: private(%u) type: ", root->be_class);
-		fprintf(stderr, "encoding (%lu) type: ", root->be_encoding);
+		fprintf(stderr, "encoding (%u) type: ", root->be_encoding);
 		break;
 	case BER_CLASS_CONTEXT:
 		/* XXX: this is not correct */
@@ -1092,7 +1250,7 @@ ldap_debug_elements(struct ber_element *root)
 		fprintf(stderr, "class: <INVALID>(%u) type: ", root->be_class);
 		break;
 	}
-	fprintf(stderr, "(%lu) encoding %lu ",
+	fprintf(stderr, "(%u) encoding %u ",
 	    root->be_type, root->be_encoding);
 
 	if (constructed)
@@ -1100,28 +1258,28 @@ ldap_debug_elements(struct ber_element *root)
 
 	switch (root->be_encoding) {
 	case BER_TYPE_BOOLEAN:
-		if (ber_get_boolean(root, &d) == -1) {
+		if (ober_get_boolean(root, &d) == -1) {
 			fprintf(stderr, "<INVALID>\n");
 			break;
 		}
 		fprintf(stderr, "%s(%d)\n", d ? "true" : "false", d);
 		break;
 	case BER_TYPE_INTEGER:
-		if (ber_get_integer(root, &v) == -1) {
+		if (ober_get_integer(root, &v) == -1) {
 			fprintf(stderr, "<INVALID>\n");
 			break;
 		}
 		fprintf(stderr, "value %lld\n", v);
 		break;
 	case BER_TYPE_ENUMERATED:
-		if (ber_get_enumerated(root, &v) == -1) {
+		if (ober_get_enumerated(root, &v) == -1) {
 			fprintf(stderr, "<INVALID>\n");
 			break;
 		}
 		fprintf(stderr, "value %lld\n", v);
 		break;
 	case BER_TYPE_BITSTRING:
-		if (ber_get_bitstring(root, (void *)&buf, &len) == -1) {
+		if (ober_get_bitstring(root, (void *)&buf, &len) == -1) {
 			fprintf(stderr, "<INVALID>\n");
 			break;
 		}
@@ -1131,18 +1289,18 @@ ldap_debug_elements(struct ber_element *root)
 		fprintf(stderr, "\n");
 		break;
 	case BER_TYPE_OBJECT:
-		if (ber_get_oid(root, &o) == -1) {
+		if (ober_get_oid(root, &o) == -1) {
 			fprintf(stderr, "<INVALID>\n");
 			break;
 		}
 		fprintf(stderr, "\n");
 		break;
 	case BER_TYPE_OCTETSTRING:
-		if (ber_get_nstring(root, (void *)&buf, &len) == -1) {
+		if (ober_get_nstring(root, (void *)&buf, &len) == -1) {
 			fprintf(stderr, "<INVALID>\n");
 			break;
 		}
-		fprintf(stderr, "string \"%.*s\"\n",  len, buf);
+		fprintf(stderr, "string \"%.*s\"\n",  (int)len, buf);
 		break;
 	case BER_TYPE_NULL:	/* no payload */
 	case BER_TYPE_EOC:
@@ -1164,7 +1322,7 @@ ldap_debug_elements(struct ber_element *root)
 #endif
 
 /*
- * Convert UTF-8 to ASCII.
+ * Strip UTF-8 down to ASCII without validation.
  * notes:
  *	non-ASCII characters are displayed as '?'
  *	the argument u should be a NULL terminated sequence of UTF-8 bytes.
@@ -1176,106 +1334,82 @@ utoa(char *u)
 	char	*str;
 
 	/* calculate the length to allocate */
-	for (len = 0, i = 0; u[i] != '\0'; ) {
-		if ((u[i] & 0xF0) == 0xF0)
-			i += 4;
-		else if ((u[i] & 0xE0) == 0xE0)
-			i += 3;
-		else if ((u[i] & 0xC0) == 0xC0)
-			i += 2;
-		else
-			i += 1;
-		len++;
-	}
+	for (len = 0, i = 0; u[i] != '\0'; i++)
+		if (!isu8cont(u[i]))
+			len++;
 
 	if ((str = calloc(len + 1, sizeof(char))) == NULL)
 		return NULL;
 
 	/* copy the ASCII characters to the newly allocated string */
-	for (i = 0, j = 0; u[i] != '\0'; j++) {
-		if ((u[i] & 0xF0) == 0xF0) {
-			str[j] = '?';
-			i += 4;
-		} else if ((u[i] & 0xE0) == 0xE0) {
-			str[j] = '?';
-			i += 3;
-		} else if ((u[i] & 0xC0) == 0xC0) {
-			str[j] = '?';
-			i += 2;
-		} else {
-			str[j] =  u[i];
-			i += 1;
-		}
-	}
+	for (i = 0, j = 0; u[i] != '\0'; i++)
+		if (!isu8cont(u[i]))
+			str[j++] = isascii((unsigned char)u[i]) ? u[i] : '?';
 
 	return str;
+}
+
+static int
+isu8cont(unsigned char c)
+{
+	return (c & (0x80 | 0x40)) == 0x80;
 }
 
 /*
  * Parse a LDAP value
  * notes:
- *	the argument u should be a NULL terminated sequence of ASCII bytes.
+ *	the argument p should be a NUL-terminated sequence of ASCII bytes
  */
 char *
 parseval(char *p, size_t len, const char *key)
 {
 	char	 hex[3];
-	char	*cp = p, *buffer, *newbuffer;
-	size_t	 size, newsize, i, j, keylen;
-
+	char	*buffer, *newbuffer;
+	size_t	 i, j, keylen, size, newsize;
 	size = len + 1;
+
 	if ((buffer = calloc(1, size)) == NULL)
 		return NULL;
 
 	for (i = j = 0; j < len; i++) {
-		if (i >= size) {
-			newsize = size + 1024;
-			if ((newbuffer = realloc(buffer, newsize)) == NULL) {
-				free(buffer);
-				return (NULL);
-			}
-			buffer = newbuffer;
-			size = newsize;
-		}
-
-		if (cp[j] == '\\') {
-			(void)strlcpy(hex, cp + j + 1, sizeof(hex));
+		if (p[j] == '\\') {
+			strlcpy(hex, p + j + 1, sizeof(hex));
 			buffer[i] = (char)strtoumax(hex, NULL, 16);
 			j += 3;
-		} else if (cp[j] == '%') {
-			switch (cp[j + 1]) {
-			case '%':
-				buffer[i] = '%';
-				j += 2;
-				break;
-			case 's':
-				if (!key) {
-					free(buffer);
-					return NULL;
-				}
-				keylen = strlen(key);
-				if (!keylen) {
-					j += 2;
-					break;
-				}
-				newsize = size + keylen;
-				if ((newbuffer = realloc(buffer, newsize)) == NULL) {
-					free(buffer);
-					return NULL;
-				}
-				buffer = newbuffer;
-				size = newsize;
-				memcpy(buffer + i, key, keylen);
-				i += keylen - 1;
-				j += 2;
-				break;
-			default:
-				buffer[i] = '%';
-				j++;
-				break;
-			}
+		} else if (p[j] == '%') {
+		       switch (p[j + 1]) {
+		       case '%':
+			       buffer[i] = '%';
+			       j += 2;
+			       break;
+		       case 's':
+			       if (!key) {
+				       free(buffer);
+				       return NULL;
+			       }
+			       keylen = strlen(key);
+			       if (!keylen) {
+				       j += 2;
+				       break;
+			       }
+			       newsize = size + keylen;
+			       if ((newbuffer = realloc(buffer, newsize)) == NULL) {
+				       free(buffer);
+				       return NULL;
+			       }
+			       buffer = newbuffer;
+			       size = newsize;
+			       memcpy(buffer + i, key, keylen);
+			       i += keylen - 1;
+			       j += 2;
+			       break;
+		       default:
+			       buffer[i] = '%';
+			       j++;
+			       break;
+		       }
 		} else {
-			buffer[i] = cp[j];
+			buffer[i] = p[j];
 			j++;
 		}
 	}
@@ -1299,6 +1433,9 @@ aldap_get_errno(struct aldap *a, const char **estr)
 		break;
 	case ALDAP_ERR_OPERATION_FAILED:
 		*estr = "operation failed";
+		break;
+	case ALDAP_ERR_TLS_ERROR:
+		*estr = tls_error(a->tls);
 		break;
 	default:
 		*estr = "unknown";
