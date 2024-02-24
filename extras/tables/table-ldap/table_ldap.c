@@ -366,7 +366,7 @@ ldap_query(const char *filter, const char *key, char **attributes, struct aldap_
 	found = -1;
 	do {
 		if ((ret = aldap_search(aldap, basedn__, LDAP_SCOPE_SUBTREE,
-		    filter__, key__, NULL, 0, 0, 0, pg)) == -1) {
+		    filter__, key__, attributes, 0, 0, 0, pg)) == -1) {
 			log_debug("ret=%d", ret);
 			return -1;
 		}
