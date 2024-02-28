@@ -62,6 +62,10 @@ struct query {
 	size_t	 attrn;
 };
 
+struct query_result {
+	char	**v[MAX_ATTRS];
+};
+
 static int ldap_run_query(int type, const char *, char *, size_t);
 
 static char *config, *url, *username, *password, *basedn;
@@ -347,12 +351,26 @@ table_ldap_lookup(int service, struct dict *params, const char *key, char *dst, 
 }
 
 static int
-ldap_query(const char *filter, const char *key, char **attributes, struct aldap_stringset **outp, size_t n)
+realloc_results(struct query_result **r, size_t *num)
+{
+	struct query_result *new;
+	size_t newsize = MAX(1, (*num)*2);
+	if ((new = reallocarray(*r, newsize, sizeof(**r))) == NULL)
+		return 0;
+	*num = newsize;
+	*r = new;
+	return 1;
+}
+
+static int
+ldap_query(const char *filter, const char *key, char **attributes, size_t attrn, struct query_result **results, size_t *nresults)
 {
 	struct aldap_message		*m = NULL;
 	struct aldap_page_control	*pg = NULL;
-	int				 ret, found;
-	size_t				 i;
+	struct aldap_stringset		*ldap_res;
+	struct query_result		*res = NULL;
+	int				 ret;
+	size_t				 i, j, k, found = 0, nres = 0;
 	char				 basedn__[MAX_LDAP_BASELEN];
 	char				 filter__[MAX_LDAP_FILTERLEN];
 	char				 key__[MAX_LDAP_IDENTIFIER];
@@ -363,12 +381,12 @@ ldap_query(const char *filter, const char *key, char **attributes, struct aldap_
 		return -1;
 	if (strlcpy(key__, key, sizeof key__) >= sizeof key__)
 		return -1;
-	found = -1;
+
 	do {
-		if ((ret = aldap_search(aldap, basedn__, LDAP_SCOPE_SUBTREE,
-		    filter__, key__, attributes, 0, 0, 0, pg)) == -1) {
-			log_debug("ret=%d", ret);
-			return -1;
+		ret = -1;
+		if (aldap_search(aldap, basedn__, LDAP_SCOPE_SUBTREE,
+		    filter__, key__, attributes, 0, 0, 0, pg) == -1) {
+			goto end;
 		}
 		if (pg != NULL) {
 			aldap_freepage(pg);
@@ -377,59 +395,60 @@ ldap_query(const char *filter, const char *key, char **attributes, struct aldap_
 
 		while ((m = aldap_parse(aldap)) != NULL) {
 			if (aldap->msgid != m->msgid)
-				goto error;
+				goto end;
 			if (m->message_type == LDAP_RES_SEARCH_RESULT) {
 				if (m->page != NULL && m->page->cookie_len)
 					pg = m->page;
 				aldap_freemsg(m);
 				m = NULL;
-				if (found == -1)
-					found = 0;
+				ret = 0;
 				break;
 			}
 			if (m->message_type != LDAP_RES_SEARCH_ENTRY)
-				goto error;
+				goto end;
 
-			found = 1;
-			for (i = 0; i < n; ++i)
-				if (aldap_match_attr(m, attributes[i], &outp[i]) != 1)
-					goto error;
+			if (found >= nres) {
+				if (!realloc_results(&res, &nres)) {
+					goto end;
+				}
+			}
+			memset(&res[found], 0, sizeof(res[found]));
+			for (i = 0; i < attrn; ++i) {
+				if (aldap_match_attr(m, attributes[i], &ldap_res) != 1) {
+					goto end;
+				}
+				res[found].v[i] = calloc(ldap_res->len + 1, sizeof(*res[found].v[i]));
+				for (j = 0; j < ldap_res->len; j++) {
+					res[found].v[i][j] = strndup(ldap_res->str[j].ostr_val, ldap_res->str[j].ostr_len);
+				}
+				aldap_free_attr(ldap_res);
+			}
 			aldap_freemsg(m);
 			m = NULL;
+			found++;
 		}
 	} while (pg != NULL);
 
-	ret = found;
-	goto end;
-
-error:
-	ret = -1;
-
 end:
+	if (ret == -1) {
+		for (i = 0; i < nres; i++) {
+			for (j = 0; j < attrn; j++) {
+				for (k = 0; res[i].v[j][k]; k++) {
+					free(res[i].v[j][k]);
+				}
+				free(res[i].v[j]);
+			}
+		}
+		free(res);
+	} else {
+		ret = found ? 1 : 0;
+		*results = res;
+		*nresults = nres;
+	}
+
 	if (m)
 		aldap_freemsg(m);
-	log_debug("debug: table_ldap: ldap_query: filter=%s, ret=%d", filter, ret);
-	return ret;
-}
-
-static size_t
-ldap_strlcat(char *dst, const struct ber_octetstring str, size_t sz)
-{
-	size_t ret;
-	char *s = calloc(str.ostr_len + 1, sizeof(*s));
-	if (!s) {
-		log_warn("can not allocate memory");
-		return sz;
-	}
-
-	if (strlcpy(s, str.ostr_val, str.ostr_len + 1) >= str.ostr_len + 1) {
-		ret = sz;
-		goto out;
-	}
-	ret = strlcat(dst, s, sz);
-
-out:
-	free(s);
+	log_debug("debug: table_ldap: ldap_query: filter=%s, key=%s, ret=%d", filter, key, ret);
 	return ret;
 }
 
@@ -437,10 +456,10 @@ static int
 ldap_run_query(int type, const char *key, char *dst, size_t sz)
 {
 	struct query	 	*q;
-	struct aldap_stringset	*res[MAX_ATTRS];
+	struct query_result	*res = NULL;
 	char			 filter[MAX_LDAP_FILTERLEN];
 	int		  	 ret;
-	size_t			 i;
+	size_t			 i, j, k, nres = 0;
 	char			*r, *user, *pwhash, *uid, *gid, *home;
 
 	switch (type) {
@@ -469,51 +488,46 @@ ldap_run_query(int type, const char *key, char *dst, size_t sz)
 		return -1;
 	}
 
-	memset(res, 0, sizeof(res));
-	ret = ldap_query(filter, key, q->attrs, res, q->attrn);
+	ret = ldap_query(filter, key, q->attrs, q->attrn, &res, &nres);
 	if (ret <= 0 || dst == NULL)
 		goto end;
 
 	switch (type) {
 
 	case K_ALIAS:
+	case K_MAILADDRMAP:
 		memset(dst, 0, sz);
-		for (i = 0; i < res[0]->len; i++) {
-			if (i && strlcat(dst, ", ", sz) >= sz) {
-				ret = -1;
-				break;
-			}
-			if (ldap_strlcat(dst, res[0]->str[i], sz) >= sz) {
-				ret = -1;
-				break;
+		for (i = 0; ret != -1 && i < nres; i++) {
+			for (j = 0; res[i].v[0][j]; j++) {
+				if ((i || j) && strlcat(dst, ", ", sz) >= sz) {
+					ret = -1;
+					break;
+				}
+				if (strlcat(dst, res[i].v[0][j], sz) >= sz) {
+					ret = -1;
+					break;
+				}
 			}
 		}
 		break;
 	case K_DOMAIN:
 	case K_MAILADDR:
-	case K_MAILADDRMAP:
-		r = strndup(res[0]->str[0].ostr_val, res[0]->str[0].ostr_len);
+		r = res[0].v[0][0];
 		if (!r || strlcpy(dst, r, sz) >= sz)
 			ret = -1;
-		free(r);
 		break;
 	case K_CREDENTIALS:
-		user = strndup(res[0]->str[0].ostr_val, res[0]->str[0].ostr_len);
-		pwhash = strndup(res[1]->str[0].ostr_val, res[1]->str[0].ostr_len);
+		user = res[0].v[0][0];
+		pwhash = res[0].v[1][0];
 		if (!user || !pwhash || snprintf(dst, sz, "%s:%s", user, pwhash) >= (int)sz)
 			ret = -1;
-		free(user);
-		free(pwhash);
 		break;
 	case K_USERINFO:
-		uid = strndup(res[0]->str[0].ostr_val, res[0]->str[0].ostr_len);
-		gid = strndup(res[1]->str[0].ostr_val, res[1]->str[0].ostr_len);
-		home = strndup(res[2]->str[0].ostr_val, res[2]->str[0].ostr_len);
+		uid = res[0].v[0][0];
+		gid = res[0].v[1][0];
+		home = res[0].v[2][0];
 		if (!uid || !gid || !home || snprintf(dst, sz, "%s:%s:%s", uid, gid, home) >= (int)sz)
 			ret = -1;
-		free(uid);
-		free(gid);
-		free(home);
 		break;
 	default:
 		log_warnx("warn: unsupported lookup kind");
@@ -524,9 +538,15 @@ ldap_run_query(int type, const char *key, char *dst, size_t sz)
 		log_warnx("warn: could not format result");
 
 end:
-	for (i = 0; i < q->attrn; ++i)
-		if (res[i])
-			aldap_free_attr(res[i]);
+	for (i = 0; i < nres; i++) {
+		for (j = 0; j < q->attrn; ++j) {
+			for (k = 0; res[i].v[j][k]; k++) {
+				free(res[i].v[j][k]);
+			}
+			free(res[i].v[i]);
+		}
+	}
+	free(res);
 
 	return ret;
 }
