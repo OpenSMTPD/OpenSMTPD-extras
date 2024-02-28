@@ -97,19 +97,11 @@ aldap_init(int fd)
 	return a;
 }
 
-static int
-tls_handshake_wrapper(struct tls *ctx)
-{
-	int ret;
-	do {
-		ret = tls_handshake(ctx);
-	} while (ret == TLS_WANT_POLLIN || ret == TLS_WANT_POLLOUT);
-	return ret;
-}
-
 int
 aldap_tls(struct aldap *ldap, struct tls_config *cfg, const char *name)
 {
+	int ret;
+
 	ldap->tls = tls_client();
 	if (ldap->tls == NULL) {
 		ldap->err = ALDAP_ERR_OPERATION_FAILED;
@@ -126,7 +118,10 @@ aldap_tls(struct aldap *ldap, struct tls_config *cfg, const char *name)
 		return (-1);
 	}
 
-	if (tls_handshake_wrapper(ldap->tls) == -1) {
+	do {
+		ret = tls_handshake(ldap->tls);
+	} while (ret == TLS_WANT_POLLIN || ret == TLS_WANT_POLLOUT);
+	if (ret == -1) {
 		ldap->err = ALDAP_ERR_TLS_ERROR;
 		return (-1);
 	}
