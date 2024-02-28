@@ -68,7 +68,7 @@ struct query_result {
 
 static int ldap_run_query(int type, const char *, char *, size_t);
 
-static char *config, *url, *username, *password, *basedn;
+static char *config, *url, *username, *password, *basedn, *ca_file;
 
 static struct aldap *aldap;
 static struct query queries[LDAP_MAX];
@@ -89,18 +89,29 @@ static struct aldap *
 ldap_connect(const char *addr)
 {
 	struct aldap_url lu;
+	struct aldap *ldap = NULL;
+	struct tls_config *tls_config = NULL;
 	struct addrinfo	 hints, *res0, *res;
 	int		 error, fd = -1;
 
 	if (aldap_parse_url(addr, &lu) != 1) {
 		log_warnx("warn: ldap_parse_url fail");
-		return NULL;
+		goto out;
+	}
+	if (lu.protocol == LDAPI) {
+		log_warnx("ldapi:// is not suported yet");
+		goto out;
+	}
+	if (lu.protocol == LDAPTLS) {
+		log_warnx("ldap+tls:// is not suported yet");
+		goto out;
 	}
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = PF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_NUMERICSERV;
+	log_debug("ldap connect to: %s:%s", lu.host, lu.port);
 	error = getaddrinfo(lu.host, lu.port, &hints, &res0);
 	if (error == EAI_AGAIN || error == EAI_NODATA || error == EAI_NONAME)
 		return NULL;
@@ -116,16 +127,45 @@ ldap_connect(const char *addr)
 			continue;
 
 		if (connect(fd, res->ai_addr, res->ai_addrlen) == 0) {
-			aldap_free_url(&lu);
-			return aldap_init(fd);
+			ldap = aldap_init(fd);
+			break;
 		}
 
 		close(fd);
 		fd = -1;
 	}
 
+	if (!ldap) {
+		log_debug("can not connect");
+		goto out;
+	}
+
+	if (lu.protocol == LDAPS || lu.protocol == LDAPTLS) {
+		tls_config = tls_config_new();
+		if (!tls_config) {
+			log_warn("warn: can not get tls_config");
+			aldap_close(ldap);
+			ldap = NULL;
+			goto out;
+		}
+		if (ca_file && tls_config_set_ca_file(tls_config, ca_file) == -1) {
+			log_warnx("warn: can't load ca file: %s", tls_config_error(tls_config));
+			aldap_close(ldap);
+			ldap = NULL;
+			goto out;
+		}
+		if (aldap_tls(ldap, tls_config, lu.host) == -1) {
+			log_warnx("warn: tls connection failed");
+			aldap_close(ldap);
+			ldap = NULL;
+			goto out;
+		}
+	}
+
+out:
+	tls_config_free(tls_config);
 	aldap_free_url(&lu);
-	return NULL;
+	return ldap;
 }
 
 static int
@@ -228,6 +268,8 @@ ldap_config(void)
 			read_value(&password, key, value);
 		else if (!strcmp(key, "basedn"))
 			read_value(&basedn, key, value);
+		else if (!strcmp(key, "ca_file"))
+			read_value(&ca_file, key, value);
 		else if (!strcmp(key, "alias_filter"))
 			read_value(&queries[LDAP_ALIAS].filter, key, value);
 		else if (!strcmp(key, "alias_attributes")) {
