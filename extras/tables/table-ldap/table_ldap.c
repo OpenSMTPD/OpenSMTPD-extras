@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2024 Philipp Takacs <philipp@bureaucracy.de>
  * Copyright (c) 2013 Eric Faurot <eric@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
