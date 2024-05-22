@@ -474,7 +474,7 @@ ldap_query(const char *filter, const char *key, char **attributes, size_t attrn,
 
 end:
 	if (ret == -1) {
-		for (i = 0; i < nres; i++) {
+		for (i = 0; i < found; i++) {
 			for (j = 0; j < attrn; j++) {
 				for (k = 0; res[i].v[j][k]; k++) {
 					free(res[i].v[j][k]);
@@ -486,7 +486,7 @@ end:
 	} else {
 		ret = found ? 1 : 0;
 		*results = res;
-		*nresults = nres;
+		*nresults = found;
 	}
 
 	if (m)
