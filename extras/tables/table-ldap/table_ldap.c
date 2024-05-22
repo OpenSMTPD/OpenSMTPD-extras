@@ -32,12 +32,6 @@
 #include <smtpd-api.h>
 #include "aldap.h"
 
-#define MAX_LDAP_URL             256
-#define MAX_LDAP_USERNAME        256
-#define MAX_LDAP_PASSWORD        256
-#define MAX_LDAP_FIELDLEN        128
-
-
 enum {
 	LDAP_ALIAS = 0,
 	LDAP_DOMAIN,
