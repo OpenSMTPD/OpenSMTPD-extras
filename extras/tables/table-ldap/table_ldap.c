@@ -32,7 +32,7 @@
 #include <smtpd-api.h>
 #include "aldap.h"
 
-#define MAX_LDAP_IDENTIFIER      32
+#define MAX_LDAP_IDENTIFIER      320
 #define MAX_LDAP_URL             256
 #define MAX_LDAP_USERNAME        256
 #define MAX_LDAP_PASSWORD        256
