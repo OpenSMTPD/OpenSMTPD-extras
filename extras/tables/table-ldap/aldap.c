@@ -37,13 +37,13 @@
 #define ALDAP_VERSION 3
 
 static struct ber_element	*ldap_parse_search_filter(struct ber_element *,
-				    char *, const char *);
+				    const char *, const char *);
 static struct ber_element	*ldap_do_parse_search_filter(
-				    struct ber_element *, char **, const char *);
+				    struct ber_element *, const char **, const char *);
 struct aldap_stringset		*aldap_get_stringset(struct ber_element *);
 char				*utoa(char *);
 static int			 isu8cont(unsigned char);
-char				*parseval(char *, size_t, const char *);
+char				*parseval(const char *, size_t, const char *);
 int				aldap_create_page_control(struct ber_element *,
 				    int, struct aldap_page_control *);
 int				aldap_send(struct aldap *,
@@ -255,7 +255,7 @@ fail:
 }
 
 int
-aldap_search(struct aldap *ldap, char *basedn, enum scope scope, char *filter,
+aldap_search(struct aldap *ldap, char *basedn, enum scope scope, const char *filter,
     const char *key, char **attrs, int typesonly, int sizelimit, int timelimit,
     struct aldap_page_control *page)
 {
@@ -888,10 +888,10 @@ aldap_get_stringset(struct ber_element *elm)
  *	NULL, parse failed
  */
 static struct ber_element *
-ldap_parse_search_filter(struct ber_element *ber, char *filter, const char *key)
+ldap_parse_search_filter(struct ber_element *ber, const char *filter, const char *key)
 {
 	struct ber_element *elm;
-	char *cp;
+	const char *cp;
 
 	cp = filter;
 
@@ -930,10 +930,11 @@ ldap_parse_search_filter(struct ber_element *ber, char *filter, const char *key)
  *
  */
 static struct ber_element *
-ldap_do_parse_search_filter(struct ber_element *prev, char **cpp, const char *key)
+ldap_do_parse_search_filter(struct ber_element *prev, const char **cpp, const char *key)
 {
 	struct ber_element *elm, *root = NULL;
-	char *attr_desc, *attr_val, *parsed_val, *cp;
+	char *parsed_val;
+	const char *attr_desc, *attr_val, *cp;
 	size_t len;
 	unsigned long type;
 
@@ -1356,7 +1357,7 @@ isu8cont(unsigned char c)
  *	the argument p should be a NUL-terminated sequence of ASCII bytes
  */
 char *
-parseval(char *p, size_t len, const char *key)
+parseval(const char *p, size_t len, const char *key)
 {
 	char	 hex[3];
 	char	*buffer, *newbuffer;
