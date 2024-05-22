@@ -32,12 +32,9 @@
 #include <smtpd-api.h>
 #include "aldap.h"
 
-#define MAX_LDAP_IDENTIFIER      320
 #define MAX_LDAP_URL             256
 #define MAX_LDAP_USERNAME        256
 #define MAX_LDAP_PASSWORD        256
-#define MAX_LDAP_BASELEN         128
-#define MAX_LDAP_FILTERLEN       1024
 #define MAX_LDAP_FIELDLEN        128
 
 
@@ -414,21 +411,11 @@ ldap_query(const char *filter, const char *key, char **attributes, size_t attrn,
 	struct query_result		*res = NULL;
 	int				 ret;
 	size_t				 i, j, k, found = 0, nres = 0;
-	char				 basedn__[MAX_LDAP_BASELEN];
-	char				 filter__[MAX_LDAP_FILTERLEN];
-	char				 key__[MAX_LDAP_IDENTIFIER];
-
-	if (strlcpy(basedn__, basedn, sizeof basedn__) >= sizeof basedn__)
-		return -1;
-	if (strlcpy(filter__, filter, sizeof filter__) >= sizeof filter__)
-		return -1;
-	if (strlcpy(key__, key, sizeof key__) >= sizeof key__)
-		return -1;
 
 	do {
 		ret = -1;
-		if (aldap_search(aldap, basedn__, LDAP_SCOPE_SUBTREE,
-		    filter__, key__, attributes, 0, 0, 0, pg) == -1) {
+		if (aldap_search(aldap, basedn, LDAP_SCOPE_SUBTREE,
+		    filter, key, attributes, 0, 0, 0, pg) == -1) {
 			goto end;
 		}
 		if (pg != NULL) {
@@ -500,7 +487,6 @@ ldap_run_query(int type, const char *key, char *dst, size_t sz)
 {
 	struct query	 	*q;
 	struct query_result	*res = NULL;
-	char			 filter[MAX_LDAP_FILTERLEN];
 	int		  	 ret;
 	size_t			 i, j, k, nres = 0;
 	char			*r, *user, *pwhash, *uid, *gid, *home;
@@ -525,13 +511,7 @@ ldap_run_query(int type, const char *key, char *dst, size_t sz)
 		return -1;
 	}
 
-	if (snprintf(filter, sizeof(filter), "%s", q->filter)
-	    >= (int)sizeof(filter)) {
-		log_warnx("warn: filter too large");
-		return -1;
-	}
-
-	ret = ldap_query(filter, key, q->attrs, q->attrn, &res, &nres);
+	ret = ldap_query(q->filter, key, q->attrs, q->attrn, &res, &nres);
 	if (ret <= 0 || dst == NULL)
 		goto end;
 
