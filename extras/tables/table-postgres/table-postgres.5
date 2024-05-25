@@ -191,9 +191,9 @@ accept from any for domain <domains> virtual <virtuals> deliver to mbox
 .Ic Pa /etc/mail/postgres.conf
 .Bd -literal -compact
 conninfo host='db.example.com' user='postfix' password='PostfixOutOpenSMTPDin' dbname='postfix'
-query_alias SELECT destination FROM alias WHERE email=$1;
-query_credentials SELECT username, password FROM mailbox WHERE username=$1;
-query_domain SELECT domain FROM domain WHERE domain=$1;
+query_alias SELECT IF(goto=address, 'vmail', goto) from alias WHERE address=$1 AND active='1';
+query_credentials SELECT username, password FROM mailbox WHERE username=$1 AND active='1';
+query_domain SELECT domain FROM domain WHERE domain=$1 AND active='1';
 .Ed
 The rest of the config remains the same.
 

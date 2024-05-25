@@ -222,9 +222,9 @@ host db.example.com
 username postfix
 password PostfixOutOpenSMTPDin
 database postfix
-query_alias SELECT destination FROM alias WHERE email=?;
-query_credentials SELECT username, password FROM mailbox WHERE username=?;
-query_domain SELECT domain FROM domain WHERE domain=?;
+query_alias SELECT IF(goto=address, 'vmail', goto) from alias WHERE address=? AND active='1';
+query_credentials SELECT username, password FROM mailbox WHERE username=? AND active='1';
+query_domain SELECT domain FROM domain WHERE domain=? AND active='1';
 .Ed
 The rest of the config remains the same.
 
