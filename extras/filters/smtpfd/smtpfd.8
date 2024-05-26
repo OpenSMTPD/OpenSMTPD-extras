@@ -1,0 +1,98 @@
+.\"	$OpenBSD$
+.\"
+.\" Copyright (c) 2016 Kenneth R Westerback <kwesterback@gmail.com>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd $Mdocdate: July 27 2015 $
+.Dt SMTPFD 8
+.Os
+.Sh NAME
+.Nm smtpfd
+.Nd SMTP filter daemon
+.Sh SYNOPSIS
+.Nm
+.Op Fl dnv
+.Op Fl f Ar file
+.Op Fl s Ar socket
+.Sh DESCRIPTION
+The
+.Nm
+daemon is an SMTP filter server.  It is typically used by
+.Xr smtpd 8
+to provide custom filtering on SMTP sessions.
+.Pp
+.Nm
+is usually started at boot time, and can be enabled by
+setting the following in
+.Pa /etc/rc.conf.local :
+.Pp
+.Dl smtpfd_flags=\&"\&"
+.Pp
+See
+.Xr rc 8
+and
+.Xr rc.conf 8
+for more information on the boot process
+and enabling daemons.
+.Pp
+A running
+.Nm
+can be controlled with the
+.Xr smtpfctl 8
+utility.
+.Pp
+The options are as follows:
+.Bl -tag -width Dssmacro=value
+.It Fl D Ar macro Ns = Ns Ar value
+Set a
+.Ar macro
+to a
+.Ar value .
+Macros can be referenced in the configuration files.
+.It Fl d
+Do not daemonize.
+If this option is specified,
+.Nm
+will run in the foreground and log to
+.Em stderr .
+.It Fl f Ar file
+Specify an alternative configuration file.
+.It Fl n
+Configtest mode.
+Only check the configuration file for validity.
+.It Fl s Ar socket
+Use an alternate location for the default control socket.
+.It Fl v
+Produce more verbose output.
+.El
+.Sh FILES
+.Bl -tag -width "/var/run/smtpfd.sockXX" -compact
+.It Pa /etc/mail/smtpfd.conf
+Default
+.Nm
+configuration file.
+.It Pa /var/run/smtpfd.sock
+.Ux Ns -domain
+socket used for communication with
+.Xr newctl 8 .
+.El
+.Sh SEE ALSO
+.Xr smtpfd.conf 5 ,
+.Xr smtpfctl 8 ,
+.Xr smtpd 8
+.Sh HISTORY
+The
+.Nm
+program first appeared in
+.Ox X.Y .
