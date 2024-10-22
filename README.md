@@ -1,7 +1,18 @@
 # OpenSMTPD-extras
 This is the mirror of the official repository of OpenSMTPD addons
 
-# THIS REPOSITORY IS IN MAINTENANCE, ONLY ACCEPTING BUG FIXES AND MINOR UPDATES.
+## THIS REPOSITORY IS ARCHIVED
+
+With OpenSMTPD 7.6 the table protocol was changed, and existing tables were splitted off to a different repository.  Please upgrade to the right table, i.e.:
+
+ - table-ldap → https://github.com/opensmtpd/table-ldap
+ - table-mysql → https://github.com/opensmtpd/table-mysql
+ - table-passwd → https://github.com/opensmtpd/table-passwd
+ - table-postgres → https://github.com/opensmtpd/table-postgres
+ - table-redis → https://github.com/opensmtpd/table-redis
+ - table-socketmap → https://github.com/opensmtpd/table-socketmap
+ - table-sqlite → https://github.com/opensmtpd/table-sqlite
+
 
 # How to install
 First, you need to clone the repository:
